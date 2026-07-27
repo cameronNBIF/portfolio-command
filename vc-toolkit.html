@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Command - VC Toolkit</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root {
+  color-scheme: light;
+  --navy: #16263f; --navy-2: #1f3355; --ink: #1c2430; --slate: #5b6878; --muted: #8a95a5;
+  --line: #dde3ea; --line-soft: #eaeef3; --bg: #f4f6f9; --card: #ffffff;
+  --accent: #2563eb; --accent-soft: #eaf1fe;
+  --green: #15803d; --green-bg: #e8f5ec; --amber: #b45309; --amber-bg: #fdf3e3; --red: #b91c1c; --red-bg: #fdeaea;
+  --teal: #0e7490; --purple: #7c3aed;
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(22,38,63,.06), 0 1px 6px rgba(22,38,63,.05);
+  --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 13px; }
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ---------- Top bar ---------- */
+header { background: var(--navy); color: #fff; display: flex; align-items: center; gap: 18px; padding: 0 18px; height: 52px; flex-shrink: 0; }
+header .logo { font-weight: 700; font-size: 14.5px; letter-spacing: .3px; white-space: nowrap; }
+header .logo span { color: #7fb0ff; }
+nav { display: flex; gap: 2px; height: 100%; }
+nav button { background: none; border: none; color: #b8c4d6; font: 600 12.5px var(--font); padding: 0 14px; cursor: pointer; border-bottom: 2.5px solid transparent; height: 100%; }
+nav button:hover { color: #fff; }
+nav button.active { color: #fff; border-bottom-color: #7fb0ff; }
+header .spacer { flex: 1; }
+header .fundtag { font-size: 11.5px; color: #b8c4d6; text-align: right; line-height: 1.3; }
+header .fundtag b { color: #fff; }
+
+main { flex: 1; overflow-y: auto; padding: 18px 22px 40px; }
+.view { display: none; max-width: 1400px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* ---------- Generic ---------- */
+h2.vtitle { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+.vsub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.card .chead { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: space-between; }
+.card .cbody { padding: 12px 14px; }
+.grid { display: grid; gap: 14px; }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.up { color: var(--green); } .down { color: var(--red); } .flat { color: var(--muted); }
+.small { font-size: 11.5px; color: var(--slate); }
+.hint { font-size: 11px; color: var(--muted); }
+a.link { color: var(--accent); cursor: pointer; text-decoration: none; }
+a.link:hover { text-decoration: underline; }
+
+.btn { background: var(--navy); color: #fff; border: none; border-radius: 6px; padding: 7px 13px; font: 600 12px var(--font); cursor: pointer; }
+.btn:hover { background: var(--navy-2); }
+.btn.ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); }
+.btn.ghost:hover { background: var(--bg); }
+.btn.sm { padding: 4px 9px; font-size: 11.5px; }
+.btn.danger { background: var(--red); }
+
+.pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
+.pill.green { background: var(--green-bg); color: var(--green); }
+.pill.yellow { background: var(--amber-bg); color: var(--amber); }
+.pill.red { background: var(--red-bg); color: var(--red); }
+.pill.gray { background: #eef1f5; color: var(--slate); }
+.pill.blue { background: var(--accent-soft); color: var(--accent); }
+.pill.purple { background: #f1eafd; color: var(--purple); }
+.pill.teal { background: #e0f2f7; color: var(--teal); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+.dot.green { background: #22a052; } .dot.yellow { background: #e09a1a; } .dot.red { background: #d93030; } .dot.gray { background: #9aa5b3; }
+
+/* ---------- KPI tiles ---------- */
+.kpirow { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 13px; box-shadow: var(--shadow); }
+.kpi .k { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.kpi .v { font-size: 20px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 11px; color: var(--slate); margin-top: 2px; }
+
+/* ---------- Tables ---------- */
+table.dt { width: 100%; border-collapse: collapse; font-size: 12.3px; }
+table.dt th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--card); z-index: 1; }
+table.dt th.num { text-align: right; }
+table.dt th .arrow { font-size: 9px; color: var(--accent); }
+table.dt td { padding: 7px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+table.dt tbody tr:hover { background: #f6f9fd; }
+table.dt tbody tr.click { cursor: pointer; }
+.tblwrap { overflow: auto; max-height: 640px; }
+
+/* ---------- Filters ---------- */
+.fbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.fbar input[type=text], .fbar select, .field input, .field select, .field textarea {
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: 12.3px var(--font); background: #fff; color: var(--ink);
+}
+.fbar input[type=text]:focus, .fbar select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.fbar .count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+/* ---------- Charts ---------- */
+.chartbox { position: relative; height: 240px; }
+.chartbox.tall { height: 300px; }
+
+/* ---------- Detail drawer ---------- */
+#drawer { position: fixed; top: 0; right: -900px; width: min(880px, 96vw); height: 100vh; background: #fff; border-left: 1px solid var(--line); box-shadow: -8px 0 30px rgba(22,38,63,.18); z-index: 50; transition: right .22s ease; display: flex; flex-direction: column; }
+#drawer.open { right: 0; }
+#drawer .dhead { padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 12px; }
+#drawer .dbody { flex: 1; overflow-y: auto; padding: 16px 20px 40px; }
+#overlay { position: fixed; inset: 0; background: rgba(15,23,42,.35); z-index: 40; display: none; }
+#overlay.open { display: block; }
+.dsec { margin-bottom: 18px; }
+.dsec h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 7px; padding-bottom: 4px; border-bottom: 1px solid var(--line-soft); }
+.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; }
+.kv .item .l { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.kv .item .d { font-size: 12.5px; font-weight: 600; margin-top: 1px; }
+
+/* ---------- Pipeline ---------- */
+.kanban { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: start; }
+.kcol { background: #edf0f4; border-radius: var(--radius); padding: 8px; min-height: 120px; }
+.kcol h5 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--slate); padding: 2px 4px 8px; display: flex; justify-content: space-between; }
+.kcard { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--shadow); }
+.kcard:hover { border-color: var(--accent); }
+.kcard .n { font-weight: 700; font-size: 12.3px; }
+.kcard .m { font-size: 11px; color: var(--slate); margin-top: 2px; }
+
+/* ---------- Memo ---------- */
+.memolayout { display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+.memosec { margin-bottom: 14px; }
+.memosec label { font-size: 11px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 4px; }
+.memosec textarea { width: 100%; min-height: 84px; resize: vertical; font: 12.5px/1.5 var(--font); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.gate { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+.gate select { font-size: 11px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 5px; }
+
+/* ---------- Data view ---------- */
+pre.schema { background: #0f172a; color: #cfe0f4; font: 11px/1.55 var(--mono); padding: 14px 16px; border-radius: var(--radius); overflow-x: auto; }
+.droptarget { border: 2px dashed var(--line); border-radius: var(--radius); padding: 18px; text-align: center; color: var(--muted); }
+
+/* ---------- Report / print ---------- */
+.reporthead { display: none; }
+@media print {
+  header, .fbar, .btn, nav, .noprint { display: none !important; }
+  main { padding: 0; overflow: visible; }
+  body { background: #fff; }
+  .view { display: none; } .view.active { display: block; }
+  .reporthead { display: block; margin-bottom: 12px; }
+  .card { box-shadow: none; break-inside: avoid; }
+}
+.badgebar { display: flex; gap: 6px; flex-wrap: wrap; }
+.progress { height: 7px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--accent); border-radius: 99px; }
+.alertrow { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 12.3px; }
+.tabs2 { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs2 button { background: none; border: none; padding: 7px 12px; font: 600 12px var(--font); color: var(--slate); cursor: pointer; border-bottom: 2px solid transparent; }
+.tabs2 button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 12.5px; z-index: 99; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">PORTFOLIO<span>COMMAND</span></div>
+    <nav id="mainnav">
+      <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="portfolio">Portfolio</button>
+      <button data-view="funds">Funds</button>
+      <button data-view="pipeline">Pipeline</button>
+      <button data-view="modeling">Modeling</button>
+      <button data-view="memo">Memo Builder</button>
+      <button data-view="reports">Reports</button>
+      <button data-view="data">Data</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="fundtag" id="fundtag"></div>
+  </header>
+  <main>
+    <div class="view active" id="view-dashboard"></div>
+    <div class="view" id="view-portfolio"></div>
+    <div class="view" id="view-funds"></div>
+    <div class="view" id="view-pipeline"></div>
+    <div class="view" id="view-modeling"></div>
+    <div class="view" id="view-memo"></div>
+    <div class="view" id="view-reports"></div>
+    <div class="view" id="view-data"></div>
+  </main>
+</div>
+<div id="overlay" onclick="closeDrawer()"></div>
+<div id="drawer"></div>
+<div class="toast" id="toast"></div>
+<script>
+/* =====================================================================
+   DATA LAYER
+   Single in-memory store (window.DB). Schema documented in the Data tab.
+   Demo data is generated deterministically; imports replace it cleanly.
+   ===================================================================== */
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rng = mulberry32(42);
+const pick = a => a[Math.floor(rng()*a.length)];
+const rnd = (lo,hi) => lo + rng()*(hi-lo);
+const rndi = (lo,hi) => Math.round(rnd(lo,hi));
+
+const SECTORS = ["Enterprise SaaS","Fintech","Healthtech","Climate & Energy","Defense & Space","AI / ML Infra","Industrial Tech","Consumer","Logistics","Cybersecurity"];
+const STAGES = ["Pre-Seed","Seed","Series A","Series B","Series C+","Growth"];
+const INSTRUMENTS = ["SAFE","Convertible Note","Debt-to-Note","Preferred Equity","Common Equity"];
+const FUNNEL = ["Sourced","Screening","Diligence","IC Review","Term Sheet","Closed"];
+const DEFAULT_GATES = ["Initial screen","Market & competition","Team topgrading","Financial model review","Customer references","Technical / product DD","Legal & cap table","IC approval","Term sheet executed"];
+
+/* ---- Detailed flagship companies (hand-built for realism) ---- */
+function detailedCompanies(){
+  return [
+  { id:"C001", name:"Vantara Systems", sector:"Enterprise SaaS", stage:"Series B", vintage:2021, health:"green",
+    instrument:"Preferred Equity", ownershipPct:11.2, invested:8.5, fmv:24.7, realized:0, exited:false,
+    ceo:"Maya Lindqvist", hq:"Austin, TX", desc:"Workflow automation platform for regulated back-office operations in insurance and banking.",
+    riskFlags:[], proRata:true, reservesAllocated:4.0, reservesDeployed:1.5,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-08-12"},
+    kpis:[{period:"2026-Q1", revenue:14.2, burn:0.9, cash:22.4, runwayMo:25},{period:"2025-Q4", revenue:12.8, burn:1.0, cash:25.1, runwayMo:25},{period:"2025-Q3", revenue:11.1, burn:1.1, cash:28.2, runwayMo:26}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[
+      {date:"2021-03-15", label:"Series A", instrument:"Preferred Equity", invested:5.0, postMoney:42, ownershipAfter:11.9, lead:"Us", note:"Led round, 2 board seats total"},
+      {date:"2023-06-20", label:"Series B", instrument:"Preferred Equity", invested:3.5, postMoney:120, ownershipAfter:11.2, lead:"Meridian Growth", note:"Pro-rata plus modest super pro-rata"}],
+    milestones:[{title:"$20M ARR", due:"2026-12-31", status:"on-track"},{title:"EU market entry", due:"2026-09-30", status:"on-track"}],
+    covenants:[], govFunding:null,
+    marks:[{date:"2026-03-31", fmv:24.7, method:"Last round + revenue multiple calibration", by:"D. Armali", rationale:"Comps at 8-10x forward ARR; held at calibrated 7.5x on $14.2M ARR run-rate, minority discount applied."},
+           {date:"2025-12-31", fmv:22.1, method:"Revenue multiple", by:"D. Armali", rationale:"Uplift from Q4 ARR growth; multiple unchanged."}],
+    tasks:[{title:"Review Q2 board pack", due:"2026-08-05", done:false}] },
+
+  { id:"C002", name:"Heliograph Energy", sector:"Climate & Energy", stage:"Series A", vintage:2022, health:"yellow",
+    instrument:"Preferred Equity", ownershipPct:14.5, invested:6.0, fmv:9.3, realized:0, exited:false,
+    ceo:"Tomás Reyes", hq:"Denver, CO", desc:"Long-duration thermal storage for industrial heat decarbonization.",
+    riskFlags:["Runway below 12 months","DOE milestone at risk"], proRata:true, reservesAllocated:3.0, reservesDeployed:0,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-07-22"},
+    kpis:[{period:"2026-Q1", revenue:1.8, burn:1.4, cash:14.0, runwayMo:10},{period:"2025-Q4", revenue:1.5, burn:1.3, cash:18.2, runwayMo:14}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[{date:"2022-05-10", label:"Series A", instrument:"Preferred Equity", invested:6.0, postMoney:38, ownershipAfter:14.5, lead:"Us", note:"Board seat; DOE grant condition attached"}],
+    milestones:[{title:"Pilot plant COD", due:"2026-10-15", status:"at-risk"},{title:"Series B raise", due:"2027-01-31", status:"pending"}],
+    covenants:[{text:"Minimum cash balance $8M until pilot COD", status:"compliant"}],
+    govFunding:{program:"DOE LPO conditional commitment", amount:45, conditions:"Pilot COD by Q4 2026; 30% private match; Davis-Bacon compliance", status:"conditions pending"},
+    marks:[{date:"2026-03-31", fmv:9.3, method:"Calibrated last round, milestone-adjusted", by:"D. Armali", rationale:"10% haircut vs. prior mark for pilot delay risk; DOE unlock remains base case."},
+           {date:"2025-12-31", fmv:10.3, method:"Last round", by:"D. Armali", rationale:"Held at Series A calibration."}],
+    tasks:[{title:"Bridge/insider round decision", due:"2026-07-30", done:false},{title:"DOE milestone review call", due:"2026-07-15", done:false}] },
+
+  { id:"C003", name:"Northline Robotics", sector:"Industrial Tech", stage:"Series B", vintage:2020, health:"green",
+    instrument:"Preferred Equity", ownershipPct:9.8, invested:9.0, fmv:31.4, realized:0, exited:false,
+    ceo:"Sarah Okafor", hq:"Pittsburgh, PA", desc:"Autonomous material handling for mid-size warehouses; RaaS model.",
+    riskFlags:[], proRata:true, reservesAllocated:5.0, reservesDeployed:3.0,
+    board:{seat:"Observer", holder:"J. Chen", nextMeeting:"2026-09-03"},
+    kpis:[{period:"2026-Q1", revenue:19.5, burn:0.6, cash:31.0, runwayMo:52},{period:"2025-Q4", revenue:17.2, burn:0.8, cash:33.1, runwayMo:41}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[
+      {date:"2020-09-01", label:"Series A", instrument:"Preferred Equity", invested:4.0, postMoney:30, ownershipAfter:13.3, lead:"Us", note:""},
+      {date:"2022-11-15", label:"Series B", instrument:"Preferred Equity", invested:3.0, postMoney:110, ownershipAfter:10.4, lead:"Foundry Industrial", note:"Pro-rata"},
+      {date:"2024-08-20", label:"B-1 extension", instrument:"Preferred Equity", invested:2.0, postMoney:145, ownershipAfter:9.8, lead:"Inside round", note:"Reserves deployment"}],
+    milestones:[{title:"Cash-flow breakeven", due:"2027-06-30", status:"on-track"}], covenants:[], govFunding:null,
+    marks:[{date:"2026-03-31", fmv:31.4, method:"Revenue multiple", by:"K. Patel", rationale:"4.5x forward revenue on $28M forward bookings, DLOM 15%."}],
+    tasks:[] },
+
+  { id:"C004", name:"Cobalt Harbor", sector:"Fintech", stage:"Series C+", vintage:2019, health:"green",
+    instrument:"Preferred Equity", ownershipPct:6.1, invested:12.0, fmv:58.9, realized:4.0, exited:false,
+    ceo:"Priya Raman", hq:"New York, NY", desc:"Treasury and FX risk infrastructure for mid-market corporates.",
+    riskFlags:[], proRata:true, reservesAllocated:6.0, reservesDeployed:6.0,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-07-29"},
+    kpis:[{period:"2026-Q1", revenue:41.0, burn:-0.5, cash:66.0, runwayMo:99},{period:"2025-Q4", revenue:37.6, burn:0.1, cash:61.0, runwayMo:99}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[
+      {date:"2019-04-10", label:"Series A", instrument:"Preferred Equity", invested:4.0, postMoney:36, ownershipAfter:11.1, lead:"Us", note:""},
+      {date:"2021-02-25", label:"Series B", instrument:"Preferred Equity", invested:4.0, postMoney:150, ownershipAfter:8.9, lead:"Granite Capital", note:"Pro-rata"},
+      {date:"2023-10-05", label:"Series C", instrument:"Preferred Equity", invested:4.0, postMoney:420, ownershipAfter:6.4, lead:"Sovereign Growth", note:"Partial secondary sold: $4.0M at C round"}],
+    milestones:[{title:"IPO readiness review", due:"2027-03-31", status:"on-track"}], covenants:[], govFunding:null,
+    marks:[{date:"2026-03-31", fmv:58.9, method:"Last round + public comps", by:"D. Armali", rationale:"Series C price supported by public fintech comps at 9x NTM revenue."}],
+    tasks:[{title:"Secondary opportunity assessment", due:"2026-09-15", done:false}] },
+
+  { id:"C005", name:"Ferrous Gate", sector:"Cybersecurity", stage:"Seed", vintage:2024, health:"green",
+    instrument:"SAFE", ownershipPct:7.0, invested:2.0, fmv:3.5, realized:0, exited:false,
+    ceo:"Alex Brandt", hq:"Arlington, VA", desc:"OT/ICS threat detection for critical infrastructure operators.",
+    riskFlags:[], proRata:true, reservesAllocated:2.5, reservesDeployed:0,
+    board:{seat:"Observer", holder:"Daniel Armali", nextMeeting:"2026-08-20"},
+    kpis:[{period:"2026-Q1", revenue:1.1, burn:0.35, cash:5.6, runwayMo:16}],
+    thresholds:{minRunwayMo:9, maxBurnMult:2.0},
+    rounds:[{date:"2024-06-12", label:"Seed", instrument:"SAFE", invested:2.0, postMoney:28.5, ownershipAfter:7.0, lead:"Us", note:"Post-money SAFE, $28.5M cap, no discount; side letter: pro-rata + info rights"}],
+    milestones:[{title:"SAFE conversion at Series A", due:"2026-11-30", status:"on-track"},{title:"$2M ARR", due:"2026-12-31", status:"on-track"}],
+    covenants:[], govFunding:{program:"AFWERX SBIR Phase II", amount:1.2, conditions:"Deliverables through Q3 2026", status:"active"},
+    marks:[{date:"2026-03-31", fmv:3.5, method:"Milestone / calibration", by:"K. Patel", rationale:"Uplift to expected Series A cap conversion value; term sheet conversations underway at $50M+."}],
+    tasks:[] },
+
+  { id:"C006", name:"Arbor Health", sector:"Healthtech", stage:"Series A", vintage:2021, health:"red",
+    instrument:"Convertible Note", ownershipPct:8.4, invested:5.5, fmv:1.7, realized:0, exited:false,
+    ceo:"Interim - board search", hq:"Nashville, TN", desc:"Value-based care enablement for independent primary-care groups.",
+    riskFlags:["CEO departure","Runway under 6 months","Covenant breach","Down-round likely"], proRata:false, reservesAllocated:2.0, reservesDeployed:2.0,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-07-10"},
+    kpis:[{period:"2026-Q1", revenue:3.2, burn:1.1, cash:5.0, runwayMo:5},{period:"2025-Q4", revenue:3.4, burn:1.3, cash:8.6, runwayMo:7}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[
+      {date:"2021-08-15", label:"Series A", instrument:"Preferred Equity", invested:3.5, postMoney:32, ownershipAfter:10.9, lead:"Us", note:""},
+      {date:"2025-05-01", label:"Bridge note", instrument:"Convertible Note", invested:2.0, postMoney:null, ownershipAfter:8.4, lead:"Insiders", note:"8% PIK, 25% discount, $20M cap, maturity 2026-11-01"}],
+    milestones:[{title:"New CEO hired", due:"2026-08-31", status:"at-risk"},{title:"Recap or sale decision", due:"2026-09-30", status:"pending"}],
+    covenants:[{text:"Minimum cash $6M (bridge note)", status:"breached - waiver signed 2026-05"}], govFunding:null,
+    marks:[{date:"2026-03-31", fmv:1.7, method:"Scenario-weighted (PWERM)", by:"D. Armali", rationale:"60% recap at $8M pre / 25% sale ~1x preference / 15% write-off. Note value reflects discount + PIK."},
+           {date:"2025-12-31", fmv:3.4, method:"Scenario-weighted", by:"D. Armali", rationale:"Initial markdown on CEO exit and pipeline slippage."}],
+    tasks:[{title:"Recap term negotiation", due:"2026-07-18", done:false}] },
+
+  { id:"C007", name:"Skyward Dynamics", sector:"Defense & Space", stage:"Series B", vintage:2022, health:"green",
+    instrument:"Preferred Equity", ownershipPct:8.9, invested:10.0, fmv:34.2, realized:0, exited:false,
+    ceo:"Col. (ret.) Dana Whitfield", hq:"Colorado Springs, CO", desc:"Resilient tactical comms mesh for contested environments.",
+    riskFlags:["Customer concentration (DoD 85%)"], proRata:true, reservesAllocated:5.0, reservesDeployed:4.0,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-09-17"},
+    kpis:[{period:"2026-Q1", revenue:22.0, burn:0.7, cash:29.5, runwayMo:42}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[
+      {date:"2022-02-28", label:"Series A", instrument:"Preferred Equity", invested:6.0, postMoney:55, ownershipAfter:10.9, lead:"Us", note:""},
+      {date:"2024-04-15", label:"Series B", instrument:"Preferred Equity", invested:4.0, postMoney:210, ownershipAfter:8.9, lead:"Vanguard Defense Partners", note:"Pro-rata"}],
+    milestones:[{title:"Program of record decision", due:"2026-12-15", status:"on-track"}],
+    covenants:[], govFunding:{program:"OSC STRATFI", amount:15, conditions:"Matched private capital certified; milestones through 2027", status:"active"},
+    marks:[{date:"2026-03-31", fmv:34.2, method:"Last round + backlog coverage", by:"K. Patel", rationale:"Series B held; $60M contracted backlog supports mark."}],
+    tasks:[] },
+
+  { id:"C008", name:"Loomwright", sector:"AI / ML Infra", stage:"Series A", vintage:2023, health:"green",
+    instrument:"Preferred Equity", ownershipPct:12.0, invested:7.0, fmv:21.0, realized:0, exited:false,
+    ceo:"Jun Park", hq:"San Francisco, CA", desc:"Evaluation and observability layer for production LLM applications.",
+    riskFlags:["Competitive intensity"], proRata:true, reservesAllocated:4.5, reservesDeployed:0,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-08-06"},
+    kpis:[{period:"2026-Q1", revenue:6.8, burn:0.9, cash:16.0, runwayMo:18},{period:"2025-Q4", revenue:5.1, burn:0.9, cash:18.5, runwayMo:20}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[{date:"2023-09-20", label:"Series A", instrument:"Preferred Equity", invested:7.0, postMoney:58, ownershipAfter:12.0, lead:"Us", note:"Led; 1.5x participating cap removed in negotiation, standard 1x NP"}],
+    milestones:[{title:"Series B raise", due:"2026-10-31", status:"on-track"}], covenants:[], govFunding:null,
+    marks:[{date:"2026-03-31", fmv:21.0, method:"Revenue multiple", by:"D. Armali", rationale:"12x ARR run-rate vs. peer set 10-15x; strong net retention (135%)."}],
+    tasks:[{title:"Series B pro-rata sizing memo", due:"2026-08-25", done:false}] },
+
+  { id:"C009", name:"Tidemark Logistics", sector:"Logistics", stage:"Series B", vintage:2020, health:"yellow",
+    instrument:"Debt-to-Note", ownershipPct:10.5, invested:8.0, fmv:8.8, realized:0, exited:false,
+    ceo:"Marcus Webb", hq:"Memphis, TN", desc:"Cross-border freight orchestration with embedded customs workflow.",
+    riskFlags:["Gross margin compression","Burn above plan"], proRata:true, reservesAllocated:3.0, reservesDeployed:1.0,
+    board:{seat:"Observer", holder:"J. Chen", nextMeeting:"2026-07-31"},
+    kpis:[{period:"2026-Q1", revenue:24.0, burn:1.6, cash:19.0, runwayMo:12},{period:"2025-Q4", revenue:23.1, burn:1.4, cash:23.5, runwayMo:17}],
+    thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+    rounds:[
+      {date:"2020-11-30", label:"Venture debt converted", instrument:"Debt-to-Note", invested:3.0, postMoney:null, ownershipAfter:4.2, lead:"Us", note:"Original venture debt restructured to convertible note 2022, converted at Series B"},
+      {date:"2022-07-14", label:"Series B", instrument:"Preferred Equity", invested:5.0, postMoney:95, ownershipAfter:10.5, lead:"Latitude Ventures", note:"Note converted at 20% discount"}],
+    milestones:[{title:"Gross margin > 30%", due:"2026-12-31", status:"at-risk"}],
+    covenants:[{text:"Quarterly covenant: burn multiple < 2.0x", status:"watch - 1.9x in Q1"}], govFunding:null,
+    marks:[{date:"2026-03-31", fmv:8.8, method:"Revenue multiple, discounted", by:"D. Armali", rationale:"0.9x revenue on margin profile; 20% markdown vs. Series B calibration."}],
+    tasks:[] },
+
+  { id:"C010", name:"Quillon Bio", sector:"Healthtech", stage:"Series A", vintage:2023, health:"green",
+    instrument:"Preferred Equity", ownershipPct:13.1, invested:6.5, fmv:13.0, realized:0, exited:false,
+    ceo:"Dr. Elena Vasquez", hq:"Boston, MA", desc:"Computational protein design for next-gen enzyme therapeutics.",
+    riskFlags:["Binary clinical risk"], proRata:true, reservesAllocated:4.0, reservesDeployed:0,
+    board:{seat:"Director", holder:"Daniel Armali", nextMeeting:"2026-09-10"},
+    kpis:[{period:"2026-Q1", revenue:0.4, burn:1.0, cash:21.0, runwayMo:21}],
+    thresholds:{minRunwayMo:15, maxBurnMult:3.0},
+    rounds:[{date:"2023-03-08", label:"Series A", instrument:"Preferred Equity", invested:6.5, postMoney:50, ownershipAfter:13.1, lead:"Us", note:"Co-led with Helix Partners"}],
+    milestones:[{title:"IND filing", due:"2026-11-30", status:"on-track"},{title:"Pharma partnership LOI", due:"2026-08-31", status:"on-track"}],
+    covenants:[], govFunding:{program:"NIH SBIR Phase II", amount:2.0, conditions:"Milestone reporting; IND progress", status:"active"},
+    marks:[{date:"2026-03-31", fmv:13.0, method:"Milestone-based uplift", by:"K. Patel", rationale:"2x step-up on preclinical data package + partnership interest; conservative vs. term-sheet chatter."}],
+    tasks:[] },
+
+  { id:"C011", name:"Solvine (exited)", sector:"Enterprise SaaS", stage:"Series B", vintage:2019, health:"green",
+    instrument:"Preferred Equity", ownershipPct:0, invested:6.0, fmv:0, realized:27.5, exited:true, exitDate:"2024-10-15", exitType:"Strategic acquisition",
+    ceo:"-", hq:"Chicago, IL", desc:"Procurement analytics. Acquired by enterprise software strategic at 4.6x our cost.",
+    riskFlags:[], proRata:false, reservesAllocated:0, reservesDeployed:0,
+    board:{seat:"None", holder:"-", nextMeeting:null},
+    kpis:[], thresholds:{}, rounds:[{date:"2019-06-20", label:"Series A", instrument:"Preferred Equity", invested:6.0, postMoney:40, ownershipAfter:15.0, lead:"Us", note:""}],
+    milestones:[], covenants:[], govFunding:null,
+    marks:[{date:"2024-10-15", fmv:0, method:"Realized", by:"D. Armali", rationale:"All-cash acquisition closed; $27.5M gross proceeds distributed."}],
+    tasks:[] },
+
+  { id:"C012", name:"Praxa Labs (written off)", sector:"Consumer", stage:"Seed", vintage:2021, health:"red",
+    instrument:"SAFE", ownershipPct:0, invested:1.5, fmv:0, realized:0, exited:true, exitDate:"2025-02-28", exitType:"Shutdown / write-off",
+    ceo:"-", hq:"Los Angeles, CA", desc:"D2C wellness marketplace. Wound down after failed Series A process.",
+    riskFlags:[], proRata:false, reservesAllocated:0, reservesDeployed:0,
+    board:{seat:"None", holder:"-", nextMeeting:null},
+    kpis:[], thresholds:{}, rounds:[{date:"2021-11-05", label:"Seed", instrument:"SAFE", invested:1.5, postMoney:15, ownershipAfter:10.0, lead:"Us", note:""}],
+    milestones:[], covenants:[], govFunding:null,
+    marks:[{date:"2025-02-28", fmv:0, method:"Write-off", by:"D. Armali", rationale:"Assignment for benefit of creditors; no recovery expected."}],
+    tasks:[] }
+  ];
+}
+
+/* ---- Generated long tail (deterministic, realistic ranges) ---- */
+const NAME_A = ["Aster","Brightpath","Cinder","Dunmore","Everline","Fathom","Granite","Halcyon","Ironvale","Juniper","Kestrel","Lattice","Marrow","Nimbus","Oakline","Pinnacle","Quarry","Ridgeline","Sable","Trellis","Umber","Vector","Wharf","Zephyr","Bluepine","Coreline","Driftway","Emberly","Fernhill","Glasswing","Hollowell","Ivyrock","Larkspur","Mosaic","Northgate","Opaline","Palisade","Quorum","Riverbend","Stonebridge","Thistle","Vireo","Westbrook","Yarrow","Alderway","Birchmont","Cloverfield","Deepwell","Eastvale","Foxglove","Greyline","Harborlight","Indigo","Kilnworth","Longbow","Millstone","Nightingale"];
+const NAME_B = ["Analytics","Systems","Health","Robotics","Security","Grid","Bio","Software","Networks","Dynamics","Materials","Therapeutics","Data","Aero","Capital OS","Logistics","AI","Labs","Energy","Platforms","Sensing","Mobility","Compute","Diagnostics"];
+
+function generatedCompanies(n){
+  const out=[]; const usedNames=new Set(detailedCompanies().map(c=>c.name));
+  let i=0, idn=13;
+  while(out.length<n){
+    i++;
+    const name = pick(NAME_A)+" "+pick(NAME_B);
+    if(usedNames.has(name)) continue; usedNames.add(name);
+    const vintage = rndi(2019,2025);
+    const stage = pick(STAGES.slice(0, vintage>=2024?3:6));
+    const sector = pick(SECTORS);
+    const instrument = pick(INSTRUMENTS);
+    const invested = +(rnd(0.5, stage==="Growth"||stage==="Series C+"?12: stage==="Series B"?9: stage==="Series A"?7:3)).toFixed(1);
+    const exited = rng()<0.10;
+    const writeoff = exited && rng()<0.45;
+    const moic = writeoff?0: exited? rnd(1.2,3.8) : Math.max(0.1, rnd(0.4,1.0)<0.15? rnd(0.1,0.6) : rnd(0.7, vintage<=2021?3.4:2.2));
+    const fmv = exited?0: +(invested*moic).toFixed(1);
+    const realized = exited && !writeoff ? +(invested*moic).toFixed(1) : 0;
+    const healthRoll = rng();
+    const health = exited ? (writeoff?"red":"green") : moic<0.7||healthRoll<0.10 ? "red" : moic<1.0||healthRoll<0.32 ? "yellow" : "green";
+    const revenue = +(rnd(0.2, stage==="Growth"?60: stage==="Series C+"?45: stage==="Series B"?25: stage==="Series A"?9:2)).toFixed(1);
+    const burn = +(rnd(0.1, 1.8)).toFixed(2);
+    const cash = +(rnd(2, 40)).toFixed(1);
+    const runwayMo = burn>0? Math.min(99, Math.round(cash/burn)) : 99;
+    const flags=[];
+    if(!exited){
+      if(runwayMo<12) flags.push("Runway below 12 months");
+      if(health==="red"&&rng()<0.6) flags.push(pick(["Down-round likely","Key-person risk","Covenant watch","Pipeline slippage"]));
+      if(health==="yellow"&&rng()<0.4) flags.push(pick(["Burn above plan","Customer concentration","Hiring behind plan"]));
+    }
+    const ownershipPct = exited?0: +(rnd(3, 16)).toFixed(1);
+    const seatRoll = rng();
+    const govRoll = rng();
+    out.push({
+      id:"C"+String(idn++).padStart(3,"0"), name, sector, stage, vintage, health,
+      instrument, ownershipPct, invested, fmv, realized, exited,
+      exitDate: exited? `${vintage+rndi(2,5)}-0${rndi(1,9)}-15`:undefined,
+      exitType: exited? (writeoff?"Shutdown / write-off":"Acquisition"):undefined,
+      ceo: exited?"-":pick(["A.","B.","C.","D.","E.","J.","K.","L.","M.","N.","R.","S.","T."])+" "+pick(["Alvarez","Bishop","Cole","Duran","Egan","Fischer","Grant","Huang","Iqbal","Jensen","Kim","Lombardi","Moreau","Nakamura","Osei","Petrov","Quinn","Rossi","Singh","Tanaka"]),
+      hq: pick(["Fredericton, NB","Fredericton, NB","Moncton, NB","Moncton, NB","Saint John, NB","Saint John, NB","Sackville, NB","Bathurst, NB","Miramichi, NB","Halifax, NS","Charlottetown, PE","Toronto, ON"]),
+      source: pick(SOURCES),
+      desc:"", riskFlags:flags, proRata: rng()<0.7,
+      reservesAllocated: exited?0:+(rnd(0,invested*0.7)).toFixed(1), reservesDeployed:0,
+      board:{seat: exited?"None": seatRoll<0.25?"Director": seatRoll<0.5?"Observer":"None", holder: seatRoll<0.5?pick(["Daniel Armali","J. Chen","K. Patel","R. Osei"]):"-", nextMeeting: !exited&&seatRoll<0.5? `2026-${String(rndi(7,12)).padStart(2,"0")}-${String(rndi(1,28)).padStart(2,"0")}`:null},
+      kpis: exited?[]:[{period:"2026-Q1", revenue, burn, cash, runwayMo}],
+      thresholds:{minRunwayMo:12, maxBurnMult:1.5},
+      fte: exited?0: rndi(5, stage==="Growth"?300: stage==="Series C+"?220: stage==="Series B"?120: stage==="Series A"?55:20),
+      fteAtEntry: exited?0: rndi(3, 30),
+      fteNB: 0, womenCSuite: exited?0: rndi(0,3), cSuiteSize: exited?0: rndi(3,6),
+      rounds:[{date:`${vintage}-${String(rndi(1,12)).padStart(2,"0")}-15`, label: stage==="Pre-Seed"||stage==="Seed"?"Seed":stage, instrument, invested, roundTotal:+(invested*rnd(1.8,4.5)).toFixed(1), postMoney: instrument==="SAFE"||instrument==="Convertible Note"?null:+(invested/(ownershipPct||8)*100).toFixed(0), ownershipAfter: ownershipPct||rnd(5,15), lead: rng()<0.4?"Us":pick(["Meridian Growth","Latitude Ventures","Granite Capital","Helix Partners","Foundry Industrial"]), note:""}],
+      milestones:[], covenants:[],
+      govFunding: govRoll<0.12? {program:pick(["SBIR Phase II","DOE grant","NSF award","EDC facility"]), amount:+(rnd(0.5,8)).toFixed(1), conditions:"Milestone reporting", status:"active"}:null,
+      marks:[{date:"2026-03-31", fmv, method: exited?(writeoff?"Write-off":"Realized"):pick(["Last round","Revenue multiple","Calibrated last round","Scenario-weighted"]), by:pick(["D. Armali","K. Patel"]), rationale:"Quarterly mark per valuation policy."}],
+      tasks:[]
+    });
+  }
+  out.forEach(c=>{
+    c.fteNB = c.exited?0: Math.round(c.fte * (/, NB$/.test(c.hq)? rnd(0.65,0.95) : rnd(0.3,0.6)));
+    c.womenCSuite = Math.min(c.womenCSuite, c.cSuiteSize);
+    c.rounds.forEach(r=>{ const other=Math.max(0,(r.roundTotal||0)-r.invested); r.nbOther = +(other*rnd(0.05,0.45)).toFixed(1); });
+  });
+  return out;
+}
+
+/* ---- Pipeline demo deals ---- */
+function demoPipeline(){
+  return [
+    {id:"P001", name:"Argent Motion", sector:"Industrial Tech", funnel:"Term Sheet", source:"Founder referral (Northline CEO)", checkSize:7.0, valuation:52, owner:"Daniel Armali", nextStep:"Legal DD close-out; target sign 2026-07-21", added:"2026-04-02",
+      gates:[["Initial screen","passed"],["Market & competition","passed"],["Team topgrading","passed"],["Financial model review","passed"],["Customer references","passed"],["Technical / product DD","in-progress"],["Legal & cap table","in-progress"],["IC approval","passed"],["Term sheet executed","pending"]].map(g=>({name:g[0],status:g[1]})),
+      termSheet:{security:"Series A Preferred", preMoney:45, postMoney:52, investment:7.0, ownership:13.5, liquidation:"1x non-participating", antiDilution:"Broad-based weighted average", board:"1 director (us), 1 founder, 1 independent", proRata:"Yes, major investor rights", dividends:"6% non-cumulative", optionPool:"12% post", founderVesting:"4yr / 1yr cliff, 25% credit"}},
+    {id:"P002", name:"Meridian Volt", sector:"Climate & Energy", funnel:"IC Review", source:"Outbound thesis work", checkSize:6.0, valuation:40, owner:"K. Patel", nextStep:"IC memo circulated; committee 2026-07-14", added:"2026-05-11",
+      gates:[["Initial screen","passed"],["Market & competition","passed"],["Team topgrading","in-progress"],["Financial model review","passed"],["Customer references","in-progress"],["Technical / product DD","passed"],["Legal & cap table","pending"],["IC approval","pending"],["Term sheet executed","pending"]].map(g=>({name:g[0],status:g[1]})), termSheet:null},
+    {id:"P003", name:"Hexadyne Bio", sector:"Healthtech", funnel:"Diligence", source:"Helix Partners co-invest", checkSize:5.0, valuation:38, owner:"Daniel Armali", nextStep:"Customer/KOL calls week of 07-13", added:"2026-06-01",
+      gates:[["Initial screen","passed"],["Market & competition","in-progress"],["Team topgrading","in-progress"],["Financial model review","pending"],["Customer references","pending"],["Technical / product DD","pending"],["Legal & cap table","pending"],["IC approval","pending"],["Term sheet executed","pending"]].map(g=>({name:g[0],status:g[1]})), termSheet:null},
+    {id:"P004", name:"Cassiar Compute", sector:"AI / ML Infra", funnel:"Diligence", source:"Conference (Compute Summit)", checkSize:8.0, valuation:65, owner:"J. Chen", nextStep:"Tech DD with external advisor", added:"2026-05-20",
+      gates:[["Initial screen","passed"],["Market & competition","passed"],["Team topgrading","pending"],["Financial model review","in-progress"],["Customer references","pending"],["Technical / product DD","in-progress"],["Legal & cap table","pending"],["IC approval","pending"],["Term sheet executed","pending"]].map(g=>({name:g[0],status:g[1]})), termSheet:null},
+    {id:"P005", name:"Bellrock Marine", sector:"Logistics", funnel:"Screening", source:"Banker outreach", checkSize:4.0, valuation:25, owner:"K. Patel", nextStep:"Screen call scheduled 07-09", added:"2026-06-18", gates:DEFAULT_GATES.map((g,i)=>({name:g,status:i===0?"in-progress":"pending"})), termSheet:null},
+    {id:"P006", name:"Oxbow Materials", sector:"Industrial Tech", funnel:"Screening", source:"Portfolio CEO referral", checkSize:3.5, valuation:22, owner:"Daniel Armali", nextStep:"Deck review; decide by 07-10", added:"2026-06-25", gates:DEFAULT_GATES.map((g,i)=>({name:g,status:i===0?"in-progress":"pending"})), termSheet:null},
+    {id:"P007", name:"Talusworks", sector:"Defense & Space", funnel:"Sourced", source:"Inbound", checkSize:5.0, valuation:null, owner:"-", nextStep:"Assign owner", added:"2026-07-01", gates:DEFAULT_GATES.map(g=>({name:g,status:"pending"})), termSheet:null},
+    {id:"P008", name:"Finchbrook", sector:"Fintech", funnel:"Sourced", source:"LP referral", checkSize:6.0, valuation:null, owner:"-", nextStep:"Initial review", added:"2026-07-03", gates:DEFAULT_GATES.map(g=>({name:g,status:"pending"})), termSheet:null},
+    {id:"P009", name:"Verdant Row", sector:"Climate & Energy", funnel:"Closed", source:"Outbound thesis work", checkSize:5.5, valuation:42, owner:"Daniel Armali", nextStep:"Closed 2026-03-20 - now C013 in portfolio", added:"2025-11-10", gates:DEFAULT_GATES.map(g=>({name:g,status:"passed"})), termSheet:null, closedDate:"2026-03-20"},
+    {id:"P010", name:"Signal Forge", sector:"Cybersecurity", funnel:"Closed", source:"Founder referral", checkSize:4.5, valuation:30, owner:"J. Chen", nextStep:"Closed 2026-05-15", added:"2026-01-08", gates:DEFAULT_GATES.map(g=>({name:g,status:"passed"})), termSheet:null, closedDate:"2026-05-15"},
+    {id:"P011", name:"Copperfield AI (passed)", sector:"AI / ML Infra", funnel:"Passed", source:"Inbound", checkSize:6.0, valuation:80, owner:"Daniel Armali", nextStep:"Passed: valuation + thin moat", added:"2026-02-14", gates:[], termSheet:null}
+  ];
+}
+
+/* ---- Fund-level record ---- */
+function demoFund(){
+  return {
+    name:"Ridgeline Direct Investments", currency:"USD", vintage:2019,
+    style:"evergreen",             // "evergreen" | "closed-end" - drives labels and metrics
+    capitalBase:400,               // permanent capital base ($M, evergreen)
+    committed:400, called:310,     // used only when style = "closed-end"
+    distributionPolicy:"Realized proceeds recycle into new platforms and follow-ons; distributions to shareholders at board discretion.",
+    feeDragPct:2.3,
+    navHistory:[  // quarterly NAV and cumulative cost - drives FMV growth KPIs; auto-append each quarter or import
+      {q:"2024-Q1", nav:362.0, cost:224.0},{q:"2024-Q2", nav:371.0, cost:230.0},{q:"2024-Q3", nav:384.0, cost:236.0},
+      {q:"2024-Q4", nav:401.0, cost:243.0},{q:"2025-Q1", nav:415.0, cost:248.0},{q:"2025-Q2", nav:431.0, cost:252.0},
+      {q:"2025-Q3", nav:452.0, cost:258.0},{q:"2025-Q4", nav:471.0, cost:263.0},{q:"2026-Q1", nav:498.5, cost:269.0}],
+    annualPlatformTarget:5, annualFollowOnBudget:20, ytdPlatformsClosed:2,
+    reservesPolicy:"Reserve 0.5-0.8x initial check for companies rated green/yellow with pro-rata rights.",
+    distributions:[
+      {date:"2023-10-20", amount:4.0, company:"Cobalt Harbor", note:"Partial secondary at Series C"},
+      {date:"2024-10-15", amount:27.5, company:"Solvine", note:"Acquisition proceeds"},
+      {date:"2025-06-30", amount:9.2, company:"Generated exits", note:"Aggregate realizations"},
+      {date:"2026-02-28", amount:6.8, company:"Generated exits", note:"Aggregate realizations"}
+    ]
+  };
+}
+
+/* ---- Detail enrichment: round totals (leverage) + employment ---- */
+const SOURCES = ["University spinout","Accelerator","Founder referral","Fund referral","Angel network","Inbound","Outbound thesis work","Banker outreach"];
+const DETAIL_ENRICH = {
+  // roundTotals ($M full round) and nbOthers ($M from other NB investors, excl. us) aligned to rounds order
+  // fte/fteNB = current total / in-NB headcount; women = women in C-suite / C-suite size
+  C001:{roundTotals:[12,30],   nbOthers:[1.5,2.0],     fteEntry:38, fte:145, fteNB:98,  women:2, csuite:5, hq:"Fredericton, NB", source:"University spinout"},
+  C002:{roundTotals:[15],      nbOthers:[2.5],         fteEntry:22, fte:64,  fteNB:51,  women:1, csuite:4, hq:"Saint John, NB",  source:"Outbound thesis work"},
+  C003:{roundTotals:[10,28,8], nbOthers:[1.0,2.5,1.0], fteEntry:30, fte:180, fteNB:120, women:2, csuite:6, hq:"Moncton, NB",     source:"Accelerator"},
+  C004:{roundTotals:[9,35,80], nbOthers:[1.0,3.0,5.0], fteEntry:45, fte:390, fteNB:160, women:3, csuite:7, hq:"Fredericton, NB", source:"Founder referral"},
+  C005:{roundTotals:[4.5],     nbOthers:[0.5],         fteEntry:8,  fte:26,  fteNB:22,  women:1, csuite:3, hq:"Fredericton, NB", source:"Fund referral"},
+  C006:{roundTotals:[8,3.5],   nbOthers:[1.0,0.5],     fteEntry:25, fte:41,  fteNB:30,  women:0, csuite:4, hq:"Moncton, NB",     source:"Inbound"},
+  C007:{roundTotals:[14,45],   nbOthers:[2.0,3.0],     fteEntry:40, fte:210, fteNB:150, women:1, csuite:5, hq:"Saint John, NB",  source:"Accelerator"},
+  C008:{roundTotals:[16],      nbOthers:[1.0],         fteEntry:15, fte:72,  fteNB:40,  women:2, csuite:4, hq:"Fredericton, NB", source:"Founder referral"},
+  C009:{roundTotals:[3,22],    nbOthers:[0.5,2.0],     fteEntry:60, fte:230, fteNB:170, women:1, csuite:5, hq:"Moncton, NB",     source:"Banker outreach"},
+  C010:{roundTotals:[14],      nbOthers:[2.5],         fteEntry:12, fte:48,  fteNB:40,  women:2, csuite:4, hq:"Sackville, NB",   source:"University spinout"},
+  C011:{roundTotals:[13],      nbOthers:[1.5],         fteEntry:0,  fte:0,   fteNB:0,   women:0, csuite:0, hq:"Fredericton, NB", source:"Accelerator"},
+  C012:{roundTotals:[3],       nbOthers:[0.5],         fteEntry:0,  fte:0,   fteNB:0,   women:0, csuite:0, hq:"Moncton, NB",     source:"Inbound"}
+};
+function enrichDetailed(cs){
+  cs.forEach(c=>{ const e=DETAIL_ENRICH[c.id]; if(!e) return;
+    (e.roundTotals||[]).forEach((t,i)=>{ if(c.rounds[i]) c.rounds[i].roundTotal=t; });
+    (e.nbOthers||[]).forEach((t,i)=>{ if(c.rounds[i]) c.rounds[i].nbOther=t; });
+    c.fteAtEntry=e.fteEntry; c.fte=e.fte; c.fteNB=e.fteNB;
+    c.womenCSuite=e.women; c.cSuiteSize=e.csuite; c.hq=e.hq||c.hq; c.source=e.source; });
+  return cs;
+}
+
+/* ---- Strategic fund investments (LP positions) - tracked separately ---- */
+function demoFundInvestments(){
+  return [
+  { id:"F001", name:"Meridian Growth Fund III", manager:"Meridian Growth Partners", strategy:"Growth equity", vintage:2021,
+    committed:15, called:11.0, distributions:1.5, nav:13.8, coInvestRights:true, coInvestsDone:2, referrals:3, capitalToDirect:6.5, womenSeniorGP:true,
+    nextCallEst:"2026-09-30", agm:"2026-10-15", contact:"S. Whitmore (IR)",
+    rationale:"Co-invest access to growth rounds in fintech and SaaS; led Vantara Series B alongside us.",
+    cashflows:[{date:"2021-06-30",amount:-3.0},{date:"2022-03-31",amount:-3.5},{date:"2023-05-31",amount:-2.5},{date:"2024-09-30",amount:-2.0},{date:"2025-11-30",amount:1.5}] },
+  { id:"F002", name:"Helix Partners Fund II", manager:"Helix Partners", strategy:"Early-stage healthtech", vintage:2020,
+    committed:10, called:9.0, distributions:3.2, nav:11.5, coInvestRights:true, coInvestsDone:1, referrals:4, capitalToDirect:3.0, womenSeniorGP:true,
+    nextCallEst:"2026-11-30", agm:"2026-09-22", contact:"Dr. M. Osei (GP)",
+    rationale:"Healthtech deal flow and scientific diligence support; co-led Quillon Bio Series A with us.",
+    cashflows:[{date:"2020-04-30",amount:-2.5},{date:"2021-02-28",amount:-2.5},{date:"2022-06-30",amount:-2.0},{date:"2023-08-31",amount:-2.0},{date:"2024-12-31",amount:1.8},{date:"2025-10-31",amount:1.4}] },
+  { id:"F003", name:"Foundry Industrial Fund I", manager:"Foundry Industrial", strategy:"Industrial tech seed", vintage:2022,
+    committed:8, called:5.2, distributions:0, nav:6.1, coInvestRights:true, coInvestsDone:0, referrals:2, capitalToDirect:0.8, womenSeniorGP:false,
+    nextCallEst:"2026-08-31", agm:"2027-01-20", contact:"J. Ramos (IR)",
+    rationale:"Seed-stage pipeline in robotics and advanced manufacturing ahead of our Series A entry point.",
+    cashflows:[{date:"2022-09-30",amount:-1.6},{date:"2023-06-30",amount:-1.6},{date:"2024-10-31",amount:-1.2},{date:"2025-12-31",amount:-0.8}] },
+  { id:"F004", name:"Vanguard Defense Tech I", manager:"Vanguard Defense Partners", strategy:"Defense & space", vintage:2023,
+    committed:12, called:6.0, distributions:0, nav:6.8, coInvestRights:true, coInvestsDone:1, referrals:2, capitalToDirect:4.0, womenSeniorGP:false,
+    nextCallEst:"2026-10-31", agm:"2026-11-05", contact:"Col. D. Hayes (ret.)",
+    rationale:"Programmatic access to dual-use deal flow and STRATFI/primes network; co-invested in Skyward Series B.",
+    cashflows:[{date:"2023-05-31",amount:-2.0},{date:"2024-04-30",amount:-2.0},{date:"2025-06-30",amount:-2.0}] },
+  { id:"F005", name:"Latitude Ventures IV", manager:"Latitude Ventures", strategy:"Generalist seed", vintage:2019,
+    committed:10, called:10.0, distributions:6.5, nav:8.9, coInvestRights:false, coInvestsDone:0, referrals:5, capitalToDirect:2.2, womenSeniorGP:true,
+    nextCallEst:null, agm:"2026-09-30", contact:"P. Nguyen (IR)",
+    rationale:"Broad top-of-funnel coverage; five qualified referrals into our pipeline since 2021. Fully called.",
+    cashflows:[{date:"2019-08-31",amount:-3.0},{date:"2020-06-30",amount:-3.0},{date:"2021-04-30",amount:-2.5},{date:"2022-02-28",amount:-1.5},{date:"2023-11-30",amount:2.0},{date:"2024-10-31",amount:2.5},{date:"2025-09-30",amount:2.0}] },
+  { id:"F006", name:"Northbridge Climate I", manager:"Northbridge Capital", strategy:"Climate & energy", vintage:2025,
+    committed:12, called:2.4, distributions:0, nav:2.3, coInvestRights:true, coInvestsDone:0, referrals:1, capitalToDirect:0, womenSeniorGP:true,
+    nextCallEst:"2026-08-15", agm:"2027-03-10", contact:"A. Beaumont (GP)",
+    rationale:"Early J-curve position; thesis coverage in industrial decarb where we lack sourcing depth.",
+    cashflows:[{date:"2025-07-31",amount:-1.2},{date:"2026-02-28",amount:-1.2}] }
+  ];
+}
+
+/* ---- Store, persistence, reset ---- */
+const LS_KEY = "pc_toolkit_v1";
+let DB = null;
+function freshDB(){
+  return { fund: demoFund(), companies: enrichDetailed(detailedCompanies()).concat(generatedCompanies(58)), pipeline: demoPipeline(), fundInvestments: demoFundInvestments(), memos: {}, meta:{schemaVersion:1, savedAt:null, demo:true} };
+}
+function loadDB(){
+  try { const raw = localStorage.getItem(LS_KEY); if(raw){ const d = JSON.parse(raw); if(d && d.companies && d.fund){ DB = d;
+    if(!DB.fund.style){ const f=demoFund(); DB.fund.style = DB.meta && DB.meta.demo ? "evergreen" : "closed-end"; DB.fund.capitalBase = DB.fund.capitalBase ?? DB.fund.committed ?? f.capitalBase; DB.fund.distributionPolicy = DB.fund.distributionPolicy || f.distributionPolicy; }
+    if(!DB.fundInvestments) DB.fundInvestments = DB.meta && DB.meta.demo ? demoFundInvestments() : [];
+    if(!DB.fund.navHistory && DB.meta && DB.meta.demo) DB.fund.navHistory = demoFund().navHistory;
+    if(DB.meta && DB.meta.demo && (!DB.companies.some(c=>c.rounds.some(r=>r.roundTotal)) || !DB.companies.some(c=>c.source))){ const fresh=freshDB(); DB.companies=fresh.companies; }
+    if(DB.meta && DB.meta.demo && DB.fundInvestments.length && !DB.fundInvestments.some(f=>"womenSeniorGP" in f)) DB.fundInvestments = demoFundInvestments();
+    return; } } } catch(e){}
+  DB = freshDB();
+}
+function saveDB(){ DB.meta.savedAt = new Date().toISOString(); try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); toast("Saved locally"); }catch(e){ toast("Save failed: storage unavailable"); } }
+function resetDB(){ localStorage.removeItem(LS_KEY); DB = freshDB(); renderAll(); toast("Reset to demo data"); }
+
+/* =====================================================================
+   METRICS ENGINE
+   ===================================================================== */
+const fmt = {
+  m: v => v==null||isNaN(v) ? "-" : "$"+(Math.abs(v)>=1000? (v/1000).toFixed(2)+"B" : v.toFixed(1)+"M"),
+  x: v => v==null||isNaN(v)||!isFinite(v) ? "-" : v.toFixed(2)+"x",
+  pct: v => v==null||isNaN(v) ? "-" : v.toFixed(1)+"%",
+  pct0: v => v==null||isNaN(v) ? "-" : Math.round(v)+"%",
+  d: s => s? s : "-"
+};
+function moic(c){ const cost=c.invested; return cost>0? (c.fmv + c.realized)/cost : null; }
+function activeCompanies(){ return DB.companies.filter(c=>!c.exited); }
+function isEvergreen(){ return DB.fund.style==="evergreen"; }
+
+function fundMetrics(){
+  const cs = DB.companies;
+  const invested = cs.reduce((s,c)=>s+c.invested,0);
+  const fmv = cs.reduce((s,c)=>s+c.fmv,0);
+  const realized = cs.reduce((s,c)=>s+c.realized,0);
+  const distributions = DB.fund.distributions.reduce((s,d)=>s+d.amount,0);
+  const paidIn = invested; // assumption: paid-in proxied by invested cost (fee treatment noted in Data tab)
+  const tvpi = paidIn>0? (fmv+distributions)/paidIn : null;
+  const dpi = paidIn>0? distributions/paidIn : null;
+  const rvpi = paidIn>0? fmv/paidIn : null;
+  // Gross IRR from dated cash flows: -investments, +distributions, +NAV today
+  const flows=[];
+  cs.forEach(c=>c.rounds.forEach(r=>flows.push({date:new Date(r.date), amt:-r.invested})));
+  DB.fund.distributions.forEach(d=>flows.push({date:new Date(d.date), amt:d.amount}));
+  flows.push({date:new Date(), amt:fmv});
+  const grossIRR = xirr(flows);
+  const netIRR = grossIRR!=null? grossIRR - DB.fund.feeDragPct : null; // both in percentage points
+  const netDeployed = invested - distributions; // evergreen: realized proceeds recycle into the capital base
+  const dryPowder = (isEvergreen()? (DB.fund.capitalBase||0) : (DB.fund.committed||0)) - netDeployed;
+  // Leverage: third-party capital in rounds we participated in, per our dollar
+  let roundsTotal=0, oursInRounds=0;
+  cs.forEach(c=>c.rounds.forEach(r=>{ if(r.roundTotal && r.roundTotal>=r.invested){ roundsTotal+=r.roundTotal; oursInRounds+=r.invested; } }));
+  const leverage = oursInRounds>0? (roundsTotal-oursInRounds)/oursInRounds : null;
+  const capitalAttracted = roundsTotal-oursInRounds;
+  // FMV growth from quarterly NAV history
+  const nh = DB.fund.navHistory||[];
+  const nhLast = nh[nh.length-1], nhPrev = nh[nh.length-2], nhYoY = nh[nh.length-5];
+  const fmvQoQ = nhLast&&nhPrev&&nhPrev.nav>0? (nhLast.nav/nhPrev.nav-1)*100 : null;
+  const fmvYoY = nhLast&&nhYoY&&nhYoY.nav>0? (nhLast.nav/nhYoY.nav-1)*100 : null;
+  const organicYoY = nhLast&&nhYoY? (nhLast.nav-nhYoY.nav)-(nhLast.cost-nhYoY.cost) : null; // value creation net of new capital
+  // NB co-investment: of third-party capital, how much is NB-based (separate from ours)
+  let nbCapital=0;
+  cs.forEach(c=>c.rounds.forEach(r=>{ if(r.nbOther) nbCapital+=r.nbOther; }));
+  const outsideCapital = Math.max(0, capitalAttracted - nbCapital);
+  // Employment: total and in-NB
+  const fte = cs.reduce((s,c)=>s+(c.fte||0),0);
+  const fteAtEntry = cs.reduce((s,c)=>s+(c.fteAtEntry||0),0);
+  const fteNB = cs.reduce((s,c)=>s+(c.fteNB||0),0);
+  // Diversity: women in C-suite (portfolio companies)
+  const actC = cs.filter(c=>!c.exited);
+  const womenCos = actC.filter(c=>(c.womenCSuite||0)>0).length;
+  const womenCosPct = actC.length? womenCos/actC.length*100 : null;
+  const womenExecs = actC.reduce((s,c)=>s+(c.womenCSuite||0),0);
+  const cSuiteTotal = actC.reduce((s,c)=>s+(c.cSuiteSize||0),0);
+  // Underlying revenue: run-rate + same-store growth (companies with 2+ KPI periods)
+  const revenue = actC.reduce((s,c)=>s+((c.kpis&&c.kpis[0]&&c.kpis[0].revenue)||0),0);
+  let revNow=0, revPrev=0;
+  actC.forEach(c=>{ if(c.kpis&&c.kpis.length>1){ revNow+=c.kpis[0].revenue; revPrev+=c.kpis[1].revenue; } });
+  const revQoQ = revPrev>0? (revNow/revPrev-1)*100 : null;
+  return { invested, fmv, realized, distributions, tvpi, dpi, rvpi, grossIRR, netIRR, netDeployed, dryPowder,
+    leverage, capitalAttracted, roundsTotal, nbCapital, outsideCapital, fmvQoQ, fmvYoY, organicYoY,
+    fte, fteAtEntry, fteNB, womenCos, womenCosPct, womenExecs, cSuiteTotal, revenue, revQoQ,
+    nActive: cs.filter(c=>!c.exited).length, nExited: cs.filter(c=>c.exited).length,
+    unrealizedGL: fmv - cs.filter(c=>!c.exited).reduce((s,c)=>s+c.invested,0) };
+}
+function xirr(flows){
+  if(flows.length<2) return null;
+  const t0 = Math.min(...flows.map(f=>f.date.getTime()));
+  const yrs = f => (f.date.getTime()-t0)/(365.25*24*3600*1000);
+  const npv = r => flows.reduce((s,f)=> s + f.amt/Math.pow(1+r, yrs(f)), 0);
+  let lo=-0.95, hi=10;
+  if(npv(lo)*npv(hi)>0) return null;
+  for(let i=0;i<120;i++){ const mid=(lo+hi)/2; (npv(lo)*npv(mid)<=0)? hi=mid : lo=mid; }
+  return ((lo+hi)/2)*100;
+}
+function healthAlerts(){
+  const out=[];
+  activeCompanies().forEach(c=>{
+    const k = c.kpis && c.kpis[0];
+    if(k && c.thresholds && c.thresholds.minRunwayMo && k.runwayMo < c.thresholds.minRunwayMo)
+      out.push({c, sev: k.runwayMo<6?"red":"yellow", text:`Runway ${k.runwayMo} mo (threshold ${c.thresholds.minRunwayMo})`});
+    (c.riskFlags||[]).forEach(f=>{ if(!/Runway/i.test(f)) out.push({c, sev: c.health==="red"?"red":"yellow", text:f}); });
+    (c.covenants||[]).forEach(cv=>{ if(/breach|watch/i.test(cv.status)) out.push({c, sev:/breach/i.test(cv.status)?"red":"yellow", text:"Covenant: "+cv.text+" ("+cv.status+")"}); });
+    if(c.govFunding && /pending|risk/i.test(c.govFunding.status)) out.push({c, sev:"yellow", text:"Gov funding: "+c.govFunding.program+" - "+c.govFunding.status});
+  });
+  return out.sort((a,b)=> (a.sev==="red"?0:1)-(b.sev==="red"?0:1));
+}
+
+/* ---- shared helpers ---- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function healthPill(h){ return `<span class="dot ${h}"></span>`; }
+function moicClass(m){ return m==null?"flat": m>=1.5?"up": m<1?"down":"flat"; }
+let CHARTS = {};
+function makeChart(id, cfg){ if(CHARTS[id]) CHARTS[id].destroy(); const el=document.getElementById(id); if(!el) return; CHARTS[id]=new Chart(el, cfg); }
+const PALETTE = ["#2563eb","#0e7490","#7c3aed","#15803d","#b45309","#b91c1c","#475569","#be185d","#4d7c0f","#1e40af"];
+Chart.defaults.font.family = getComputedStyle(document.documentElement).getPropertyValue("--font");
+Chart.defaults.font.size = 11;
+Chart.defaults.color = "#5b6878";
+
+/* =====================================================================
+   VIEW: DASHBOARD
+   ===================================================================== */
+function renderDashboard(){
+  const m = fundMetrics();
+  const alerts = healthAlerts();
+  const v = $("#view-dashboard");
+  v.innerHTML = `
+    <h2 class="vtitle">Fund Dashboard</h2>
+    <div class="vsub">${esc(DB.fund.name)} - marks as of latest quarter - all figures $M USD</div>
+    <div class="kpirow">
+      <div class="kpi"><div class="k">Invested Cost</div><div class="v">${fmt.m(m.invested)}</div><div class="s">${m.nActive} active / ${m.nExited} exited</div></div>
+      <div class="kpi"><div class="k">Current FMV</div><div class="v">${fmt.m(m.fmv)}</div><div class="s">Unrealized ${m.unrealizedGL>=0?"+":""}${fmt.m(m.unrealizedGL)}</div></div>
+      <div class="kpi"><div class="k">${isEvergreen()?"Realized Proceeds":"Distributions"}</div><div class="v">${fmt.m(m.distributions)}</div><div class="s">${isEvergreen()?"Recycled - dry powder "+fmt.m(m.dryPowder):"Realized to date"}</div></div>
+      <div class="kpi"><div class="k">TVPI${isEvergreen()?" (SI)":""}</div><div class="v">${fmt.x(m.tvpi)}</div><div class="s">DPI ${fmt.x(m.dpi)} / RVPI ${fmt.x(m.rvpi)}${isEvergreen()?" - DPI recycled":""}</div></div>
+      <div class="kpi"><div class="k">${isEvergreen()?"SI Gross IRR":"Gross IRR"}</div><div class="v">${fmt.pct(m.grossIRR)}</div><div class="s">Net ~${fmt.pct(m.netIRR)} (est.)</div></div>
+      <div class="kpi"><div class="k">Health</div><div class="v"><span class="dot green"></span>${activeCompanies().filter(c=>c.health==="green").length} <span class="dot yellow"></span>${activeCompanies().filter(c=>c.health==="yellow").length} <span class="dot red"></span>${activeCompanies().filter(c=>c.health==="red").length}</div><div class="s">${alerts.length} open alerts</div></div>
+    </div>
+    <div class="vsub" style="margin:2px 0 8px; font-weight:700; color:var(--slate);">MANDATE &amp; IMPACT</div>
+    <div class="kpirow">
+      <div class="kpi"><div class="k">FMV Growth</div><div class="v ${m.fmvYoY>=0?"up":"down"}">${m.fmvYoY!=null?(m.fmvYoY>=0?"+":"")+m.fmvYoY.toFixed(1)+"%":"-"}</div><div class="s">YoY${m.fmvQoQ!=null?" - QoQ "+(m.fmvQoQ>=0?"+":"")+m.fmvQoQ.toFixed(1)+"%":""}${m.organicYoY!=null?" - organic +"+fmt.m(m.organicYoY):""}</div></div>
+      <div class="kpi"><div class="k">Leverage</div><div class="v">${m.leverage!=null? m.leverage.toFixed(1)+" : 1":"-"}</div><div class="s">${fmt.m(m.capitalAttracted)} third-party $ in our rounds</div></div>
+      <div class="kpi"><div class="k">NB Co-Investment</div><div class="v">${fmt.m(m.nbCapital)}</div><div class="s">NB $ beside ours - outside $ ${fmt.m(m.outsideCapital)}</div></div>
+      <div class="kpi"><div class="k">Portfolio Revenue</div><div class="v">${fmt.m(m.revenue)}</div><div class="s">Run-rate${m.revQoQ!=null?" - same-store QoQ "+(m.revQoQ>=0?"+":"")+m.revQoQ.toFixed(1)+"%":""}</div></div>
+      <div class="kpi"><div class="k">Jobs (NB / Total)</div><div class="v">${m.fteNB?m.fteNB.toLocaleString():"-"} / ${m.fte?m.fte.toLocaleString():"-"}</div><div class="s">${m.fte?Math.round(m.fteNB/m.fte*100)+"% in NB":""}${m.fteAtEntry?" - +"+(m.fte-m.fteAtEntry).toLocaleString()+" since entry":""}</div></div>
+      <div class="kpi"><div class="k">Women in C-Suite</div><div class="v">${m.womenCosPct!=null?Math.round(m.womenCosPct)+"%":"-"}</div><div class="s">${m.womenCos} of ${activeCompanies().length} cos - ${m.womenExecs}/${m.cSuiteTotal} exec seats</div></div>
+    </div>
+    <div class="grid" style="grid-template-columns: 2fr 1fr;">
+      <div class="card"><div class="chead">FMV vs. Cost by Sector</div><div class="cbody"><div class="chartbox tall"><canvas id="ch-fmvcost"></canvas></div></div></div>
+      <div class="card"><div class="chead">Alerts &amp; Risk Flags <span class="pill red">${alerts.filter(a=>a.sev==="red").length} critical</span></div>
+        <div class="cbody" style="max-height:316px; overflow-y:auto;">
+          ${alerts.slice(0,14).map(a=>`<div class="alertrow"><span class="dot ${a.sev}"></span><a class="link" onclick="openCompany('${a.c.id}')">${esc(a.c.name)}</a><span class="small">${esc(a.text)}</span></div>`).join("") || '<div class="small">No open alerts.</div>'}
+        </div></div>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top:14px;">
+      <div class="card"><div class="chead">FMV Growth Trajectory (quarterly NAV vs. cost)</div><div class="cbody"><div class="chartbox"><canvas id="ch-navgrowth"></canvas></div></div></div>
+      <div class="card"><div class="chead">Capital Attracted by Year (ours / NB / outside)</div><div class="cbody"><div class="chartbox"><canvas id="ch-leverage"></canvas></div></div></div>
+      <div class="card"><div class="chead">Sourcing: Where We Find Companies</div><div class="cbody"><div class="chartbox"><canvas id="ch-sourcing"></canvas></div></div></div>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top:14px;">
+      <div class="card"><div class="chead">MOIC Distribution (active)</div><div class="cbody"><div class="chartbox"><canvas id="ch-moic"></canvas></div></div></div>
+      <div class="card"><div class="chead">Vintage Year Performance</div><div class="cbody"><div class="chartbox"><canvas id="ch-vintage"></canvas></div></div></div>
+      <div class="card"><div class="chead">${isEvergreen()?"Value Creation Over Time (net deployment + NAV)":"J-Curve (net cumulative + NAV)"}</div><div class="cbody"><div class="chartbox"><canvas id="ch-jcurve"></canvas></div></div></div>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr 2fr; margin-top:14px;">
+      <div class="card"><div class="chead">Allocation by Sector (FMV)</div><div class="cbody"><div class="chartbox"><canvas id="ch-sector"></canvas></div></div></div>
+      <div class="card"><div class="chead">Allocation by Stage (FMV)</div><div class="cbody"><div class="chartbox"><canvas id="ch-stage"></canvas></div></div></div>
+      <div class="card"><div class="chead">Top / Bottom Positions by Unrealized G/L</div><div class="cbody"><div class="chartbox"><canvas id="ch-topbottom"></canvas></div></div></div>
+    </div>`;
+  requestAnimationFrame(()=>drawDashboardCharts(m));
+}
+function groupSum(arr, keyFn, valFn){ const g={}; arr.forEach(x=>{ const k=keyFn(x); g[k]=(g[k]||0)+valFn(x); }); return g; }
+function drawDashboardCharts(m){
+  const act = activeCompanies();
+  // FMV vs cost by sector
+  const costS = groupSum(act, c=>c.sector, c=>c.invested), fmvS = groupSum(act, c=>c.sector, c=>c.fmv);
+  const secs = Object.keys(costS).sort((a,b)=>fmvS[b]-fmvS[a] || 0);
+  makeChart("ch-fmvcost", { type:"bar", data:{ labels:secs, datasets:[
+      {label:"Cost", data:secs.map(s=>costS[s]), backgroundColor:"#9db3d4"},
+      {label:"FMV", data:secs.map(s=>fmvS[s]||0), backgroundColor:"#2563eb"}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{y:{title:{display:true,text:"$M"}}}}});
+  // FMV growth trajectory
+  const nh = DB.fund.navHistory||[];
+  if(nh.length){
+    makeChart("ch-navgrowth",{type:"line", data:{labels:nh.map(x=>x.q), datasets:[
+      {label:"NAV (FMV)", data:nh.map(x=>x.nav), borderColor:"#2563eb", backgroundColor:"rgba(37,99,235,.08)", fill:true, tension:.25, pointRadius:2, borderWidth:2},
+      {label:"Cumulative cost", data:nh.map(x=>x.cost), borderColor:"#b45309", borderDash:[5,4], pointRadius:0, borderWidth:1.5}]},
+      options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{y:{title:{display:true,text:"$M"}}}}});
+  }
+  // Capital attracted (leverage) by year: ours vs NB co-investment vs outside capital
+  const lev={};
+  DB.companies.forEach(c=>c.rounds.forEach(r=>{ if(!r.roundTotal || r.roundTotal<r.invested) return; const y=r.date.slice(0,4);
+    lev[y]=lev[y]||{ours:0,nb:0,out:0}; const other=r.roundTotal-r.invested; const nb=Math.min(other, r.nbOther||0);
+    lev[y].ours+=r.invested; lev[y].nb+=nb; lev[y].out+=other-nb; }));
+  const lys=Object.keys(lev).sort();
+  makeChart("ch-leverage",{type:"bar", data:{labels:lys, datasets:[
+    {label:"Our capital", data:lys.map(y=>+lev[y].ours.toFixed(1)), backgroundColor:"#16263f", stack:"a"},
+    {label:"Other NB capital", data:lys.map(y=>+lev[y].nb.toFixed(1)), backgroundColor:"#7c3aed", stack:"a"},
+    {label:"Outside capital attracted", data:lys.map(y=>+lev[y].out.toFixed(1)), backgroundColor:"#0e7490", stack:"a"}]},
+    options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{x:{stacked:true}, y:{stacked:true, title:{display:true,text:"$M per round year"}}}}});
+  // Sourcing channels (active portfolio, count of companies)
+  const src={}; act.forEach(c=>{ const s=c.source||"Unrecorded"; src[s]=(src[s]||0)+1; });
+  const sks=Object.keys(src).sort((a,b)=>src[b]-src[a]);
+  makeChart("ch-sourcing",{type:"bar", data:{labels:sks, datasets:[{data:sks.map(k=>src[k]), backgroundColor:"#2563eb"}]},
+    options:{indexAxis:"y", responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{precision:0}, title:{display:true,text:"# active companies"}}}}});
+  // MOIC histogram
+  const bins=["<0.5x","0.5-1x","1-1.5x","1.5-2x","2-3x","3x+"];
+  const counts=[0,0,0,0,0,0];
+  act.forEach(c=>{ const mo=moic(c); if(mo==null)return; counts[mo<0.5?0:mo<1?1:mo<1.5?2:mo<2?3:mo<3?4:5]++; });
+  makeChart("ch-moic",{type:"bar", data:{labels:bins, datasets:[{data:counts, backgroundColor:["#b91c1c","#e09a1a","#94a3b8","#60a5fa","#2563eb","#15803d"]}]},
+    options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{ticks:{precision:0}, title:{display:true,text:"# companies"}}}}});
+  // Vintage
+  const vys=[...new Set(DB.companies.map(c=>c.vintage))].sort();
+  const vm = vys.map(y=>{ const g=DB.companies.filter(c=>c.vintage===y); const inv=g.reduce((s,c)=>s+c.invested,0); const val=g.reduce((s,c)=>s+c.fmv+c.realized,0); return inv>0?val/inv:0; });
+  makeChart("ch-vintage",{type:"bar", data:{labels:vys, datasets:[{label:"Gross MOIC", data:vm, backgroundColor:vm.map(x=>x>=1.5?"#15803d":x>=1?"#2563eb":"#b45309")}]},
+    options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{title:{display:true,text:"MOIC (x)"}}}}});
+  // J-curve: quarterly cumulative net CF + NAV growth approximation
+  const flows=[];
+  DB.companies.forEach(c=>c.rounds.forEach(r=>flows.push({t:new Date(r.date).getTime(), amt:-r.invested})));
+  DB.fund.distributions.forEach(d=>flows.push({t:new Date(d.date).getTime(), amt:d.amount}));
+  flows.sort((a,b)=>a.t-b.t);
+  const qs=[]; const start=new Date(2019,0,1); const now=new Date();
+  for(let d=new Date(start); d<=now; d.setMonth(d.getMonth()+3)) qs.push(new Date(d));
+  const totalFmv = m.fmv;
+  const totalInvested = m.invested;
+  const jdata = qs.map(q=>{
+    const cum = flows.filter(f=>f.t<=q.getTime()).reduce((s,f)=>s+f.amt,0);
+    const investedSoFar = flows.filter(f=>f.t<=q.getTime()&&f.amt<0).reduce((s,f)=>s-f.amt,0);
+    const frac = totalInvested>0? investedSoFar/totalInvested:0;
+    const elapsedYrs = (q - start)/(365.25*24*3600*1000);
+    const navApprox = investedSoFar * Math.min(totalFmv/Math.max(totalInvested,1), 1+ (totalFmv/Math.max(totalInvested,1)-1)*Math.min(elapsedYrs/6,1));
+    return { label:q.getFullYear()+"-Q"+(Math.floor(q.getMonth()/3)+1), net:cum, tv:cum+navApprox };
+  });
+  makeChart("ch-jcurve",{type:"line", data:{labels:jdata.map(d=>d.label), datasets:[
+      {label:isEvergreen()?"Net deployment (cost less realizations)":"Net cash flow", data:jdata.map(d=>d.net), borderColor:"#b45309", backgroundColor:"transparent", tension:.3, pointRadius:0, borderWidth:2},
+      {label:"Net CF + NAV (est.)", data:jdata.map(d=>d.tv), borderColor:"#2563eb", backgroundColor:"rgba(37,99,235,.08)", fill:true, tension:.3, pointRadius:0, borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{x:{ticks:{maxTicksLimit:8}}, y:{title:{display:true,text:"$M"}}}}});
+  // Donuts
+  const donut=(id,g)=>{ const ks=Object.keys(g).sort((a,b)=>g[b]-g[a]); makeChart(id,{type:"doughnut", data:{labels:ks, datasets:[{data:ks.map(k=>g[k]), backgroundColor:PALETTE, borderWidth:1}]}, options:{responsive:true,maintainAspectRatio:false, cutout:"60%", plugins:{legend:{position:"right", labels:{boxWidth:10, font:{size:10}}}}}}); };
+  donut("ch-sector", groupSum(act, c=>c.sector, c=>c.fmv));
+  donut("ch-stage", groupSum(act, c=>c.stage, c=>c.fmv));
+  // Top/bottom
+  const ranked=[...act].sort((a,b)=>(b.fmv-b.invested)-(a.fmv-a.invested));
+  const tb=[...ranked.slice(0,6), ...ranked.slice(-4)];
+  makeChart("ch-topbottom",{type:"bar", data:{labels:tb.map(c=>c.name), datasets:[{data:tb.map(c=>+(c.fmv-c.invested).toFixed(1)), backgroundColor:tb.map(c=>c.fmv>=c.invested?"#15803d":"#b91c1c")}]},
+    options:{indexAxis:"y", responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:"Unrealized G/L ($M)"}}}}});
+}
+
+/* =====================================================================
+   VIEW: PORTFOLIO
+   ===================================================================== */
+const PF = { q:"", sector:"", stage:"", health:"", instrument:"", show:"active", sortKey:"fmv", sortDir:-1 };
+function renderPortfolio(){
+  const v = $("#view-portfolio");
+  v.innerHTML = `
+    <h2 class="vtitle">Portfolio</h2>
+    <div class="vsub">Click any company for full detail: rounds, cap-table position, reserves, covenants, marks.</div>
+    <div class="fbar">
+      <input type="text" placeholder="Search name / CEO / HQ..." value="${esc(PF.q)}" oninput="PF.q=this.value; renderPortfolioTable()">
+      <select onchange="PF.show=this.value; renderPortfolioTable()">
+        <option value="active" ${PF.show==="active"?"selected":""}>Active only</option>
+        <option value="all" ${PF.show==="all"?"selected":""}>Include exited</option>
+        <option value="exited" ${PF.show==="exited"?"selected":""}>Exited only</option>
+      </select>
+      <select onchange="PF.sector=this.value; renderPortfolioTable()"><option value="">All sectors</option>${SECTORS.map(s=>`<option ${PF.sector===s?"selected":""}>${s}</option>`).join("")}</select>
+      <select onchange="PF.stage=this.value; renderPortfolioTable()"><option value="">All stages</option>${STAGES.map(s=>`<option ${PF.stage===s?"selected":""}>${s}</option>`).join("")}</select>
+      <select onchange="PF.health=this.value; renderPortfolioTable()"><option value="">All health</option><option value="green" ${PF.health==="green"?"selected":""}>Green</option><option value="yellow" ${PF.health==="yellow"?"selected":""}>Yellow</option><option value="red" ${PF.health==="red"?"selected":""}>Red</option></select>
+      <select onchange="PF.instrument=this.value; renderPortfolioTable()"><option value="">All instruments</option>${INSTRUMENTS.map(s=>`<option ${PF.instrument===s?"selected":""}>${s}</option>`).join("")}</select>
+      <span class="count" id="pf-count"></span>
+    </div>
+    <div class="card"><div class="tblwrap"><table class="dt" id="pf-table"></table></div></div>`;
+  renderPortfolioTable();
+}
+function pfFiltered(){
+  let cs = DB.companies.filter(c=> PF.show==="all" ? true : PF.show==="exited" ? c.exited : !c.exited);
+  const q = PF.q.trim().toLowerCase();
+  if(q) cs = cs.filter(c=> (c.name+" "+c.ceo+" "+c.hq+" "+c.sector).toLowerCase().includes(q));
+  if(PF.sector) cs = cs.filter(c=>c.sector===PF.sector);
+  if(PF.stage) cs = cs.filter(c=>c.stage===PF.stage);
+  if(PF.health) cs = cs.filter(c=>c.health===PF.health);
+  if(PF.instrument) cs = cs.filter(c=>c.instrument===PF.instrument);
+  const dir = PF.sortDir;
+  const key = PF.sortKey;
+  cs.sort((a,b)=>{
+    let av, bv;
+    if(key==="moic"){ av=moic(a)??-1; bv=moic(b)??-1; }
+    else if(key==="gl"){ av=a.fmv+a.realized-a.invested; bv=b.fmv+b.realized-b.invested; }
+    else if(key==="runway"){ av=a.kpis[0]?.runwayMo??999; bv=b.kpis[0]?.runwayMo??999; }
+    else if(key==="revenue"){ av=a.kpis[0]?.revenue??-1; bv=b.kpis[0]?.revenue??-1; }
+    else { av=a[key]; bv=b[key]; }
+    if(typeof av==="string") return dir * av.localeCompare(bv);
+    return dir * ((av||0)-(bv||0));
+  });
+  return cs;
+}
+function pfSort(key){ if(PF.sortKey===key) PF.sortDir*=-1; else { PF.sortKey=key; PF.sortDir=-1; } renderPortfolioTable(); }
+function renderPortfolioTable(){
+  const cs = pfFiltered();
+  $("#pf-count").textContent = cs.length+" companies - cost "+fmt.m(cs.reduce((s,c)=>s+c.invested,0))+" - FMV "+fmt.m(cs.reduce((s,c)=>s+c.fmv,0));
+  const arrow = k => PF.sortKey===k? `<span class="arrow">${PF.sortDir<0?"▼":"▲"}</span>`:"";
+  const cols = [["name","Company"],["sector","Sector"],["stage","Stage"],["vintage","Vintage"],["instrument","Instrument"],["ownershipPct","Own %","num"],["invested","Cost $M","num"],["fmv","FMV $M","num"],["moic","MOIC","num"],["gl","G/L $M","num"],["revenue","Rev $M","num"],["runway","Runway","num"],["health","Health"]];
+  $("#pf-table").innerHTML = `<thead><tr>${cols.map(c=>`<th class="${c[2]||""}" onclick="pfSort('${c[0]}')">${c[1]} ${arrow(c[0])}</th>`).join("")}</tr></thead>
+    <tbody>${cs.map(c=>{ const mo=moic(c); const gl=c.fmv+c.realized-c.invested; const k=c.kpis&&c.kpis[0];
+      return `<tr class="click" onclick="openCompany('${c.id}')">
+        <td><b>${esc(c.name)}</b>${c.board.seat!=="None"?` <span class="pill blue">${c.board.seat==="Director"?"Board":"Obs"}</span>`:""}${c.govFunding?` <span class="pill teal">Gov</span>`:""}${c.exited?` <span class="pill gray">Exited</span>`:""}</td>
+        <td class="small">${esc(c.sector)}</td><td class="small">${esc(c.stage)}</td><td class="small">${c.vintage}</td>
+        <td class="small">${esc(c.instrument)}</td>
+        <td class="num">${c.exited?"-":fmt.pct(c.ownershipPct)}</td>
+        <td class="num">${c.invested.toFixed(1)}</td>
+        <td class="num">${c.fmv.toFixed(1)}</td>
+        <td class="num ${moicClass(mo)}"><b>${fmt.x(mo)}</b></td>
+        <td class="num ${gl>=0?"up":"down"}">${gl>=0?"+":""}${gl.toFixed(1)}</td>
+        <td class="num">${k?k.revenue.toFixed(1):"-"}</td>
+        <td class="num ${k&&k.runwayMo<12?"down":""}">${k? (k.runwayMo>=99?"99+":k.runwayMo+" mo"):"-"}</td>
+        <td>${healthPill(c.health)}${(c.riskFlags||[]).length? `<span class="small">${c.riskFlags.length} flag${c.riskFlags.length>1?"s":""}</span>`:""}</td>
+      </tr>`;}).join("")}</tbody>`;
+}
+
+/* ---- Company detail drawer ---- */
+function openCompany(id){
+  const c = DB.companies.find(x=>x.id===id); if(!c) return;
+  const mo = moic(c); const k = c.kpis && c.kpis[0];
+  const reservesLeft = (c.reservesAllocated||0)-(c.reservesDeployed||0);
+  $("#drawer").innerHTML = `
+    <div class="dhead">
+      <div style="flex:1">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:17px; font-weight:700;">${esc(c.name)}</span>
+          <span class="pill ${c.health}">${c.health.toUpperCase()}</span>
+          ${c.exited?`<span class="pill gray">${esc(c.exitType||"Exited")} ${esc(c.exitDate||"")}</span>`:""}
+        </div>
+        <div class="small" style="margin-top:3px;">${esc(c.sector)} - ${esc(c.stage)} - ${esc(c.hq)} - CEO: ${esc(c.ceo)}</div>
+        ${c.desc?`<div class="small" style="margin-top:5px; max-width:640px;">${esc(c.desc)}</div>`:""}
+      </div>
+      <button class="btn ghost sm" onclick="startMemoFor('${c.id}')">Open in Memo Builder</button>
+      <button class="btn ghost sm" onclick="closeDrawer()">Close ✕</button>
+    </div>
+    <div class="dbody">
+      <div class="dsec"><div class="kv">
+        <div class="item"><div class="l">INVESTED COST</div><div class="d">${fmt.m(c.invested)}</div></div>
+        <div class="item"><div class="l">CURRENT FMV</div><div class="d">${fmt.m(c.fmv)}</div></div>
+        <div class="item"><div class="l">REALIZED</div><div class="d">${fmt.m(c.realized)}</div></div>
+        <div class="item"><div class="l">MOIC</div><div class="d ${moicClass(mo)}">${fmt.x(mo)}</div></div>
+        <div class="item"><div class="l">OWNERSHIP</div><div class="d">${c.exited?"-":fmt.pct(c.ownershipPct)}</div></div>
+        <div class="item"><div class="l">INSTRUMENT</div><div class="d">${esc(c.instrument)}</div></div>
+        <div class="item"><div class="l">PRO-RATA RIGHTS</div><div class="d">${c.proRata?"Yes":"No"}</div></div>
+        <div class="item"><div class="l">VINTAGE</div><div class="d">${c.vintage}</div></div>
+        <div class="item"><div class="l">SOURCED VIA</div><div class="d">${esc(c.source||"-")}</div></div>
+        <div class="item"><div class="l">JOBS (NB / TOTAL)</div><div class="d">${c.fte!=null?(c.fteNB||0)+" / "+c.fte:"-"}${c.fteAtEntry?` <span class="small up">+${c.fte-c.fteAtEntry}</span>`:""}</div></div>
+        <div class="item"><div class="l">WOMEN IN C-SUITE</div><div class="d">${c.cSuiteSize?(c.womenCSuite||0)+" of "+c.cSuiteSize:"-"}</div></div>
+      </div></div>
+
+      ${(c.riskFlags||[]).length?`<div class="dsec"><h4>Risk Flags</h4><div class="badgebar">${c.riskFlags.map(f=>`<span class="pill ${c.health==="red"?"red":"yellow"}">${esc(f)}</span>`).join("")}</div></div>`:""}
+
+      ${k?`<div class="dsec"><h4>KPIs (latest: ${esc(k.period)})</h4>
+        <table class="dt"><thead><tr><th>Period</th><th class="num">Revenue $M</th><th class="num">Monthly Burn $M</th><th class="num">Cash $M</th><th class="num">Runway</th></tr></thead>
+        <tbody>${c.kpis.map(x=>`<tr><td>${esc(x.period)}</td><td class="num">${x.revenue.toFixed(1)}</td><td class="num">${x.burn<0?'<span class="up">CF+</span>':x.burn.toFixed(2)}</td><td class="num">${x.cash.toFixed(1)}</td><td class="num ${x.runwayMo<(c.thresholds.minRunwayMo||12)?"down":""}">${x.runwayMo>=99?"99+":x.runwayMo+" mo"}</td></tr>`).join("")}</tbody></table>
+        <div class="hint" style="margin-top:5px;">Alert thresholds: min runway ${c.thresholds.minRunwayMo||"-"} mo</div></div>`:""}
+
+      <div class="dsec"><h4>Round History &amp; Cap-Table Position</h4>
+        <table class="dt"><thead><tr><th>Date</th><th>Round</th><th>Instrument</th><th class="num">Our $M</th><th class="num">Round $M</th><th class="num">Leverage</th><th class="num">Post-Money</th><th class="num">Own % After</th><th>Lead</th><th>Notes</th></tr></thead>
+        <tbody>${c.rounds.map(r=>`<tr><td>${esc(r.date)}</td><td><b>${esc(r.label)}</b></td><td class="small">${esc(r.instrument)}</td><td class="num">${r.invested.toFixed(1)}</td><td class="num">${r.roundTotal?r.roundTotal.toFixed(1):"-"}</td><td class="num">${r.roundTotal&&r.invested>0?((r.roundTotal-r.invested)/r.invested).toFixed(1)+":1":"-"}</td><td class="num">${r.postMoney?fmt.m(r.postMoney):"-"}</td><td class="num">${fmt.pct(r.ownershipAfter)}</td><td class="small">${esc(r.lead)}</td><td class="small">${esc(r.note)}</td></tr>`).join("")}</tbody></table></div>
+
+      ${!c.exited?`<div class="dsec"><h4>Reserves &amp; Follow-On</h4><div class="kv">
+        <div class="item"><div class="l">ALLOCATED</div><div class="d">${fmt.m(c.reservesAllocated)}</div></div>
+        <div class="item"><div class="l">DEPLOYED</div><div class="d">${fmt.m(c.reservesDeployed)}</div></div>
+        <div class="item"><div class="l">REMAINING</div><div class="d ${reservesLeft>0?"up":""}">${fmt.m(reservesLeft)}</div></div></div>
+        <div class="progress" style="margin-top:8px; max-width:300px;"><div style="width:${c.reservesAllocated>0?Math.min(100,c.reservesDeployed/c.reservesAllocated*100):0}%"></div></div></div>`:""}
+
+      <div class="dsec"><h4>Governance</h4><div class="kv">
+        <div class="item"><div class="l">BOARD SEAT</div><div class="d">${esc(c.board.seat)}</div></div>
+        <div class="item"><div class="l">HELD BY</div><div class="d">${esc(c.board.holder)}</div></div>
+        <div class="item"><div class="l">NEXT MEETING</div><div class="d">${fmt.d(c.board.nextMeeting)}</div></div></div></div>
+
+      ${(c.milestones||[]).length?`<div class="dsec"><h4>Milestones</h4>${c.milestones.map(ms=>`<div class="alertrow"><span class="pill ${ms.status==="on-track"?"green":ms.status==="at-risk"?"red":"gray"}">${esc(ms.status)}</span> ${esc(ms.title)} <span class="small">due ${esc(ms.due)}</span></div>`).join("")}</div>`:""}
+      ${(c.covenants||[]).length?`<div class="dsec"><h4>Covenants</h4>${c.covenants.map(cv=>`<div class="alertrow"><span class="pill ${/breach/i.test(cv.status)?"red":/watch/i.test(cv.status)?"yellow":"green"}">${esc(cv.status)}</span> ${esc(cv.text)}</div>`).join("")}</div>`:""}
+      ${c.govFunding?`<div class="dsec"><h4>Government Funding</h4><div class="kv">
+        <div class="item"><div class="l">PROGRAM</div><div class="d">${esc(c.govFunding.program)}</div></div>
+        <div class="item"><div class="l">AMOUNT</div><div class="d">${fmt.m(c.govFunding.amount)}</div></div>
+        <div class="item"><div class="l">STATUS</div><div class="d">${esc(c.govFunding.status)}</div></div></div>
+        <div class="small" style="margin-top:6px;"><b>Conditions:</b> ${esc(c.govFunding.conditions)}</div></div>`:""}
+
+      <div class="dsec"><h4>Mark History (valuation audit trail)</h4>
+        <table class="dt"><thead><tr><th>Date</th><th class="num">FMV $M</th><th>Method</th><th>Marked By</th><th>Rationale</th></tr></thead>
+        <tbody>${c.marks.map(mk=>`<tr><td>${esc(mk.date)}</td><td class="num"><b>${mk.fmv.toFixed(1)}</b></td><td class="small">${esc(mk.method)}</td><td class="small">${esc(mk.by)}</td><td class="small">${esc(mk.rationale)}</td></tr>`).join("")}</tbody></table></div>
+
+      ${(c.tasks||[]).length?`<div class="dsec"><h4>Open Tasks</h4>${c.tasks.map(t=>`<div class="alertrow"><span class="pill ${t.done?"green":"blue"}">${t.done?"done":"open"}</span> ${esc(t.title)} <span class="small">due ${esc(t.due)}</span></div>`).join("")}</div>`:""}
+    </div>`;
+  $("#drawer").classList.add("open"); $("#overlay").classList.add("open");
+}
+function closeDrawer(){ $("#drawer").classList.remove("open"); $("#overlay").classList.remove("open"); }
+
+/* =====================================================================
+   VIEW: FUND INVESTMENTS (strategic LP positions - separate from direct)
+   ===================================================================== */
+function fiTvpi(f){ return f.called>0? (f.nav+f.distributions)/f.called : null; }
+function fiDpi(f){ return f.called>0? f.distributions/f.called : null; }
+function fiIrr(f){
+  const flows=(f.cashflows||[]).map(c=>({date:new Date(c.date), amt:c.amount}));
+  if(!flows.length) return null;
+  flows.push({date:new Date(), amt:f.nav});
+  return xirr(flows);
+}
+function fiMetrics(){
+  const fs = DB.fundInvestments||[];
+  const committed = fs.reduce((s,f)=>s+f.committed,0);
+  const called = fs.reduce((s,f)=>s+f.called,0);
+  const distributions = fs.reduce((s,f)=>s+f.distributions,0);
+  const nav = fs.reduce((s,f)=>s+f.nav,0);
+  const flows=[]; fs.forEach(f=>(f.cashflows||[]).forEach(c=>flows.push({date:new Date(c.date), amt:c.amount})));
+  flows.push({date:new Date(), amt:nav});
+  return { n:fs.length, committed, called, unfunded:committed-called, distributions, nav,
+    tvpi: called>0?(nav+distributions)/called:null, dpi: called>0?distributions/called:null, rvpi: called>0?nav/called:null,
+    irr: flows.length>1? xirr(flows):null,
+    coInvests: fs.reduce((s,f)=>s+(f.coInvestsDone||0),0), referrals: fs.reduce((s,f)=>s+(f.referrals||0),0),
+    toDirect: fs.reduce((s,f)=>s+(f.capitalToDirect||0),0),
+    womenGPs: fs.filter(f=>f.womenSeniorGP).length };
+}
+function renderFunds(){
+  const v = $("#view-funds");
+  const fs = (DB.fundInvestments||[]).slice().sort((a,b)=>a.vintage-b.vintage);
+  const fm = fiMetrics();
+  v.innerHTML = `
+    <h2 class="vtitle">Strategic Fund Investments</h2>
+    <div class="vsub">LP positions - tracked separately from the direct portfolio (excluded from direct-fund metrics on the Dashboard). This sleeve exists to attract capital and co-investors to the direct strategy; Capital to Direct measures that. Click a position for cashflows and strategic value.</div>
+    <div class="kpirow">
+      <div class="kpi"><div class="k">Committed</div><div class="v">${fmt.m(fm.committed)}</div><div class="s">${fm.n} funds</div></div>
+      <div class="kpi"><div class="k">Called</div><div class="v">${fmt.m(fm.called)}</div><div class="s">Unfunded ${fmt.m(fm.unfunded)}</div></div>
+      <div class="kpi"><div class="k">NAV</div><div class="v">${fmt.m(fm.nav)}</div><div class="s">Distributions ${fmt.m(fm.distributions)}</div></div>
+      <div class="kpi"><div class="k">TVPI</div><div class="v">${fmt.x(fm.tvpi)}</div><div class="s">DPI ${fmt.x(fm.dpi)} / RVPI ${fmt.x(fm.rvpi)}</div></div>
+      <div class="kpi"><div class="k">Net IRR</div><div class="v">${fmt.pct(fm.irr)}</div><div class="s">Pooled, since inception</div></div>
+      <div class="kpi"><div class="k">Capital to Direct</div><div class="v">${fmt.m(fm.toDirect)}</div><div class="s">${fm.coInvests} co-invests / ${fm.referrals} referrals</div></div>
+      <div class="kpi"><div class="k">Women in GP Leadership</div><div class="v">${fm.womenGPs} / ${fm.n}</div><div class="s">Positions with women senior partners</div></div>
+    </div>
+    <div class="grid" style="grid-template-columns: 2fr 1fr; margin-bottom:14px;">
+      <div class="card"><div class="chead">Commitment Pacing by Vintage (staggered)</div><div class="cbody"><div class="chartbox"><canvas id="ch-fi-pacing"></canvas></div></div></div>
+      <div class="card"><div class="chead">NAV by Strategy</div><div class="cbody"><div class="chartbox"><canvas id="ch-fi-strategy"></canvas></div></div></div>
+    </div>
+    <div class="card"><div class="tblwrap"><table class="dt">
+      <thead><tr><th>Fund</th><th>Strategy</th><th>Vintage</th><th class="num">Committed</th><th class="num">Called</th><th class="num">Unfunded</th><th class="num">NAV</th><th class="num">Dist.</th><th class="num">TVPI</th><th class="num">DPI</th><th class="num">IRR</th><th class="num">To Direct</th><th>Co-Invest</th><th>Next Call (est.)</th></tr></thead>
+      <tbody>${fs.map(f=>`<tr class="click" onclick="openFundInv('${f.id}')">
+        <td><b>${esc(f.name)}</b><div class="small">${esc(f.manager)}</div></td>
+        <td class="small">${esc(f.strategy)}</td><td class="small">${f.vintage}</td>
+        <td class="num">${f.committed.toFixed(1)}</td><td class="num">${f.called.toFixed(1)}</td>
+        <td class="num ${f.committed-f.called>0.05?"":"flat"}">${(f.committed-f.called).toFixed(1)}</td>
+        <td class="num">${f.nav.toFixed(1)}</td><td class="num">${f.distributions.toFixed(1)}</td>
+        <td class="num ${moicClass(fiTvpi(f))}"><b>${fmt.x(fiTvpi(f))}</b></td>
+        <td class="num">${fmt.x(fiDpi(f))}</td>
+        <td class="num">${fmt.pct(fiIrr(f))}</td>
+        <td class="num ${f.capitalToDirect>0?"up":"flat"}">${(f.capitalToDirect||0).toFixed(1)}</td>
+        <td>${f.coInvestRights?'<span class="pill green">Rights</span>':'<span class="pill gray">No</span>'}</td>
+        <td class="small">${fmt.d(f.nextCallEst)}</td>
+      </tr>`).join("")}</tbody></table></div></div>
+    <div class="hint" style="margin-top:8px;">Fund-position TVPI/DPI are on called capital (standard LP convention), unlike direct-portfolio MOIC on invested cost. Pooled IRR from all call/distribution cashflows plus current NAV.</div>`;
+  requestAnimationFrame(()=>{
+    const vys=[...new Set(fs.map(f=>f.vintage))].sort();
+    makeChart("ch-fi-pacing",{type:"bar", data:{labels:vys, datasets:[
+      {label:"Called", data:vys.map(y=>fs.filter(f=>f.vintage===y).reduce((s,f)=>s+f.called,0)), backgroundColor:"#2563eb", stack:"a"},
+      {label:"Unfunded", data:vys.map(y=>fs.filter(f=>f.vintage===y).reduce((s,f)=>s+f.committed-f.called,0)), backgroundColor:"#9db3d4", stack:"a"}]},
+      options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:"top"}}, scales:{x:{stacked:true}, y:{stacked:true, title:{display:true,text:"$M committed"}}}}});
+    const g={}; fs.forEach(f=>{ g[f.strategy]=(g[f.strategy]||0)+f.nav; });
+    const ks=Object.keys(g).sort((a,b)=>g[b]-g[a]);
+    makeChart("ch-fi-strategy",{type:"doughnut", data:{labels:ks, datasets:[{data:ks.map(k=>g[k]), backgroundColor:PALETTE, borderWidth:1}]},
+      options:{responsive:true,maintainAspectRatio:false, cutout:"60%", plugins:{legend:{position:"right", labels:{boxWidth:10, font:{size:10}}}}}});
+  });
+}
+function openFundInv(id){
+  const f = (DB.fundInvestments||[]).find(x=>x.id===id); if(!f) return;
+  $("#drawer").innerHTML = `
+    <div class="dhead">
+      <div style="flex:1">
+        <div style="display:flex; align-items:center; gap:10px;"><span style="font-size:17px; font-weight:700;">${esc(f.name)}</span><span class="pill purple">LP POSITION</span></div>
+        <div class="small" style="margin-top:3px;">${esc(f.manager)} - ${esc(f.strategy)} - Vintage ${f.vintage} - Contact: ${esc(f.contact||"-")}</div>
+      </div>
+      <button class="btn ghost sm" onclick="closeDrawer()">Close ✕</button>
+    </div>
+    <div class="dbody">
+      <div class="dsec"><div class="kv">
+        <div class="item"><div class="l">COMMITTED</div><div class="d">${fmt.m(f.committed)}</div></div>
+        <div class="item"><div class="l">CALLED</div><div class="d">${fmt.m(f.called)} (${fmt.pct0(f.called/f.committed*100)})</div></div>
+        <div class="item"><div class="l">UNFUNDED</div><div class="d">${fmt.m(f.committed-f.called)}</div></div>
+        <div class="item"><div class="l">NAV</div><div class="d">${fmt.m(f.nav)}</div></div>
+        <div class="item"><div class="l">DISTRIBUTIONS</div><div class="d">${fmt.m(f.distributions)}</div></div>
+        <div class="item"><div class="l">TVPI / DPI</div><div class="d ${moicClass(fiTvpi(f))}">${fmt.x(fiTvpi(f))} / ${fmt.x(fiDpi(f))}</div></div>
+        <div class="item"><div class="l">NET IRR</div><div class="d">${fmt.pct(fiIrr(f))}</div></div>
+        <div class="item"><div class="l">NEXT CALL (EST.) / AGM</div><div class="d">${fmt.d(f.nextCallEst)} / ${fmt.d(f.agm)}</div></div>
+      </div></div>
+      <div class="dsec"><h4>Strategic Rationale</h4><div style="font-size:12.5px; line-height:1.5;">${esc(f.rationale||"-")}</div>
+        <div class="badgebar" style="margin-top:8px;">
+          ${f.coInvestRights?'<span class="pill green">Co-invest rights</span>':'<span class="pill gray">No co-invest rights</span>'}
+          <span class="pill blue">${f.coInvestsDone||0} co-invest${(f.coInvestsDone||0)===1?"":"s"} completed</span>
+          <span class="pill teal">${f.referrals||0} pipeline referral${(f.referrals||0)===1?"":"s"}</span>
+          <span class="pill purple">${fmt.m(f.capitalToDirect||0)} deployed into our direct portfolio</span>
+          ${f.womenSeniorGP?'<span class="pill green">Women in GP leadership</span>':""}
+        </div></div>
+      <div class="dsec"><h4>Cashflow History (calls negative, distributions positive)</h4>
+        <table class="dt"><thead><tr><th>Date</th><th class="num">Amount $M</th><th>Type</th></tr></thead>
+        <tbody>${(f.cashflows||[]).map(c=>`<tr><td>${esc(c.date)}</td><td class="num ${c.amount<0?"down":"up"}">${c.amount<0?"":"+"}${c.amount.toFixed(1)}</td><td class="small">${c.amount<0?"Capital call":"Distribution"}</td></tr>`).join("")||'<tr><td colspan="3" class="small">No cashflows recorded.</td></tr>'}</tbody></table>
+        <div class="hint" style="margin-top:5px;">IRR uses these flows plus current NAV as terminal value.</div></div>
+    </div>`;
+  $("#drawer").classList.add("open"); $("#overlay").classList.add("open");
+}
+
+/* =====================================================================
+   VIEW: PIPELINE
+   ===================================================================== */
+function renderPipeline(){
+  const v = $("#view-pipeline");
+  const deals = DB.pipeline;
+  const active = deals.filter(d=>!["Closed","Passed"].includes(d.funnel));
+  const closedYtd = deals.filter(d=>d.funnel==="Closed" && d.closedDate && d.closedDate.startsWith("2026")).length;
+  const target = DB.fund.annualPlatformTarget;
+  const weighted = active.reduce((s,d)=>{ const w={"Sourced":.05,"Screening":.15,"Diligence":.35,"IC Review":.6,"Term Sheet":.85}[d.funnel]||0; return s+(d.checkSize||0)*w; },0);
+  v.innerHTML = `
+    <h2 class="vtitle">Deal Pipeline</h2>
+    <div class="vsub">Top-of-funnel to close, tied to the annual platform target. Click a deal for gates and terms.</div>
+    <div class="kpirow">
+      <div class="kpi"><div class="k">2026 Platforms Closed</div><div class="v">${closedYtd} / ${target}</div><div class="s">Annual target</div><div class="progress" style="margin-top:6px;"><div style="width:${Math.min(100,closedYtd/target*100)}%"></div></div></div>
+      <div class="kpi"><div class="k">Active Deals</div><div class="v">${active.length}</div><div class="s">${deals.filter(d=>d.funnel==="Term Sheet").length} at term sheet</div></div>
+      <div class="kpi"><div class="k">Active Check $</div><div class="v">${fmt.m(active.reduce((s,d)=>s+(d.checkSize||0),0))}</div><div class="s">If all close</div></div>
+      <div class="kpi"><div class="k">Probability-Weighted</div><div class="v">${fmt.m(weighted)}</div><div class="s">Stage-weighted deployment</div></div>
+      <div class="kpi"><div class="k">Passed YTD</div><div class="v">${deals.filter(d=>d.funnel==="Passed").length}</div><div class="s">Decision discipline</div></div>
+    </div>
+    <div class="kanban">
+      ${FUNNEL.map(stage=>{
+        const ds = deals.filter(d=>d.funnel===stage);
+        return `<div class="kcol"><h5>${stage} <span>${ds.length}</span></h5>
+          ${ds.map(d=>`<div class="kcard" onclick="openDeal('${d.id}')">
+            <div class="n">${esc(d.name)}</div>
+            <div class="m">${esc(d.sector)}</div>
+            <div class="m">${d.checkSize?fmt.m(d.checkSize)+" check":""}${d.valuation?" @ "+fmt.m(d.valuation)+" post":""}</div>
+            <div class="m" style="margin-top:4px;"><span class="pill gray">${esc(d.owner)}</span></div>
+          </div>`).join("")}</div>`;
+      }).join("")}
+    </div>
+    <div class="small" style="margin-top:10px;">Passed deals (${deals.filter(d=>d.funnel==="Passed").length}): ${deals.filter(d=>d.funnel==="Passed").map(d=>`<a class="link" onclick="openDeal('${d.id}')">${esc(d.name)}</a>`).join(", ")||"none"}</div>`;
+}
+function gatePill(s){ return `<span class="pill ${s==="passed"?"green":s==="in-progress"?"blue":s==="failed"?"red":"gray"}">${s}</span>`; }
+function openDeal(id){
+  const d = DB.pipeline.find(x=>x.id===id); if(!d) return;
+  const passed = d.gates.filter(g=>g.status==="passed").length;
+  $("#drawer").innerHTML = `
+    <div class="dhead">
+      <div style="flex:1">
+        <div style="display:flex; align-items:center; gap:10px;"><span style="font-size:17px; font-weight:700;">${esc(d.name)}</span><span class="pill blue">${esc(d.funnel)}</span></div>
+        <div class="small" style="margin-top:3px;">${esc(d.sector)} - Source: ${esc(d.source)} - Owner: ${esc(d.owner)} - Added ${esc(d.added)}</div>
+      </div>
+      <button class="btn ghost sm" onclick="startMemoFor('${d.id}')">Draft IC Memo</button>
+      <button class="btn ghost sm" onclick="closeDrawer()">Close ✕</button>
+    </div>
+    <div class="dbody">
+      <div class="dsec"><div class="kv">
+        <div class="item"><div class="l">PROPOSED CHECK</div><div class="d">${fmt.m(d.checkSize)}</div></div>
+        <div class="item"><div class="l">VALUATION (POST)</div><div class="d">${d.valuation?fmt.m(d.valuation):"TBD"}</div></div>
+        <div class="item"><div class="l">IMPLIED OWNERSHIP</div><div class="d">${d.valuation&&d.checkSize?fmt.pct(d.checkSize/d.valuation*100):"TBD"}</div></div>
+        <div class="item"><div class="l">NEXT STEP</div><div class="d" style="font-weight:500">${esc(d.nextStep)}</div></div>
+      </div></div>
+      ${d.gates.length?`<div class="dsec"><h4>Diligence Gates (${passed}/${d.gates.length} passed)</h4>
+        <div class="progress" style="margin-bottom:8px;"><div style="width:${d.gates.length?passed/d.gates.length*100:0}%"></div></div>
+        ${d.gates.map((g,i)=>`<div class="gate">${gatePill(g.status)}<span style="flex:1">${esc(g.name)}</span>
+          <select onchange="setGate('${d.id}',${i},this.value)">${["pending","in-progress","passed","failed"].map(s=>`<option ${g.status===s?"selected":""}>${s}</option>`).join("")}</select></div>`).join("")}
+        <div class="hint" style="margin-top:6px;">Gates are editable per deal; defaults defined in the Data tab schema.</div></div>`:""}
+      ${d.termSheet?`<div class="dsec"><h4>Term Sheet Summary</h4>
+        <table class="dt"><tbody>${Object.entries({"Security":d.termSheet.security,"Pre-money":fmt.m(d.termSheet.preMoney),"Post-money":fmt.m(d.termSheet.postMoney),"Our investment":fmt.m(d.termSheet.investment),"Ownership":fmt.pct(d.termSheet.ownership),"Liquidation preference":d.termSheet.liquidation,"Anti-dilution":d.termSheet.antiDilution,"Board composition":d.termSheet.board,"Pro-rata rights":d.termSheet.proRata,"Dividends":d.termSheet.dividends,"Option pool":d.termSheet.optionPool,"Founder vesting":d.termSheet.founderVesting}).map(([k,vv])=>`<tr><td class="small" style="width:190px"><b>${k}</b></td><td>${esc(vv)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    </div>`;
+  $("#drawer").classList.add("open"); $("#overlay").classList.add("open");
+}
+function setGate(dealId, idx, status){ const d=DB.pipeline.find(x=>x.id===dealId); if(d){ d.gates[idx].status=status; openDeal(dealId); renderPipeline(); } }
+
+/* =====================================================================
+   VIEW: MEMO BUILDER
+   ===================================================================== */
+const MEMO_SECTIONS = [
+  ["exec","Executive Summary"],["thesis","Investment Thesis"],["market","Market & Competition"],
+  ["team","Team Assessment"],["topgrading","Topgrading Appendix"],["product","Product & Technology"],
+  ["traction","Traction & KPIs"],["terms","Deal Terms"],["captable","Cap Table & Ownership"],
+  ["risks","Risk Register"],["returns","Returns Model"],["reco","Recommendation"]
+];
+let MEMO_TARGET = null;
+function memoEntities(){
+  return [...DB.pipeline.filter(d=>d.funnel!=="Passed").map(d=>({id:d.id, label:d.name+" (pipeline - "+d.funnel+")"})),
+          ...DB.companies.filter(c=>!c.exited).map(c=>({id:c.id, label:c.name+" (portfolio)"}))];
+}
+function prefillMemo(id){
+  const c = DB.companies.find(x=>x.id===id);
+  const d = DB.pipeline.find(x=>x.id===id);
+  const m = {};
+  if(c){
+    const mo=moic(c), k=c.kpis&&c.kpis[0];
+    m.exec = `${c.name} (${c.sector}, ${c.stage}) - follow-on / update memo. Current position: ${fmt.m(c.invested)} invested at ${fmt.pct(c.ownershipPct)} ownership via ${c.instrument}; marked at ${fmt.m(c.fmv)} (${fmt.x(mo)} MOIC). Health: ${c.health.toUpperCase()}${c.riskFlags.length? " - flags: "+c.riskFlags.join("; "):""}.`;
+    m.traction = k? `Latest (${k.period}): revenue ${fmt.m(k.revenue)} run-rate, monthly burn ${k.burn<0?"cash-flow positive":fmt.m(k.burn)}, cash ${fmt.m(k.cash)}, runway ${k.runwayMo>=99?"99+":k.runwayMo} months.` : "";
+    m.terms = c.rounds.map(r=>`${r.date} ${r.label}: ${fmt.m(r.invested)} via ${r.instrument}${r.postMoney?" at "+fmt.m(r.postMoney)+" post":""} (lead: ${r.lead})${r.note?" - "+r.note:""}`).join("\n");
+    m.captable = `Current ownership ${fmt.pct(c.ownershipPct)} (${c.instrument}). Pro-rata rights: ${c.proRata?"yes":"no"}. Reserves: ${fmt.m(c.reservesAllocated)} allocated, ${fmt.m((c.reservesAllocated||0)-(c.reservesDeployed||0))} remaining. Board: ${c.board.seat}${c.board.seat!=="None"?" ("+c.board.holder+")":""}.`;
+    m.risks = (c.riskFlags||[]).map(f=>"- "+f).join("\n") + (c.covenants||[]).map(cv=>"\n- Covenant: "+cv.text+" ["+cv.status+"]").join("") + (c.govFunding? "\n- Gov funding condition: "+c.govFunding.program+" - "+c.govFunding.conditions:"");
+    m.returns = `Entry basis ${fmt.m(c.invested)}; current mark ${fmt.m(c.fmv)} (${fmt.x(mo)}). Scenario grid to complete: bear / base / bull exit values, expected proceeds at current ownership ${fmt.pct(c.ownershipPct)} (before future dilution).`;
+    m.thesis = c.desc||"";
+  } else if(d){
+    m.exec = `${d.name} (${d.sector}) - new platform investment. Proposed ${fmt.m(d.checkSize)}${d.valuation?" at "+fmt.m(d.valuation)+" post ("+fmt.pct(d.checkSize/d.valuation*100)+" ownership)":""}. Stage: ${d.funnel}. Source: ${d.source}. Diligence gates: ${d.gates.filter(g=>g.status==="passed").length}/${d.gates.length} passed.`;
+    m.terms = d.termSheet? Object.entries({Security:d.termSheet.security,"Pre-money":fmt.m(d.termSheet.preMoney),"Post-money":fmt.m(d.termSheet.postMoney),Investment:fmt.m(d.termSheet.investment),Ownership:fmt.pct(d.termSheet.ownership),"Liq. pref":d.termSheet.liquidation,"Anti-dilution":d.termSheet.antiDilution,Board:d.termSheet.board,"Pro-rata":d.termSheet.proRata,Dividends:d.termSheet.dividends,"Option pool":d.termSheet.optionPool,"Founder vesting":d.termSheet.founderVesting}).map(([k,v])=>`${k}: ${v}`).join("\n") : "Term sheet not yet issued. Proposed: "+fmt.m(d.checkSize)+(d.valuation?" at "+fmt.m(d.valuation)+" post.":"");
+    m.risks = "- [Complete] Key diligence risks from open gates:\n" + d.gates.filter(g=>g.status!=="passed").map(g=>"  - "+g.name+" ("+g.status+")").join("\n");
+    m.returns = d.valuation&&d.checkSize? `Entry: ${fmt.m(d.checkSize)} for ${fmt.pct(d.checkSize/d.valuation*100)}. Sketch: 3x exit (${fmt.m(d.valuation*3)}) returns ~${fmt.m(d.checkSize/d.valuation*d.valuation*3*0.75)} assuming 25% future dilution; 5x and 10x cases to model with full waterfall.`:"";
+  }
+  MEMO_SECTIONS.forEach(([k])=>{ if(!(k in m)) m[k]=""; });
+  m.topgrading = m.topgrading || "Scorecard per key executive: mission, outcomes, competencies, reference summary (threshold: A-player bar).\n\nCEO -\nCTO -\nVP Sales -";
+  m.reco = m.reco || "[Invest / Pass / Hold-follow-on] - recommended check, conditions precedent, proposed board role.";
+  return m;
+}
+function startMemoFor(id){ MEMO_TARGET=id; if(!DB.memos[id]) DB.memos[id]=prefillMemo(id); closeDrawer(); switchView("memo"); }
+function renderMemo(){
+  const v = $("#view-memo");
+  const ents = memoEntities();
+  if(MEMO_TARGET && !ents.find(e=>e.id===MEMO_TARGET)) MEMO_TARGET=null;
+  if(!MEMO_TARGET) MEMO_TARGET = ents[0]?.id;
+  if(MEMO_TARGET && !DB.memos[MEMO_TARGET]) DB.memos[MEMO_TARGET] = prefillMemo(MEMO_TARGET);
+  const memo = DB.memos[MEMO_TARGET]||{};
+  const ent = ents.find(e=>e.id===MEMO_TARGET);
+  v.innerHTML = `
+    <h2 class="vtitle">Investment Memo Builder</h2>
+    <div class="vsub">Deal terms, cap table, traction, and risks auto-populate from portfolio / pipeline data. Edit any section; export to Markdown or print.</div>
+    <div class="fbar">
+      <select onchange="MEMO_TARGET=this.value; if(!DB.memos[MEMO_TARGET]) DB.memos[MEMO_TARGET]=prefillMemo(MEMO_TARGET); renderMemo();">
+        ${ents.map(e=>`<option value="${e.id}" ${e.id===MEMO_TARGET?"selected":""}>${esc(e.label)}</option>`).join("")}
+      </select>
+      <button class="btn sm ghost" onclick="DB.memos[MEMO_TARGET]=prefillMemo(MEMO_TARGET); renderMemo(); toast('Re-pulled data into memo')">↻ Re-pull data</button>
+      <button class="btn sm" onclick="exportMemoMd()">Export .md</button>
+      <button class="btn sm ghost" onclick="window.print()">Print / PDF</button>
+      <span class="count">Memo drafts are held in memory; use Data tab → Save to persist locally.</span>
+    </div>
+    <div class="card"><div class="cbody">
+      <div style="border-bottom:2px solid var(--navy); padding-bottom:8px; margin-bottom:14px;">
+        <div style="font-size:16px; font-weight:700;">INVESTMENT MEMORANDUM - ${esc(ent?ent.label.replace(/\s*\(.*/,""):"")}</div>
+        <div class="small">${esc(DB.fund.name)} - Prepared by Daniel Armali - ${new Date().toISOString().slice(0,10)} - CONFIDENTIAL</div>
+      </div>
+      ${MEMO_SECTIONS.map(([k,label],i)=>`
+        <div class="memosec">
+          <label>${i+1}. ${label}${["terms","captable","traction","risks"].includes(k)?' <span class="pill blue" style="text-transform:none">auto-populated</span>':""}</label>
+          <textarea data-k="${k}" oninput="DB.memos[MEMO_TARGET]['${k}']=this.value">${esc(memo[k]||"")}</textarea>
+        </div>`).join("")}
+    </div></div>`;
+}
+function exportMemoMd(){
+  const ents = memoEntities(); const ent = ents.find(e=>e.id===MEMO_TARGET); const memo=DB.memos[MEMO_TARGET]||{};
+  let md = `# Investment Memorandum - ${ent?ent.label.replace(/\s*\(.*/,""):""}\n\n*${DB.fund.name} - ${new Date().toISOString().slice(0,10)} - Confidential*\n\n`;
+  MEMO_SECTIONS.forEach(([k,label],i)=>{ md += `## ${i+1}. ${label}\n\n${memo[k]||"_TBD_"}\n\n`; });
+  downloadFile((ent?ent.label.replace(/\s*\(.*/,"").replace(/\s+/g,"_"):"memo")+"_IM.md", md, "text/markdown");
+}
+function downloadFile(name, content, type){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* =====================================================================
+   VIEW: REPORTS
+   ===================================================================== */
+function renderReports(){
+  const m = fundMetrics();
+  const act = activeCompanies();
+  const watch = act.filter(c=>c.health!=="green").sort((a,b)=> (a.health==="red"?0:1)-(b.health==="red"?0:1));
+  const movers = [...act].map(c=>({c, gl:c.fmv-c.invested})).sort((a,b)=>b.gl-a.gl);
+  const exitsYtd = DB.companies.filter(c=>c.exited && (c.exitDate||"").startsWith("2026"));
+  const newYtd = DB.companies.filter(c=>!c.exited && c.rounds.some(r=>r.date.startsWith("2026")));
+  const v = $("#view-reports");
+  v.innerHTML = `
+    <div class="reporthead"><b>${esc(DB.fund.name)}</b> - Quarterly Portfolio Report - ${new Date().toISOString().slice(0,10)} - Confidential</div>
+    <h2 class="vtitle">Board / LP Report</h2>
+    <div class="vsub">Board-ready summary. Print / PDF preserves this layout; CSV export for the data appendix.</div>
+    <div class="fbar noprint">
+      <button class="btn sm" onclick="window.print()">Print / PDF</button>
+      <button class="btn sm ghost" onclick="exportPortfolioCsv()">Export portfolio CSV</button>
+      <button class="btn sm ghost" onclick="copyExecSummary()">Copy exec summary</button>
+    </div>
+    <div class="kpirow">
+      ${isEvergreen()?`
+      <div class="kpi"><div class="k">Capital Base</div><div class="v">${fmt.m(DB.fund.capitalBase)}</div><div class="s">Net deployed ${fmt.m(m.netDeployed)} / dry powder ${fmt.m(m.dryPowder)}</div></div>
+      <div class="kpi"><div class="k">Invested</div><div class="v">${fmt.m(m.invested)}</div><div class="s">${m.nActive} active positions</div></div>
+      <div class="kpi"><div class="k">NAV (FMV)</div><div class="v">${fmt.m(m.fmv)}</div></div>
+      <div class="kpi"><div class="k">TVPI (SI)</div><div class="v">${fmt.x(m.tvpi)}</div></div>
+      <div class="kpi"><div class="k">DPI</div><div class="v">${fmt.x(m.dpi)}</div><div class="s">Proceeds recycled, not distributed</div></div>
+      <div class="kpi"><div class="k">RVPI</div><div class="v">${fmt.x(m.rvpi)}</div></div>
+      <div class="kpi"><div class="k">SI Gross / Net IRR</div><div class="v">${fmt.pct(m.grossIRR)}</div><div class="s">Net ~${fmt.pct(m.netIRR)} est.</div></div>`
+      :`
+      <div class="kpi"><div class="k">Committed</div><div class="v">${fmt.m(DB.fund.committed)}</div><div class="s">Called ${fmt.m(DB.fund.called)} (${fmt.pct0(DB.fund.called/DB.fund.committed*100)})</div></div>
+      <div class="kpi"><div class="k">Invested</div><div class="v">${fmt.m(m.invested)}</div><div class="s">${m.nActive} active positions</div></div>
+      <div class="kpi"><div class="k">NAV (FMV)</div><div class="v">${fmt.m(m.fmv)}</div></div>
+      <div class="kpi"><div class="k">TVPI</div><div class="v">${fmt.x(m.tvpi)}</div></div>
+      <div class="kpi"><div class="k">DPI</div><div class="v">${fmt.x(m.dpi)}</div></div>
+      <div class="kpi"><div class="k">RVPI</div><div class="v">${fmt.x(m.rvpi)}</div></div>
+      <div class="kpi"><div class="k">Gross / Net IRR</div><div class="v">${fmt.pct(m.grossIRR)}</div><div class="s">Net ~${fmt.pct(m.netIRR)} est.</div></div>`}
+    </div>
+    ${isEvergreen()?`<div class="hint" style="margin:-6px 0 12px;">Evergreen note: realized proceeds recycle into the capital base per policy, so DPI reflects capital returned to the fund rather than distributed to shareholders and will read low relative to a distributing vehicle at the same performance. TVPI and IRR are since inception.</div>`:""}
+    <div class="grid" style="grid-template-columns:1fr 1fr;">
+      <div class="card"><div class="chead">Quarter Highlights</div><div class="cbody">
+        <div class="alertrow"><span class="pill green">NEW</span><span>${newYtd.length} new investment${newYtd.length===1?"":"s"} closed YTD 2026: ${newYtd.map(c=>esc(c.name)).join(", ")||"-"}</span></div>
+        <div class="alertrow"><span class="pill blue">EXIT</span><span>${exitsYtd.length} exit${exitsYtd.length===1?"":"s"} YTD: ${exitsYtd.map(c=>esc(c.name)).join(", ")||"none"}</span></div>
+        <div class="alertrow"><span class="pill yellow">WATCH</span><span>${watch.length} companies on watchlist (${watch.filter(c=>c.health==="red").length} red)</span></div>
+        <div class="alertrow"><span class="pill gray">PACE</span><span>${DB.fund.ytdPlatformsClosed} of ${DB.fund.annualPlatformTarget} annual platform target closed</span></div>
+        ${isEvergreen()?`<div class="alertrow"><span class="pill teal">RECYCLE</span><span>${fmt.m(m.distributions)} realized proceeds recycled to date; dry powder ${fmt.m(m.dryPowder)}. ${esc(DB.fund.distributionPolicy||"")}</span></div>`:""}
+        ${m.fmvYoY!=null?`<div class="alertrow"><span class="pill ${m.fmvYoY>=0?"green":"red"}">GROWTH</span><span>FMV ${m.fmvYoY>=0?"+":""}${m.fmvYoY.toFixed(1)}% YoY${m.organicYoY!=null?" - "+fmt.m(m.organicYoY)+" organic value creation net of new capital deployed":""}</span></div>`:""}
+        ${m.leverage!=null?`<div class="alertrow"><span class="pill purple">LEVERAGE</span><span>${fmt.m(m.capitalAttracted)} of third-party capital invested alongside our ${fmt.m(m.roundsTotal-m.capitalAttracted)} in rounds we joined - ${m.leverage.toFixed(1)}:1 leverage on our dollars (${fmt.m(m.nbCapital)} from other NB investors, ${fmt.m(m.outsideCapital)} from outside NB)</span></div>`:""}
+        <div class="alertrow"><span class="pill blue">REVENUE</span><span>Underlying portfolio revenue ${fmt.m(m.revenue)} run-rate${m.revQoQ!=null?" - same-store QoQ "+(m.revQoQ>=0?"+":"")+m.revQoQ.toFixed(1)+"%":""}</span></div>
+        <div class="alertrow"><span class="pill teal">IMPACT</span><span>${m.fteNB.toLocaleString()} jobs in NB of ${m.fte.toLocaleString()} total (${m.fte?Math.round(m.fteNB/m.fte*100):0}%)${m.fteAtEntry?", +"+(m.fte-m.fteAtEntry).toLocaleString()+" since entry":""}; women in C-suite at ${m.womenCosPct!=null?Math.round(m.womenCosPct)+"%":"-"} of companies (${m.womenExecs} of ${m.cSuiteTotal} exec seats)</span></div>
+      </div></div>
+      <div class="card"><div class="chead">Watchlist (yellow / red)</div><div class="cbody" style="max-height:220px; overflow-y:auto;">
+        ${watch.slice(0,12).map(c=>`<div class="alertrow"><span class="dot ${c.health}"></span><a class="link" onclick="openCompany('${c.id}')">${esc(c.name)}</a><span class="small">${esc((c.riskFlags[0]||"Under review"))} - ${fmt.x(moic(c))} MOIC</span></div>`).join("")||'<div class="small">None.</div>'}
+      </div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr; margin-top:14px;">
+      <div class="card"><div class="chead">Top 5 Value Drivers</div><div class="cbody">
+        <table class="dt"><thead><tr><th>Company</th><th class="num">Cost</th><th class="num">FMV</th><th class="num">Unrealized G/L</th><th class="num">MOIC</th></tr></thead>
+        <tbody>${movers.slice(0,5).map(({c,gl})=>`<tr><td><b>${esc(c.name)}</b> <span class="small">${esc(c.sector)}</span></td><td class="num">${c.invested.toFixed(1)}</td><td class="num">${c.fmv.toFixed(1)}</td><td class="num up">+${gl.toFixed(1)}</td><td class="num">${fmt.x(moic(c))}</td></tr>`).join("")}</tbody></table>
+      </div></div>
+      <div class="card"><div class="chead">Bottom 5 Positions</div><div class="cbody">
+        <table class="dt"><thead><tr><th>Company</th><th class="num">Cost</th><th class="num">FMV</th><th class="num">Unrealized G/L</th><th class="num">MOIC</th></tr></thead>
+        <tbody>${movers.slice(-5).reverse().map(({c,gl})=>`<tr><td><b>${esc(c.name)}</b> <span class="small">${esc(c.sector)}</span></td><td class="num">${c.invested.toFixed(1)}</td><td class="num">${c.fmv.toFixed(1)}</td><td class="num down">${gl.toFixed(1)}</td><td class="num">${fmt.x(moic(c))}</td></tr>`).join("")}</tbody></table>
+      </div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr; margin-top:14px;">
+      <div class="card"><div class="chead">NAV Bridge by Vintage ($M)</div><div class="cbody"><div class="chartbox"><canvas id="ch-rep-vintage"></canvas></div></div></div>
+      <div class="card"><div class="chead">Capital Deployed by Year ($M)</div><div class="cbody"><div class="chartbox"><canvas id="ch-rep-deploy"></canvas></div></div></div>
+    </div>
+    ${(DB.fundInvestments||[]).length?(()=>{ const fm=fiMetrics(); return `
+    <div class="card" style="margin-top:14px;"><div class="chead">Strategic Fund Investments (LP positions - reported separately from direct portfolio)</div><div class="cbody">
+      <table class="dt"><thead><tr><th>Fund</th><th>Strategy</th><th>Vintage</th><th class="num">Committed</th><th class="num">Called</th><th class="num">Unfunded</th><th class="num">NAV</th><th class="num">Dist.</th><th class="num">TVPI</th><th class="num">IRR</th></tr></thead>
+      <tbody>${DB.fundInvestments.slice().sort((a,b)=>a.vintage-b.vintage).map(f=>`<tr><td><b>${esc(f.name)}</b></td><td class="small">${esc(f.strategy)}</td><td class="small">${f.vintage}</td><td class="num">${f.committed.toFixed(1)}</td><td class="num">${f.called.toFixed(1)}</td><td class="num">${(f.committed-f.called).toFixed(1)}</td><td class="num">${f.nav.toFixed(1)}</td><td class="num">${f.distributions.toFixed(1)}</td><td class="num ${moicClass(fiTvpi(f))}">${fmt.x(fiTvpi(f))}</td><td class="num">${fmt.pct(fiIrr(f))}</td></tr>`).join("")}
+      <tr style="border-top:2px solid var(--line);"><td><b>Total (${fm.n} funds)</b></td><td></td><td></td><td class="num"><b>${fm.committed.toFixed(1)}</b></td><td class="num"><b>${fm.called.toFixed(1)}</b></td><td class="num"><b>${fm.unfunded.toFixed(1)}</b></td><td class="num"><b>${fm.nav.toFixed(1)}</b></td><td class="num"><b>${fm.distributions.toFixed(1)}</b></td><td class="num"><b>${fmt.x(fm.tvpi)}</b></td><td class="num"><b>${fmt.pct(fm.irr)}</b></td></tr></tbody></table>
+      <div class="hint" style="margin-top:6px;">Strategic value to date: ${fmt.m(fm.toDirect)} deployed into our direct portfolio via co-invest and syndication; ${fm.coInvests} co-investments executed; ${fm.referrals} pipeline referrals; women in GP leadership at ${fm.womenGPs} of ${fm.n} managers. The indirect sleeve exists to attract capital to the direct strategy. Multiples on called capital per LP convention.</div>
+    </div></div>`; })():""}`;
+  requestAnimationFrame(()=>{
+    const vys=[...new Set(DB.companies.map(c=>c.vintage))].sort();
+    makeChart("ch-rep-vintage",{type:"bar", data:{labels:vys, datasets:[
+      {label:"Cost", data:vys.map(y=>DB.companies.filter(c=>c.vintage===y).reduce((s,c)=>s+c.invested,0)), backgroundColor:"#9db3d4"},
+      {label:"FMV + Realized", data:vys.map(y=>DB.companies.filter(c=>c.vintage===y).reduce((s,c)=>s+c.fmv+c.realized,0)), backgroundColor:"#2563eb"}]},
+      options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:"top"}}}});
+    const yrs={}; DB.companies.forEach(c=>c.rounds.forEach(r=>{ const y=r.date.slice(0,4); yrs[y]=(yrs[y]||0)+r.invested; }));
+    const ys=Object.keys(yrs).sort();
+    makeChart("ch-rep-deploy",{type:"bar", data:{labels:ys, datasets:[{data:ys.map(y=>+yrs[y].toFixed(1)), backgroundColor:"#0e7490"}]},
+      options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false}}}});
+  });
+}
+function exportPortfolioCsv(){
+  const rows=[["id","name","sector","stage","vintage","instrument","health","ownership_pct","invested_m","fmv_m","realized_m","moic","board_seat","next_meeting","pro_rata","reserves_allocated_m","reserves_deployed_m","risk_flags","exited"]];
+  DB.companies.forEach(c=>rows.push([c.id,c.name,c.sector,c.stage,c.vintage,c.instrument,c.health,c.ownershipPct,c.invested,c.fmv,c.realized,(moic(c)||0).toFixed(2),c.board.seat,c.board.nextMeeting||"",c.proRata?"Y":"N",c.reservesAllocated||0,c.reservesDeployed||0,(c.riskFlags||[]).join("; "),c.exited?"Y":"N"]));
+  downloadFile("portfolio_export.csv", rows.map(r=>r.map(x=>`"${String(x??"").replace(/"/g,'""')}"`).join(",")).join("\n"), "text/csv");
+}
+function copyExecSummary(){
+  const m=fundMetrics();
+  const line2 = isEvergreen()
+    ? `TVPI ${fmt.x(m.tvpi)} / DPI ${fmt.x(m.dpi)} / RVPI ${fmt.x(m.rvpi)} since inception; gross IRR ${fmt.pct(m.grossIRR)} (net ~${fmt.pct(m.netIRR)} est.). Realized proceeds ${fmt.m(m.distributions)} recycled per policy (DPI reflects recycling, not shareholder distributions); dry powder ${fmt.m(m.dryPowder)} of ${fmt.m(DB.fund.capitalBase)} capital base.`
+    : `TVPI ${fmt.x(m.tvpi)} / DPI ${fmt.x(m.dpi)} / RVPI ${fmt.x(m.rvpi)}; gross IRR ${fmt.pct(m.grossIRR)} (net ~${fmt.pct(m.netIRR)} est.).`;
+  const txt = `${DB.fund.name} - Summary ${new Date().toISOString().slice(0,10)}\nInvested ${fmt.m(m.invested)} across ${m.nActive} active companies; NAV ${fmt.m(m.fmv)}${isEvergreen()?"":"; distributions "+fmt.m(m.distributions)}.\n${line2}\nHealth: ${activeCompanies().filter(c=>c.health==="green").length} green / ${activeCompanies().filter(c=>c.health==="yellow").length} yellow / ${activeCompanies().filter(c=>c.health==="red").length} red. Platform pace: ${DB.fund.ytdPlatformsClosed}/${DB.fund.annualPlatformTarget} YTD.${m.fmvYoY!=null||m.leverage!=null?`\n${m.fmvYoY!=null?"FMV "+(m.fmvYoY>=0?"+":"")+m.fmvYoY.toFixed(1)+"% YoY"+(m.organicYoY!=null?" ("+fmt.m(m.organicYoY)+" organic)":"")+". ":""}${m.leverage!=null?"Leverage "+m.leverage.toFixed(1)+":1 ("+fmt.m(m.nbCapital)+" other NB capital, "+fmt.m(m.outsideCapital)+" outside capital in our rounds). ":""}${m.revenue?"Portfolio revenue "+fmt.m(m.revenue)+" run-rate"+(m.revQoQ!=null?" ("+(m.revQoQ>=0?"+":"")+m.revQoQ.toFixed(1)+"% same-store QoQ)":"")+". ":""}${m.fte?"Jobs "+m.fteNB.toLocaleString()+" in NB of "+m.fte.toLocaleString()+(m.fteAtEntry?" (+"+(m.fte-m.fteAtEntry).toLocaleString()+" since entry)":"")+". ":""}${m.womenCosPct!=null?"Women in C-suite at "+Math.round(m.womenCosPct)+"% of companies.":""}`:""}${(DB.fundInvestments||[]).length?(()=>{const fm=fiMetrics(); return `\nStrategic fund investments (separate): ${fm.n} LP positions, ${fmt.m(fm.committed)} committed (${fmt.m(fm.unfunded)} unfunded), NAV ${fmt.m(fm.nav)}, TVPI ${fmt.x(fm.tvpi)}, pooled IRR ${fmt.pct(fm.irr)}.`;})():""}`;
+  navigator.clipboard.writeText(txt).then(()=>toast("Exec summary copied"));
+}
+
+/* =====================================================================
+   VIEW: DATA (schema, import, export)
+   ===================================================================== */
+const CSV_SPECS = {
+  companies: "id,name,sector,stage,vintage,instrument,health,ownership_pct,invested_m,fmv_m,realized_m,pro_rata,reserves_allocated_m,reserves_deployed_m,board_seat,board_holder,next_meeting,exited,source,fte,fte_nb,fte_at_entry,women_csuite,csuite_size",
+  rounds: "company_id,date,label,instrument,invested_m,round_total_m,nb_other_m,post_money_m,ownership_after_pct,lead,note",
+  marks: "company_id,date,fmv_m,method,marked_by,rationale",
+  kpis: "company_id,period,revenue_m,monthly_burn_m,cash_m,runway_months",
+  fund_investments: "id,name,manager,strategy,vintage,committed_m,called_m,distributions_m,nav_m,co_invest_rights,capital_to_direct_m,women_senior_gp,next_call_date,agm_date,rationale",
+  fund_cashflows: "fund_id,date,amount_m"
+};
+function renderData(){
+  const v = $("#view-data");
+  const saved = DB.meta.savedAt;
+  v.innerHTML = `
+    <h2 class="vtitle">Data: Schema, Import &amp; Export</h2>
+    <div class="vsub">All state lives in memory. Optionally save to this artifact's local storage; reset restores demo data. No hard-coded values in the UI - everything renders from the store below.</div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;">
+      <div class="card"><div class="chead">Persistence</div><div class="cbody">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn sm" onclick="saveDB()">Save locally</button>
+          <button class="btn sm ghost" onclick="exportJson()">Export full JSON</button>
+          <button class="btn sm ghost" onclick="exportPortfolioCsv()">Export portfolio CSV</button>
+          <button class="btn sm danger" onclick="if(confirm('Replace current data with demo data?')) resetDB()">Reset to demo</button>
+        </div>
+        <div class="hint" style="margin-top:8px;">${saved?("Last saved locally: "+saved.slice(0,16).replace("T"," ")):"Not saved - current data is in memory only."} ${DB.meta.demo?"Currently showing demo data.":""}</div>
+      </div></div>
+      <div class="card"><div class="chead">Import</div><div class="cbody">
+        <div class="small" style="margin-bottom:8px;"><b>Option A - full JSON</b> (recommended; exact structure of "Export full JSON"). Replaces everything.</div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <input type="file" id="jsonfile" accept=".json" style="font-size:11.5px;">
+          <button class="btn sm" onclick="importJsonFile()">Import JSON</button>
+        </div>
+        <div class="small" style="margin-bottom:8px;"><b>Option B - CSV per entity</b> (UTF-8, header row required, columns in the exact order shown in the schema card). Companies CSV replaces the roster; rounds / marks / KPIs attach to companies by <span class="mono">company_id</span>.</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="csvkind">${Object.keys(CSV_SPECS).map(k=>`<option value="${k}">${k}</option>`).join("")}</select>
+          <input type="file" id="csvfile" accept=".csv" style="font-size:11.5px;">
+          <button class="btn sm" onclick="importCsvFile()">Import CSV</button>
+        </div>
+        <div class="hint" style="margin-top:8px;">Cap-table exports (Carta, Pulley) and valuation files: map to the rounds and marks CSVs. Money in $M; percentages as numbers (11.2 = 11.2%); dates YYYY-MM-DD.</div>
+        <div style="border-top:1px solid var(--line-soft); margin-top:12px; padding-top:12px;">
+          <div class="small" style="margin-bottom:8px;"><b>Option C - Affinity list export</b> (CSV, as exported from an Affinity list via Export All / Export View). Columns are auto-detected by name - no reformatting needed. Replaces the Pipeline tab.</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="file" id="affinityfile" accept=".csv" style="font-size:11.5px;">
+            <button class="btn sm" onclick="importAffinityCsv()">Import Affinity CSV</button>
+          </div>
+          <div class="hint" style="margin-top:6px;">Detected columns: Name / Organization Name (required); Status or Stage → funnel stage; Owner(s); Amount / Deal Size / Check Size → check $M; Industry / Sector; Source(d); Date Added / Created. Statuses map by keyword (e.g. anything containing "diligence" → Diligence, "term" → Term Sheet, "won/closed/invested" → Closed, "pass/lost/dead" → Passed); unmatched → Sourced. Diligence gates are seeded to match the stage.</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="card" style="margin-top:14px;"><div class="chead">CSV Column Specs</div><div class="cbody">
+      ${Object.entries(CSV_SPECS).map(([k,cols])=>`<div style="margin-bottom:8px;"><span class="pill blue">${k}.csv</span><div class="mono small" style="margin-top:3px;">${cols}</div></div>`).join("")}
+      <div class="hint">bools: Y/N - health: green|yellow|red - board_seat: Director|Observer|None - instrument: ${INSTRUMENTS.join(" | ")}</div>
+    </div></div>
+    <div class="card" style="margin-top:14px;"><div class="chead">JSON Schema (annotated example)</div><div class="cbody">
+      <pre class="schema">{
+  "fund": {
+    "name": "Ridgeline Direct Investments",
+    "currency": "USD", "vintage": 2019,        // vintage = inception year
+    "style": "evergreen",                      // "evergreen" | "closed-end" - switches labels and metrics
+    "capitalBase": 400,                        // $M permanent capital (evergreen)
+    "committed": 400, "called": 310,           // $M (closed-end only)
+    "distributionPolicy": "Realized proceeds recycle ...",
+    "feeDragPct": 2.3,                         // used for net IRR estimate
+    "navHistory": [{ "q": "2026-Q1", "nav": 498.5, "cost": 269.0 }],   // quarterly - drives FMV growth KPIs
+    "annualPlatformTarget": 5, "ytdPlatformsClosed": 2,
+    "distributions": [{ "date": "2024-10-15", "amount": 27.5, "company": "Solvine", "note": "..." }]
+  },
+  "companies": [{
+    "id": "C001", "name": "...", "sector": "...", "stage": "Series B", "vintage": 2021,
+    "health": "green|yellow|red", "riskFlags": ["..."],
+    "instrument": "SAFE|Convertible Note|Debt-to-Note|Preferred Equity|Common Equity",
+    "ownershipPct": 11.2, "invested": 8.5, "fmv": 24.7, "realized": 0,   // all $M
+    "exited": false, "proRata": true,
+    "reservesAllocated": 4.0, "reservesDeployed": 1.5,
+    "board": { "seat": "Director|Observer|None", "holder": "...", "nextMeeting": "2026-08-12" },
+    "kpis": [{ "period": "2026-Q1", "revenue": 14.2, "burn": 0.9, "cash": 22.4, "runwayMo": 25 }],
+    "thresholds": { "minRunwayMo": 12 },       // drives dashboard alerts
+    "source": "University spinout",            // sourcing channel - drives the sourcing chart
+    "fte": 145, "fteNB": 98, "fteAtEntry": 38, // jobs KPI: total / in-NB / at entry
+    "womenCSuite": 2, "cSuiteSize": 5,         // diversity KPI
+    "rounds": [{ "date": "2021-03-15", "label": "Series A", "instrument": "...",
+                 "invested": 5.0, "roundTotal": 12,          // roundTotal drives the leverage KPI
+                 "nbOther": 1.5,                             // $M from other NB investors (excl. us) - NB co-investment KPI
+                 "postMoney": 42, "ownershipAfter": 11.9, "lead": "Us", "note": "..." }],
+    "milestones": [{ "title": "...", "due": "2026-12-31", "status": "on-track|at-risk|pending" }],
+    "covenants": [{ "text": "...", "status": "compliant|watch|breached" }],
+    "govFunding": { "program": "...", "amount": 45, "conditions": "...", "status": "active|conditions pending" },
+    "marks": [{ "date": "2026-03-31", "fmv": 24.7, "method": "...", "by": "...", "rationale": "..." }],
+    "tasks": [{ "title": "...", "due": "2026-08-05", "done": false }]
+  }],
+  "pipeline": [{
+    "id": "P001", "name": "...", "sector": "...", "funnel": "Sourced|Screening|Diligence|IC Review|Term Sheet|Closed|Passed",
+    "source": "...", "checkSize": 7.0, "valuation": 52, "owner": "...", "nextStep": "...", "added": "2026-04-02",
+    "gates": [{ "name": "Initial screen", "status": "pending|in-progress|passed|failed" }],
+    "termSheet": { "security": "...", "preMoney": 45, "postMoney": 52, "investment": 7.0, "ownership": 13.5,
+                   "liquidation": "...", "antiDilution": "...", "board": "...", "proRata": "...",
+                   "dividends": "...", "optionPool": "...", "founderVesting": "..." }
+  }],
+  "fundInvestments": [{                       // strategic LP positions - separate from direct portfolio
+    "id": "F001", "name": "Meridian Growth Fund III", "manager": "...", "strategy": "Growth equity",
+    "vintage": 2021, "committed": 15, "called": 11.0, "distributions": 1.5, "nav": 13.8,   // all $M
+    "coInvestRights": true, "coInvestsDone": 2, "referrals": 3,
+    "capitalToDirect": 6.5,                    // $M this fund (and its network) deployed into our direct portfolio
+    "womenSeniorGP": true,                     // women in the manager's senior leadership
+    "nextCallEst": "2026-09-30", "agm": "2026-10-15", "contact": "...", "rationale": "...",
+    "cashflows": [{ "date": "2021-06-30", "amount": -3.0 }]   // negative = call, positive = distribution
+  }],
+  "memos": {}   // keyed by company/deal id; section text
+}</pre>
+      <div class="hint">Metric conventions: MOIC = (FMV + realized) / invested. TVPI = (NAV + realized proceeds) / invested cost; DPI = realized proceeds / cost; RVPI = NAV / cost - reported in both modes. Gross IRR = since-inception XIRR of round outflows, realizations, and current NAV. Net IRR = gross minus feeDragPct. Evergreen mode adds context rather than removing metrics: proceeds recycle into the capital base (dry powder = capitalBase - invested + realizations), DPI is flagged as recycling-based rather than shareholder distributions, and committed/called framing is replaced by capital base / net deployed. Set fund.style to "closed-end" for a distributing-vehicle presentation.</div>
+    </div></div>`;
+}
+function exportJson(){ downloadFile("portfolio_command_data.json", JSON.stringify(DB, null, 2), "application/json"); }
+function importJsonFile(){
+  const f = $("#jsonfile").files[0]; if(!f){ toast("Choose a .json file first"); return; }
+  f.text().then(txt=>{
+    try{
+      const d = JSON.parse(txt);
+      if(!d.companies || !d.fund) throw new Error("Missing 'companies' or 'fund' keys");
+      d.pipeline = d.pipeline||[]; d.fundInvestments = d.fundInvestments||[]; d.memos = d.memos||{}; d.meta = {schemaVersion:1, savedAt:null, demo:false};
+      d.companies.forEach(c=>{ c.riskFlags=c.riskFlags||[]; c.kpis=c.kpis||[]; c.rounds=c.rounds||[]; c.marks=c.marks||[]; c.milestones=c.milestones||[]; c.covenants=c.covenants||[]; c.tasks=c.tasks||[]; c.board=c.board||{seat:"None",holder:"-",nextMeeting:null}; c.thresholds=c.thresholds||{minRunwayMo:12}; c.realized=c.realized||0; });
+      DB = d; renderAll(); toast("Imported "+d.companies.length+" companies");
+    }catch(e){ alert("Import failed: "+e.message); }
+  });
+}
+function parseCsv(txt){
+  const rows=[]; let row=[], cur="", inQ=false;
+  for(let i=0;i<txt.length;i++){ const ch=txt[i];
+    if(inQ){ if(ch==='"'){ if(txt[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=ch; }
+    else if(ch==='"') inQ=true;
+    else if(ch===","){ row.push(cur); cur=""; }
+    else if(ch==="\n"||ch==="\r"){ if(cur!==""||row.length){ row.push(cur); rows.push(row); row=[]; cur=""; } if(ch==="\r"&&txt[i+1]==="\n") i++; }
+    else cur+=ch; }
+  if(cur!==""||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.length>1||r[0]!=="");
+}
+function importCsvFile(){
+  const kind = $("#csvkind").value; const f = $("#csvfile").files[0];
+  if(!f){ toast("Choose a .csv file first"); return; }
+  f.text().then(txt=>{
+    try{
+      const rows = parseCsv(txt); const header = rows.shift().map(h=>h.trim().toLowerCase());
+      const expected = CSV_SPECS[kind].split(",");
+      const idx = {}; expected.forEach(col=>{ idx[col]=header.indexOf(col); if(idx[col]<0) throw new Error("Missing column: "+col); });
+      const num = v => v===""||v==null? null : parseFloat(v);
+      if(kind==="companies"){
+        DB.companies = rows.map(r=>({ id:r[idx.id], name:r[idx.name], sector:r[idx.sector], stage:r[idx.stage], vintage:parseInt(r[idx.vintage])||null,
+          instrument:r[idx.instrument], health:(r[idx.health]||"green").toLowerCase(), ownershipPct:num(r[idx.ownership_pct])||0,
+          invested:num(r[idx.invested_m])||0, fmv:num(r[idx.fmv_m])||0, realized:num(r[idx.realized_m])||0,
+          proRata:/^y/i.test(r[idx.pro_rata]||""), reservesAllocated:num(r[idx.reserves_allocated_m])||0, reservesDeployed:num(r[idx.reserves_deployed_m])||0,
+          board:{seat:r[idx.board_seat]||"None", holder:r[idx.board_holder]||"-", nextMeeting:r[idx.next_meeting]||null},
+          exited:/^y/i.test(r[idx.exited]||""), riskFlags:[], kpis:[], rounds:[], marks:[], milestones:[], covenants:[], tasks:[], govFunding:null,
+          thresholds:{minRunwayMo:12}, ceo:"-", hq:"-", desc:"",
+          source:r[idx.source]||"", fte:num(r[idx.fte])||0, fteNB:num(r[idx.fte_nb])||0, fteAtEntry:num(r[idx.fte_at_entry])||0,
+          womenCSuite:num(r[idx.women_csuite])||0, cSuiteSize:num(r[idx.csuite_size])||0 }));
+        DB.meta.demo=false;
+      } else if(kind==="fund_investments"){
+        DB.fundInvestments = rows.map(r=>({ id:r[idx.id], name:r[idx.name], manager:r[idx.manager]||"-", strategy:r[idx.strategy]||"-",
+          vintage:parseInt(r[idx.vintage])||null, committed:num(r[idx.committed_m])||0, called:num(r[idx.called_m])||0,
+          distributions:num(r[idx.distributions_m])||0, nav:num(r[idx.nav_m])||0,
+          coInvestRights:/^y/i.test(r[idx.co_invest_rights]||""), coInvestsDone:0, referrals:0, capitalToDirect:num(r[idx.capital_to_direct_m])||0, womenSeniorGP:/^y/i.test(r[idx.women_senior_gp]||""),
+          nextCallEst:r[idx.next_call_date]||null, agm:r[idx.agm_date]||null, contact:"", rationale:r[idx.rationale]||"", cashflows:[] }));
+        DB.meta.demo=false;
+      } else if(kind==="fund_cashflows"){
+        rows.forEach(r=>{
+          const f = (DB.fundInvestments||[]).find(x=>x.id===r[idx.fund_id]); if(!f) return;
+          f.cashflows.push({date:r[idx.date], amount:num(r[idx.amount_m])||0});
+        });
+        (DB.fundInvestments||[]).forEach(f=>f.cashflows.sort((a,b)=>a.date<b.date?-1:1));
+      } else {
+        rows.forEach(r=>{
+          const c = DB.companies.find(x=>x.id===r[idx.company_id]); if(!c) return;
+          if(kind==="rounds") c.rounds.push({date:r[idx.date], label:r[idx.label], instrument:r[idx.instrument], invested:num(r[idx.invested_m])||0, roundTotal:num(r[idx.round_total_m]), nbOther:num(r[idx.nb_other_m]), postMoney:num(r[idx.post_money_m]), ownershipAfter:num(r[idx.ownership_after_pct])||0, lead:r[idx.lead]||"", note:r[idx.note]||""});
+          if(kind==="marks") c.marks.push({date:r[idx.date], fmv:num(r[idx.fmv_m])||0, method:r[idx.method]||"", by:r[idx.marked_by]||"", rationale:r[idx.rationale]||""});
+          if(kind==="kpis") c.kpis.unshift({period:r[idx.period], revenue:num(r[idx.revenue_m])||0, burn:num(r[idx.monthly_burn_m])||0, cash:num(r[idx.cash_m])||0, runwayMo:num(r[idx.runway_months])||0});
+        });
+        DB.companies.forEach(c=>{ c.rounds.sort((a,b)=>a.date<b.date?-1:1); c.marks.sort((a,b)=>a.date<b.date?1:-1); });
+      }
+      renderAll(); toast("Imported "+rows.length+" "+kind+" rows");
+    }catch(e){ alert("CSV import failed: "+e.message); }
+  });
+}
+
+/* ---- Affinity list-export import (fuzzy column mapping) ---- */
+function mapAffinityStatus(s){
+  const t = (s||"").toLowerCase();
+  if(/diligen/.test(t)) return "Diligence";
+  if(/term/.test(t)) return "Term Sheet";
+  if(/\bic\b|committee|memo/.test(t)) return "IC Review";
+  if(/won|closed|invested|portfolio/.test(t)) return "Closed";
+  if(/pass|lost|dead|declin|reject/.test(t)) return "Passed";
+  if(/screen|meeting|review|contact|active|evaluat/.test(t)) return "Screening";
+  return "Sourced";
+}
+function seedGates(funnel){
+  const depth = {"Sourced":0,"Screening":0,"Diligence":1,"IC Review":7,"Term Sheet":8,"Closed":9,"Passed":0}[funnel]||0;
+  return DEFAULT_GATES.map((g,i)=>({name:g, status: i<depth?"passed": i===depth&&funnel!=="Sourced"&&funnel!=="Passed"?"in-progress":"pending"}));
+}
+function importAffinityCsv(){
+  const f = $("#affinityfile").files[0]; if(!f){ toast("Choose the Affinity .csv first"); return; }
+  f.text().then(txt=>{
+    try{
+      const rows = parseCsv(txt); if(rows.length<2) throw new Error("No data rows found");
+      const header = rows.shift().map(h=>h.trim().toLowerCase());
+      const find = (...pats)=>{ for(const p of pats){ const i=header.findIndex(h=>p.test(h)); if(i>=0) return i; } return -1; };
+      const iName = find(/^(organization |company )?name$/, /organization/, /company/, /name/);
+      if(iName<0) throw new Error("Could not find a Name / Organization Name column");
+      const iStatus = find(/^status$/, /stage/, /status/);
+      const iOwner = find(/owner/);
+      const iAmt = find(/amount/, /deal size/, /check/, /round size/);
+      const iSector = find(/industry/, /sector/);
+      const iSource = find(/^source/, /sourced/, /referr/);
+      const iDate = find(/date added/, /added/, /created/);
+      const iNext = find(/next step/, /next action/, /notes?$/);
+      const deals = rows.filter(r=>r[iName] && r[iName].trim()).map((r,ix)=>{
+        const funnel = iStatus>=0? mapAffinityStatus(r[iStatus]) : "Sourced";
+        let amt = null;
+        if(iAmt>=0 && r[iAmt]){ amt = parseFloat(String(r[iAmt]).replace(/[$,\s]/g,"")); if(!isNaN(amt) && amt>100000) amt = amt/1e6; else if(isNaN(amt)) amt=null; } // raw dollars → $M
+        return { id:"A"+String(ix+1).padStart(3,"0"), name:r[iName].trim(),
+          sector: iSector>=0? (r[iSector]||"").trim()||"-" : "-",
+          funnel, source: iSource>=0? (r[iSource]||"").trim()||"-" : "Affinity import",
+          checkSize: amt, valuation: null,
+          owner: iOwner>=0? (r[iOwner]||"").split(",")[0].trim()||"-" : "-",
+          nextStep: iNext>=0? (r[iNext]||"").trim() : "",
+          added: iDate>=0 && r[iDate]? (r[iDate].match(/\d{4}-\d{2}-\d{2}/)?.[0] || r[iDate].trim()) : "",
+          gates: seedGates(funnel), termSheet:null,
+          closedDate: funnel==="Closed"? (iDate>=0? r[iDate]:"") : undefined };
+      });
+      if(!deals.length) throw new Error("No usable rows");
+      DB.pipeline = deals; DB.meta.demo = false;
+      renderAll(); toast("Imported "+deals.length+" deals from Affinity");
+    }catch(e){ alert("Affinity import failed: "+e.message); }
+  });
+}
+
+/* =====================================================================
+   VIEW: MODELING (reserves allocation + exit waterfall / dilution)
+   ===================================================================== */
+const MODEL = { tab:"reserves", cid:null, inp:null };
+function renderModeling(){
+  const v = $("#view-modeling");
+  v.innerHTML = `
+    <h2 class="vtitle">Modeling</h2>
+    <div class="vsub">Follow-on reserve allocation and forward scenarios. Edits here update the in-memory store (reserves) or stay in the sandbox (scenarios).</div>
+    <div class="tabs2">
+      <button class="${MODEL.tab==="reserves"?"active":""}" onclick="MODEL.tab='reserves'; renderModeling()">Reserves &amp; Follow-On</button>
+      <button class="${MODEL.tab==="scenario"?"active":""}" onclick="MODEL.tab='scenario'; renderModeling()">Exit Waterfall &amp; Dilution</button>
+    </div>
+    <div id="model-body"></div>`;
+  if(MODEL.tab==="reserves") renderReservesTool(); else renderScenarioTool();
+}
+
+/* ---- Reserves & follow-on allocation ---- */
+function suggestedReserve(c){
+  if(c.exited || !c.proRata || c.health==="red") return 0;
+  const mult = c.health==="green"?0.8:0.5; // policy: 0.5-0.8x initial check
+  const initial = c.rounds.length? c.rounds[0].invested : c.invested;
+  return +(initial*mult).toFixed(1);
+}
+function renderReservesTool(){
+  const act = activeCompanies().sort((a,b)=>b.invested-a.invested);
+  const tAlloc = act.reduce((s,c)=>s+(c.reservesAllocated||0),0);
+  const tDep = act.reduce((s,c)=>s+(c.reservesDeployed||0),0);
+  const tSug = act.reduce((s,c)=>s+suggestedReserve(c),0);
+  const dry = fundMetrics().dryPowder;
+  $("#model-body").innerHTML = `
+    <div class="kpirow">
+      <div class="kpi"><div class="k">Allocated Reserves</div><div class="v">${fmt.m(tAlloc)}</div><div class="s">across ${act.filter(c=>c.reservesAllocated>0).length} companies</div></div>
+      <div class="kpi"><div class="k">Deployed</div><div class="v">${fmt.m(tDep)}</div><div class="s">Remaining ${fmt.m(tAlloc-tDep)}</div></div>
+      <div class="kpi"><div class="k">Policy-Suggested</div><div class="v">${fmt.m(tSug)}</div><div class="s">${tAlloc>tSug?"Over":"Under"}-allocated by ${fmt.m(Math.abs(tAlloc-tSug))}</div></div>
+      <div class="kpi"><div class="k">${isEvergreen()?"Dry Powder":"Uncalled Capital"}</div><div class="v">${fmt.m(dry)}</div><div class="s">${isEvergreen()?"Capital base less net deployed":"Committed less called"}</div></div>
+      <div class="kpi"><div class="k">Annual Follow-On Budget</div><div class="v">${fmt.m(DB.fund.annualFollowOnBudget)}</div><div class="s">per plan</div></div>
+    </div>
+    <div class="card"><div class="chead">Allocation by Company <span class="hint">${esc(DB.fund.reservesPolicy)}</span></div>
+    <div class="tblwrap"><table class="dt"><thead><tr>
+      <th>Company</th><th>Health</th><th>Pro-Rata</th><th class="num">Initial Check</th><th class="num">Total Cost</th><th class="num">MOIC</th>
+      <th class="num">Suggested $M</th><th class="num">Allocated $M</th><th class="num">Deployed</th><th class="num">Remaining</th><th></th></tr></thead>
+    <tbody>${act.map(c=>{ const sug=suggestedReserve(c); const rem=(c.reservesAllocated||0)-(c.reservesDeployed||0); const off=Math.abs((c.reservesAllocated||0)-sug)>0.05;
+      return `<tr>
+        <td><a class="link" onclick="openCompany('${c.id}')"><b>${esc(c.name)}</b></a></td>
+        <td>${healthPill(c.health)}</td>
+        <td>${c.proRata?'<span class="pill green">Yes</span>':'<span class="pill gray">No</span>'}</td>
+        <td class="num">${(c.rounds[0]?.invested??c.invested).toFixed(1)}</td>
+        <td class="num">${c.invested.toFixed(1)}</td>
+        <td class="num ${moicClass(moic(c))}">${fmt.x(moic(c))}</td>
+        <td class="num ${off?"down":""}">${sug.toFixed(1)}</td>
+        <td class="num"><input type="number" step="0.5" min="0" value="${(c.reservesAllocated||0).toFixed(1)}" style="width:70px; text-align:right; border:1px solid var(--line); border-radius:5px; padding:3px 5px;" onchange="setReserve('${c.id}', this.value)"></td>
+        <td class="num">${(c.reservesDeployed||0).toFixed(1)}</td>
+        <td class="num ${rem>0?"up":""}">${rem.toFixed(1)}</td>
+        <td><button class="btn sm ghost" onclick="setReserve('${c.id}', ${sug})">Use suggested</button></td>
+      </tr>`;}).join("")}</tbody></table></div></div>
+    <div class="hint" style="margin-top:8px;">Edits update the in-memory store immediately (totals above recalculate). Use Data tab → Save locally to persist. Suggested = 0.8x initial check (green) / 0.5x (yellow), pro-rata holders only, red excluded.</div>`;
+}
+function setReserve(id, val){ const c=DB.companies.find(x=>x.id===id); if(c){ c.reservesAllocated=Math.max(0,parseFloat(val)||0); renderReservesTool(); } }
+
+/* ---- Exit waterfall & dilution scenarios ---- */
+function scenarioDefaults(c){
+  const ev = c.ownershipPct>0? c.fmv/(c.ownershipPct/100) : (c.rounds.at(-1)?.postMoney||50);
+  return {
+    raise: +(Math.max(5, ev*0.2)).toFixed(0), pre: +(ev*1.2).toFixed(0), pool: 10,
+    participate: c.proRata, partAmt: null, // null = pro-rata
+    totalPref: +(ev*0.35).toFixed(0), yrs: 4,
+    bear: +(ev*0.5).toFixed(0), base: +(ev*1.5).toFixed(0), bull: +(ev*3).toFixed(0)
+  };
+}
+function runScenario(c, s){
+  const post = s.pre + s.raise;
+  const newInvPct = s.raise/post*100;
+  const poolPct = s.pool;
+  const dilutionFactor = 1 - newInvPct/100 - poolPct/100;
+  const partAmt = s.participate? (s.partAmt!=null? s.partAmt : +(c.ownershipPct/100*s.raise).toFixed(2)) : 0;
+  const ownAfter = c.ownershipPct*dilutionFactor + partAmt/post*100;
+  const investedTotal = c.invested + partAmt;
+  const ourPref = investedTotal; // 1x non-participating assumption
+  const totalPref = Math.max(s.totalPref + partAmt + (s.raise - partAmt), ourPref); // stack grows by new round
+  const proceedsAt = E => {
+    if(E<=0) return 0;
+    if(E <= totalPref) return E * (ourPref/totalPref);           // pari passu pref distribution
+    return Math.max(ourPref, ownAfter/100 * E);                   // take greater of pref or converted
+  };
+  const mk = E => { const p=proceedsAt(E); const mo=investedTotal>0?p/investedTotal:0;
+    const irr = s.yrs>0 && mo>0? (Math.pow(mo, 1/s.yrs)-1)*100 : null;
+    return {E, p, mo, irr}; };
+  return { post, newInvPct, poolPct, dilutionFactor, partAmt, ownAfter, investedTotal, ourPref, totalPref, proceedsAt,
+    cases: [["Bear",mk(s.bear)],["Base",mk(s.base)],["Bull",mk(s.bull)]] };
+}
+function renderScenarioTool(){
+  const act = activeCompanies().filter(c=>c.ownershipPct>0).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!MODEL.cid || !act.find(c=>c.id===MODEL.cid)) MODEL.cid = act[0]?.id;
+  const c = act.find(x=>x.id===MODEL.cid); if(!c){ $("#model-body").innerHTML="<div class='small'>No active companies.</div>"; return; }
+  if(!MODEL.inp || MODEL.inp._cid!==c.id){ MODEL.inp = scenarioDefaults(c); MODEL.inp._cid=c.id; }
+  const s = MODEL.inp;
+  const r = runScenario(c, s);
+  const field = (label,key,step)=>`<div class="item"><div class="l">${label}</div><input type="number" step="${step||1}" value="${s[key]??""}" style="width:100%; border:1px solid var(--line); border-radius:5px; padding:4px 6px; margin-top:2px;" onchange="MODEL.inp['${key}']=parseFloat(this.value)||0; renderScenarioTool()"></div>`;
+  $("#model-body").innerHTML = `
+    <div class="fbar">
+      <select onchange="MODEL.cid=this.value; MODEL.inp=null; renderScenarioTool()">${act.map(x=>`<option value="${x.id}" ${x.id===MODEL.cid?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+      <button class="btn sm ghost" onclick="MODEL.inp=null; renderScenarioTool()">Reset inputs</button>
+      <span class="count">Current: ${fmt.pct(c.ownershipPct)} ownership - ${fmt.m(c.invested)} cost - marked ${fmt.m(c.fmv)} (implied EV ${fmt.m(c.fmv/(c.ownershipPct/100))})</span>
+    </div>
+    <div class="grid" style="grid-template-columns: 320px 1fr;">
+      <div class="card"><div class="chead">Assumptions</div><div class="cbody">
+        <div class="dsec"><h4>Next Round</h4><div class="kv" style="grid-template-columns:1fr 1fr;">
+          ${field("Raise $M","raise")}${field("Pre-money $M","pre")}${field("Pool expansion %","pool",0.5)}
+          <div class="item"><div class="l">PARTICIPATE (PRO-RATA)</div><select style="width:100%; margin-top:2px; border:1px solid var(--line); border-radius:5px; padding:4px;" onchange="MODEL.inp.participate=this.value==='y'; renderScenarioTool()"><option value="y" ${s.participate?"selected":""}>Yes</option><option value="n" ${!s.participate?"selected":""}>No</option></select></div>
+          ${s.participate?field("Override our $M (blank = pro-rata)","partAmt",0.1):""}
+        </div></div>
+        <div class="dsec"><h4>Exit</h4><div class="kv" style="grid-template-columns:1fr 1fr;">
+          ${field("Bear exit $M","bear")}${field("Base exit $M","base")}${field("Bull exit $M","bull")}${field("Years to exit","yrs",0.5)}
+          ${field("Pref stack today $M","totalPref")}
+        </div></div>
+        <div class="hint">Simplifications: 1x non-participating preference, pari passu stack, pool carved pre-money, no anti-dilution ratchets. Waterfall = greater of preference or as-converted at exit.</div>
+      </div></div>
+      <div>
+        <div class="kpirow">
+          <div class="kpi"><div class="k">Ownership After Round</div><div class="v">${fmt.pct(r.ownAfter)}</div><div class="s">from ${fmt.pct(c.ownershipPct)} (${r.partAmt>0?"+"+fmt.m(r.partAmt)+" follow-on":"no participation"})</div></div>
+          <div class="kpi"><div class="k">Post-Money</div><div class="v">${fmt.m(r.post)}</div><div class="s">New money ${fmt.pct(r.newInvPct)} + pool ${fmt.pct(r.poolPct)}</div></div>
+          <div class="kpi"><div class="k">Total Cost After</div><div class="v">${fmt.m(r.investedTotal)}</div><div class="s">Our 1x pref = ${fmt.m(r.ourPref)}</div></div>
+          <div class="kpi"><div class="k">Pref Stack After</div><div class="v">${fmt.m(r.totalPref)}</div><div class="s">All preferred, pari passu</div></div>
+        </div>
+        <div class="card"><div class="chead">Scenario Outcomes</div><div class="cbody">
+          <table class="dt"><thead><tr><th>Case</th><th class="num">Exit EV $M</th><th class="num">Our Proceeds $M</th><th class="num">MOIC</th><th class="num">IRR (${s.yrs}y)</th></tr></thead>
+          <tbody>${r.cases.map(([n,x])=>`<tr><td><b>${n}</b></td><td class="num">${x.E.toFixed(0)}</td><td class="num">${x.p.toFixed(1)}</td><td class="num ${moicClass(x.mo)}"><b>${fmt.x(x.mo)}</b></td><td class="num">${x.irr!=null?fmt.pct(x.irr):"-"}</td></tr>`).join("")}</tbody></table>
+        </div></div>
+        <div class="card" style="margin-top:14px;"><div class="chead">Proceeds vs. Exit Value</div><div class="cbody"><div class="chartbox"><canvas id="ch-waterfall"></canvas></div></div></div>
+      </div>
+    </div>`;
+  requestAnimationFrame(()=>{
+    const maxE = Math.max(s.bull*1.25, 10); const pts=40;
+    const xs=[], ys=[], cost=[];
+    for(let i=0;i<=pts;i++){ const E=maxE*i/pts; xs.push(Math.round(E)); ys.push(+r.proceedsAt(E).toFixed(1)); cost.push(+r.investedTotal.toFixed(1)); }
+    makeChart("ch-waterfall",{type:"line", data:{labels:xs, datasets:[
+      {label:"Our proceeds", data:ys, borderColor:"#2563eb", backgroundColor:"rgba(37,99,235,.07)", fill:true, pointRadius:0, borderWidth:2, tension:.15},
+      {label:"Our cost (breakeven)", data:cost, borderColor:"#b45309", borderDash:[5,4], pointRadius:0, borderWidth:1.5}]},
+      options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:"top"}},
+        scales:{x:{title:{display:true,text:"Exit enterprise value ($M)"}, ticks:{maxTicksLimit:9}}, y:{title:{display:true,text:"$M"}}}}});
+  });
+}
+
+/* =====================================================================
+   BOOT & NAVIGATION
+   ===================================================================== */
+const RENDERERS = { dashboard:renderDashboard, portfolio:renderPortfolio, funds:renderFunds, pipeline:renderPipeline, modeling:renderModeling, memo:renderMemo, reports:renderReports, data:renderData };
+let CURRENT = "dashboard";
+function switchView(name){
+  CURRENT = name;
+  document.querySelectorAll("#mainnav button").forEach(b=>b.classList.toggle("active", b.dataset.view===name));
+  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active", x.id==="view-"+name));
+  RENDERERS[name]();
+}
+function renderAll(){
+  const m = fundMetrics();
+  $("#fundtag").innerHTML = `<b>${esc(DB.fund.name)}</b>${isEvergreen()?' <span style="color:#7fb0ff">EVERGREEN</span>':''}<br>NAV ${fmt.m(m.fmv)} - TVPI ${fmt.x(m.tvpi)} - ${m.nActive} companies`;
+  switchView(CURRENT);
+}
+document.querySelectorAll("#mainnav button").forEach(b=>b.addEventListener("click", ()=>switchView(b.dataset.view)));
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeDrawer(); });
+loadDB();
+renderAll();
+</script>
+</body>
+</html>
