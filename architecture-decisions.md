@@ -19,6 +19,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 **Consequences.**
 - Daniel's export → edit → re-import loop is unchanged. No retraining, no migration on his side.
 - The contract is versioned independently of the database. Schema changes underneath do not bump `schemaVersion`; only contract changes do.
+- **Accepted by the VC team lead (D-1).** Warning-and-correct on import is agreed, rather than the file being taken at its word.
 - Contract stability must be enforced by test. A serialisation snapshot test runs against the demo dataset on every build; any drift in field names, nesting or units fails CI.
 - Money remains `$M` in the contract while the database stores dollars. The API layer owns that conversion in exactly one place.
 
@@ -100,6 +101,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - The same figure will legitimately appear under two different quarter labels depending on the view. Every screen and report must state which convention it uses, or the discrepancy will be read as an error.
 - Same-store revenue growth, FMV growth QoQ/YoY and the NAV bridge become unambiguous, which they are not today.
 - The contract keeps emitting a label string; the API chooses which convention to emit per endpoint.
+- **Accepted by the VC team lead (D-6), with the split agreed:** fiscal labels on Reports and all board-facing output, since that is the calendar the board works to; calendar labels on the Portfolio drawer KPI history, since that is what Visible shows and what founders reported against. Every quarterly view states which convention it is using, so the difference reads as information rather than an error.
 
 ---
 
@@ -333,21 +335,16 @@ Records that represent judgement rather than fact — health rating, risk flags,
 
 ## Decisions requiring the VC team lead
 
-**Outstanding — still to be walked through with Daniel.**
-
-| Ref | Decision | ADR | Why it needs him |
-|---|---|---|---|
-| D‑1 | Confirm the import contract may treat derived fields as advisory, correcting them against the transactions and returning a reconciliation warning | ADR-001 | His stated requirement was that the contract stay intact. This is the one place his workflow behaviour changes. |
-| D‑6 | Confirm which quarter convention each screen should display, now that fiscal and calendar labels differ | ADR-006 | Presentation choice across every quarterly view. Both labels are correct; each screen must state which it uses. |
-
-**Settled.**
+**All settled as of 28 July 2026.** No architecture or data decision remains open.
 
 | Ref | Decision | ADR | Resolution |
 |---|---|---|---|
-| D‑2 | How revenue is presented | ADR-013, ADR-014 | **Display as reported.** Visible's quarterly actual is stored and shown unchanged; no annualisation. Label moves from run-rate to quarterly revenue in the tile, the memo prefill and the guide. |
+| D‑1 | Import contract may treat derived fields as advisory | ADR-001 | **Accepted.** Import corrects against the transactions and returns a reconciliation warning rather than accepting a contradicting figure. |
+| D‑2 | How revenue is presented | ADR-013, ADR-014 | **Display as reported.** Visible's quarterly actual stored and shown unchanged; no annualisation. Label moves from run-rate to quarterly revenue. |
 | D‑3 | FMV growth showing two flat quarters per year | ADR-007 | **Accepted**, with carry-forward labelled on screen. Cadence unchanged. |
 | D‑4 | Deal-close capture of round total, NB co-investors and ownership | ADR-012 | **Accepted.** Deal lead completes the capture form at close; coverage monitored on the dashboard. |
-| D‑5 | Diversity tile treatment of non-reporters | ADR-010 | **Accepted.** Non-reporters excluded from the denominator; coverage shown alongside the figure. NULL never renders as zero. |
+| D‑5 | Diversity tile treatment of non-reporters | ADR-010 | **Accepted.** Non-reporters excluded from the denominator; coverage shown alongside. NULL never renders as zero. |
+| D‑6 | Quarter convention per screen | ADR-006 | **Accepted.** Fiscal on Reports and board-facing views; calendar on the Portfolio KPI history. Every view states which it uses. |
 
 ## Actions in flight
 
@@ -358,4 +355,4 @@ Records that represent judgement rather than fact — health rating, risk flags,
 | A‑3 | Issue the staging templates to Finance and reconcile a first batch against agreed control totals | Systems & Data Analyst + Finance |
 | A‑4 | Build the company crosswalk — Finance name → Affinity organisation → internal company_id — before any transaction loads | Systems & Data Analyst |
 | A‑5 | Establish how far back *per-company* marks exist, as opposed to fund-level NAV only | Finance |
-| A‑6 | Walk D‑1 and D‑6 through with the VC team lead | Systems & Data Analyst |
+| A‑6 | ~~Walk D‑1 and D‑6 through with the VC team lead~~ — **complete, 28 July 2026** | Systems & Data Analyst |
