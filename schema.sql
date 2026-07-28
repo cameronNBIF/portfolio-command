@@ -257,6 +257,12 @@ create table transaction (
   entered_by           uuid not null references app_user,
   batch_id             uuid,                     -- groups an Excel bulk upload
 
+  -- ADR-018: financial rows are append-only. An error is voided by a
+  -- dated reversal referencing the original; the original is never edited.
+  voided_by_transaction_id bigint references transaction,
+  voided_at            timestamptz,
+  voided_reason        text,
+  reverses_transaction_id  bigint references transaction,
   constraint txn_one_subject check (
     (company_id is not null and fund_investment_id is null) or
     (company_id is null and fund_investment_id is not null)),
@@ -654,19 +660,26 @@ comment on function fiscal_quarter_label is
 -- longer silently disagree with the transactions behind them.
 -- =====================================================================
 
+-- NOTE: every view below reads LIVE rows only. Voided originals and their
+-- reversals both carry voided_at / reverses_transaction_id and are excluded,
+-- so totals are net of corrections while the history remains intact (ADR-018).
+create or replace view v_transaction_live as
+select * from transaction
+where voided_at is null and reverses_transaction_id is null;
+
 create or replace view v_company_invested as
 select c.company_id,
        coalesce(sum(t.amount) filter (where t.txn_type in ('investment','follow_on')), 0) as invested,
        min(t.txn_date) filter (where t.txn_type = 'investment')                            as first_investment_date
 from company c
-left join transaction t on t.company_id = c.company_id
+left join v_transaction_live t on t.company_id = c.company_id
 group by c.company_id;
 
 create or replace view v_company_realized as
 select c.company_id,
        coalesce(sum(t.amount) filter (where t.txn_type = 'realization'), 0) as realized
 from company c
-left join transaction t on t.company_id = c.company_id
+left join v_transaction_live t on t.company_id = c.company_id
 group by c.company_id;
 
 -- FMV as at a date: most recent final mark on or before that date.
@@ -682,7 +695,7 @@ returns numeric language sql stable as $$
       order by vm.effective_date desc, vm.booked_at desc
       limit 1),
     (select coalesce(sum(t.amount), 0)
-       from transaction t
+       from v_transaction_live t
       where t.company_id = p_company_id
         and t.txn_type in ('investment','follow_on')
         and t.txn_date <= p_as_of)
@@ -744,7 +757,7 @@ select r.investment_round_id,
 from investment_round r
 join lateral (
     select coalesce(sum(t.amount),0) as our_invested
-      from transaction t
+      from v_transaction_live t
      where t.investment_round_id = r.investment_round_id
        and t.txn_type in ('investment','follow_on')) ours on true
 where r.round_total is not null
@@ -767,11 +780,11 @@ select fi.fund_investment_id,
        end                                             as dpi
 from fund_investment fi
 left join lateral (
-    select sum(t.amount) as called from transaction t
+    select sum(t.amount) as called from v_transaction_live t
      where t.fund_investment_id = fi.fund_investment_id
        and t.txn_type = 'capital_call') calls on true
 left join lateral (
-    select sum(t.amount) as distributions from transaction t
+    select sum(t.amount) as distributions from v_transaction_live t
      where t.fund_investment_id = fi.fund_investment_id
        and t.txn_type = 'distribution') dists on true
 left join lateral (

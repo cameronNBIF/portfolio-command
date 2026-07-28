@@ -114,6 +114,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 **Consequences.**
 - NAV changes between valuation cycles only through new capital deployed at cost. Two of every four quarters will show near-zero FMV growth, then a step. This is correct behaviour and must be labelled, not smoothed.
 - **Resolved (O-1):** 31 January and 31 July are the valuation **effective dates**. Marks are "as at" those dates and are reported to the board two to three months later. `effective_date` carries the 31 Jan / 31 Jul date; `booked_at` carries the date Finance completed entry.
+- **Accepted by the VC team lead (D-3).** The two flat quarters per year are understood and the carry-forward labelling is agreed.
 - **Resolved (O-2):** the FMV cadence does not change because of this platform. The 31 March fiscal year end continues to be served by a 31 January mark carried forward two months. This is accepted business as usual; the platform's obligation is to label it, not to alter it.
 - **The reporting lag has a visible consequence.** Between an effective date and the date Finance books the exercise, the platform shows the *previous* mark as current. A report run in March for a 31 January as-of date will differ from the same report run in April, once the January marks are entered. Board-facing views therefore carry a stamp reading "marks as at *[effective date]*, booked *[booked date]*", and `fund_nav_snapshot.frozen_at` fixes the figures actually issued so a re-run never restates a published number.
 - Marks are entered by Finance and treated as final on entry (ADR-008). A `supersedes_id` chain preserves any later restatement.
@@ -164,8 +165,8 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - `fteAtEntry` becomes derivable — the reading nearest the first investment date — rather than a hand-maintained field that silently goes stale.
 - Definitions of "NB employee" and "C-suite" are set by the request text, resolving Q6. Stamping the version means a wording change appears as a documented break in the series rather than an unexplained shift.
 - Companies that predate Visible adoption need a manual baseline; `source_system` distinguishes `visible` from `manual` rows.
-- **Revenue is period actual, not run-rate (O-5).** Visible collects the past quarter's actual revenue. Daniel's prototype labels and aggregates this figure as run-rate — in the dashboard tile, in the memo prefill text, and in the user guide. The metric arithmetic is unaffected and same-store growth is arguably better on actuals, but the on-screen label is wrong against the real data. See ADR-013 and decision D-2.
-- **Diversity fields are not yet collected (O-4).** `women_csuite` and `csuite_size` must be added to the Visible request. Until then they are NULL, and **NULL must not be rendered as zero**. Reporting "0% of companies have women in the C-suite" when the truth is "not asked" is a materially worse error than reporting nothing. The diversity tile shows the metric alongside its coverage — reported by *n* of *m* companies — and excludes non-reporters from the denominator rather than counting them as zeros. The prototype does not currently make this distinction.
+- **Revenue is period actual, not run-rate (O-5), and is presented as reported (D-2, resolved).** Visible collects the past quarter's actual revenue. The figure is stored and displayed exactly as Visible supplies it; no annualisation is applied. See ADR-013.
+- **Diversity fields are not yet collected (O-4), and non-reporters are excluded (D-5, accepted).** `women_csuite` and `csuite_size` must be added to the Visible request. Until then they are NULL, and **NULL must not be rendered as zero**. Reporting "0% of companies have women in the C-suite" when the truth is "not asked" is a materially worse error than reporting nothing. The diversity tile shows the metric alongside its coverage — reported by *n* of *m* companies — and excludes non-reporters from the denominator rather than counting them as zeros. The prototype does not currently make this distinction.
 
 ---
 
@@ -191,7 +192,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 
 **Context.** `round_total` drives the leverage KPI and `nb_other` drives the NB co-investment KPI. Neither exists in Affinity, Visible or Finance's spreadsheets. Ownership percentage — which feeds MOIC, leverage and the waterfall — lives in Excel files on SharePoint and in Visible. The deal lead will enter these at close.
 
-**Decision.** A single deal-close form captures round total, co-investors with an NB flag and amounts, ownership after the round, pro-rata rights and post-money, writing to `investment_round`, `round_coinvestor` and `company_ownership`. The SharePoint cap table is retained as the linked source document; the platform holds the structured values. A `v_mandate_completeness` view exposes coverage — what percentage of rounds carry a round total — on the dashboard.
+**Decision.** *Accepted by the VC team lead (D-4).* A single deal-close form captures round total, co-investors with an NB flag and amounts, ownership after the round, pro-rata rights and post-money, writing to `investment_round`, `round_coinvestor` and `company_ownership`. The SharePoint cap table is retained as the linked source document; the platform holds the structured values. A `v_mandate_completeness` view exposes coverage — what percentage of rounds carry a round total — on the dashboard.
 
 **Consequences.**
 - Two mandate KPIs depend on deal-lead discipline at a single moment. Monitoring coverage is what prevents silent decay; without it the leverage number degrades invisibly as rounds accumulate without totals.
@@ -213,7 +214,8 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - The rebuild is verifiable. Golden-master tests freeze the prototype's outputs on the demo dataset and assert the metrics package reproduces them; any change to a board number becomes a test failure rather than a discovery.
 - The conventions that make these metrics defensible are protected from well-intentioned normalisation by a future developer.
 - Known simplifications are inherited deliberately: net IRR as gross minus a fee-drag estimate, invested cost as a proxy for paid-in capital, and the waterfall assumptions in ADR-016. Each keeps its on-screen label.
-- **One live divergence, requiring the VC team lead's decision (D-2).** The prototype presents company revenue as run-rate; Visible supplies the past quarter's actual (O-5). This is not a definitional preference to be frozen — it is an implementation built on an input that does not exist as assumed. Three options: relabel the tile and the memo prefill as quarterly revenue and leave the arithmetic alone; annualise by four to preserve the run-rate framing, accepting that this misleads for seasonal or lumpy revenue; or show both. The first is recommended. Whichever is chosen, this is the one place where "freeze the definitions" and "change nothing on screen" (ADR-014) cannot both hold.
+- **The one divergence is resolved (D-2).** The prototype presented company revenue as run-rate; Visible supplies the past quarter's actual. Revenue is now stored and displayed **as reported**, with no annualisation. The label changes from run-rate to quarterly revenue in the dashboard tile, the memo prefill text and the user guide; the arithmetic is untouched.
+- Two second-order effects of D-2 to carry into build. The aggregate revenue figure is now roughly a quarter of the number the same tile showed under the run-rate label, so any board comparison against earlier output needs the basis change stated once. And same-store QoQ growth on actuals now carries seasonality that a run-rate framing masked — a same-quarter year-over-year comparison is the more robust measure for seasonal businesses, and is worth revisiting in phase 2 rather than changing now under ADR-013.
 - A definitions review against the funding agreement is no longer required as a blocker. The platform is not the system of submission for provincial reporting (ADR-017), so its mandate figures are management information rather than filed numbers.
 
 ---
@@ -230,7 +232,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - No user retraining, and Daniel can review the rebuild against a running copy of his own tool.
 - "Looks identical" is a testable acceptance criterion for phase 1, which keeps redesign discussions out of the migration.
 - The prototype's `esc()` discipline is replaced by React's default escaping. Any `dangerouslySetInnerHTML` requires justification.
-- **Two content exceptions, both forced by data rather than taste.** The revenue label must change to match what Visible actually supplies (ADR-013, D-2), and the diversity tile must distinguish "not reported" from zero (ADR-010). Everything else holds to the one-to-one rule; any further change is a phase-2 conversation.
+- **Two content exceptions, both forced by data rather than taste, both now settled.** The revenue label changes to quarterly revenue to match what Visible supplies (D-2), and the diversity tile distinguishes "not reported" from zero and shows coverage (D-5). Everything else holds to the one-to-one rule; any further change is a phase-2 conversation.
 - The board PDF is regenerated properly via Playwright rather than `@media print`, since it is now the sole board-facing artefact (ADR-005). This is the one place output will visibly improve.
 
 ---
@@ -283,6 +285,43 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 
 ---
 
+## ADR-018 — Financial records are append-only; corrections are reversals or supersessions
+
+**Status:** Accepted
+
+**Context.** After launch, Finance maintains transactions, valuation marks and LP cashflows directly in the platform. The natural interface design — and the one proposed — is a table view with in-place editing behind a confirmation prompt. For a financial registry that is the wrong default. Editing a transaction in place makes every previously issued board report irreproducible, and it quietly breaks the "what did we report then" property that the frozen NAV snapshots in ADR-007 depend on. A confirmation dialog protects against accident; it does not protect against history changing underneath a published number.
+
+**Decision.** Rows in `transaction`, `valuation_mark` and the LP cashflow set are **append-only**. A transaction entered in error is voided by a dated reversal that references the original. A mark is corrected by a new mark with `supersedes_id` set, the original moving to `superseded`. No original row is mutated or deleted, and there is no grace period during which editing is allowed — a same-session typo is corrected the same way as a two-year-old error.
+
+Records that represent judgement rather than fact — health rating, risk flags, milestones, covenants, reserves, board seats, memos, diligence gates — remain editable in place, with `audit_log` capturing before and after.
+
+**Consequences.**
+- Any historical report can be reproduced exactly, because the rows behind it still exist as they were.
+- The Finance interface needs a **Reverse** or **Correct** action on financial tables rather than an Edit button. Marginally more friction, deliberately placed.
+- Table views default to live rows. Reversed and superseded rows remain visible on demand but stay out of the way, and the running totals shown to Finance are net of reversals.
+- `transaction` gains `voided_by_transaction_id`, `voided_at` and `voided_reason`. `valuation_mark` already carries the supersession chain.
+- Bulk-loaded historical batches are reversible wholesale by `batch_id`, which is what makes an imperfect first load safe to attempt.
+
+---
+
+## ADR-019 — Finance-supplied data lands in a staging layer, not in production tables
+
+**Status:** Accepted
+
+**Context.** Finance is producing three pools of historical data — transactions, valuation marks, and LP fund activity. The proposal was to have that data match the production SQL column definitions and load it directly. That asks Finance to own things they have no way to know: surrogate keys, foreign-key relationships, enum spellings, the convention that transaction amounts are always positive with direction implied by type, and the currency and FX columns.
+
+**Decision.** Finance fills staging templates expressed in their own terms — company name, date, transaction type in plain language, amount, source document reference. A load pipeline resolves names to keys, validates against the production constraints, applies reconciliation gates, and only then writes. Rows that fail land in an exceptions report with a stated reason and are resubmitted, never force-loaded.
+
+**Consequences.**
+- **Entity resolution becomes an explicit first step with an owner.** A company crosswalk — Finance's spreadsheet name → Affinity organisation → internal `company_id` — is the first artifact produced, before any transaction loads. Finance names will not match Affinity exactly: legal versus trading names, companies renamed mid-life, entities acquired or restructured. This reconciliation is routinely the largest hidden cost in a migration of this kind, and it cannot be skipped by matching on name at load time.
+- Load order follows dependency: company master → rounds → transactions → marks → LP positions → LP cashflows → ownership.
+- Each batch carries a `batch_id`, must tie to Finance's own control totals before the next begins, and is reversible wholesale (ADR-018). Control totals are agreed up front — invested by year, realizations by year, NAV by valuation date, committed and called by LP position.
+- Finance can iterate on their extract without a developer in the loop, which they will need to do more than once.
+- The same templates and pipeline serve the interim bulk-upload path in ADR-011 phase 1, so none of this work is throwaway when the entry forms arrive.
+- **Open question for Finance:** how far back do *per-company* valuation marks exist, as opposed to fund-level NAV? If early history is only fund-level, per-company MOIC and vintage analysis are not reconstructable for those years, and the platform should show that boundary rather than imply continuous coverage.
+
+---
+
 ## Resolved open items
 
 | Ref | Item | Resolution |
@@ -294,14 +333,21 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 
 ## Decisions requiring the VC team lead
 
+**Outstanding — still to be walked through with Daniel.**
+
 | Ref | Decision | ADR | Why it needs him |
 |---|---|---|---|
 | D‑1 | Confirm the import contract may treat derived fields as advisory, correcting them against the transactions and returning a reconciliation warning | ADR-001 | His stated requirement was that the contract stay intact. This is the one place his workflow behaviour changes. |
-| D‑2 | Choose how revenue is presented, given that Visible supplies quarterly actuals and the prototype labels the figure run-rate | ADR-013, ADR-014 | His metric, his label, and the only genuine conflict between freezing definitions and changing nothing on screen. |
-| D‑3 | Accept that FMV growth will show two flat quarters per year, labelled as carry-forward | ADR-007 | Visible change in behaviour on a dashboard tile he designed. |
-| D‑4 | Accept the deal-close capture step for round total, NB co-investors and ownership | ADR-012 | Creates ongoing work for him and his deal leads. Without it the leverage KPI decays silently. |
-| D‑5 | Confirm the diversity tile should show coverage and exclude non-reporters, rather than counting unreported as zero | ADR-010 | Changes a mandate figure's meaning, and the prototype does not currently make this distinction. |
-| D‑6 | Confirm which quarter convention each screen should display, now that fiscal and calendar labels differ | ADR-006 | Presentation choice across every quarterly view. |
+| D‑6 | Confirm which quarter convention each screen should display, now that fiscal and calendar labels differ | ADR-006 | Presentation choice across every quarterly view. Both labels are correct; each screen must state which it uses. |
+
+**Settled.**
+
+| Ref | Decision | ADR | Resolution |
+|---|---|---|---|
+| D‑2 | How revenue is presented | ADR-013, ADR-014 | **Display as reported.** Visible's quarterly actual is stored and shown unchanged; no annualisation. Label moves from run-rate to quarterly revenue in the tile, the memo prefill and the guide. |
+| D‑3 | FMV growth showing two flat quarters per year | ADR-007 | **Accepted**, with carry-forward labelled on screen. Cadence unchanged. |
+| D‑4 | Deal-close capture of round total, NB co-investors and ownership | ADR-012 | **Accepted.** Deal lead completes the capture form at close; coverage monitored on the dashboard. |
+| D‑5 | Diversity tile treatment of non-reporters | ADR-010 | **Accepted.** Non-reporters excluded from the denominator; coverage shown alongside the figure. NULL never renders as zero. |
 
 ## Actions in flight
 
@@ -309,4 +355,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 |---|---|---|
 | A‑1 | Add women in C-suite and C-suite size to the Visible quarterly request | VC team |
 | A‑2 | Open the historical backfill workstream: transactions, then rounds, then marks, then ownership | Systems & Data Analyst + Finance |
-| A‑3 | Draft the Finance transaction upload template and reconcile a first batch | Systems & Data Analyst + Finance |
+| A‑3 | Issue the staging templates to Finance and reconcile a first batch against agreed control totals | Systems & Data Analyst + Finance |
+| A‑4 | Build the company crosswalk — Finance name → Affinity organisation → internal company_id — before any transaction loads | Systems & Data Analyst |
+| A‑5 | Establish how far back *per-company* marks exist, as opposed to fund-level NAV only | Finance |
+| A‑6 | Walk D‑1 and D‑6 through with the VC team lead | Systems & Data Analyst |
