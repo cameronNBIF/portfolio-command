@@ -125,6 +125,7 @@ comment on column fund.fee_drag_pct is
 create table company (
   company_id          text primary key,          -- Cnnn, preserved for export readability
   affinity_org_id     text unique,               -- entity resolution
+  affinity_row_id     text,
   visible_company_id  text unique,               -- entity resolution
   name                text not null,
   legal_name          text,
@@ -133,14 +134,23 @@ create table company (
   ceo_name            text,
   hq_city             text,
   hq_region           text,                      -- province/state. Drives the NB mandate split.
+  nb_region           text check (nb_region in ('NW','NE','SW','SE')),
   hq_country          text default 'CA',
   description         text,
   website             text,
+  ceo_email           text,
+  cb_total_funding_usd numeric(18,2),            -- Crunchbase-derived. Cross-check only, never a leverage input.
+  affinity_fmv        numeric(18,2),            -- REFERENCE ONLY. VC-team maintained. Never enters a calculation.
+  affinity_total_investment numeric(18,2),      -- REFERENCE ONLY. Same.
+  affinity_figures_as_of date,
   is_nb_based         boolean generated always as (hq_region = 'NB') stored,
   created_at          timestamptz not null default now(),
   created_by          uuid not null references app_user,
   synced_at           timestamptz                -- last Affinity sync
 );
+
+comment on column company.affinity_fmv is
+  'REFERENCE ONLY, shown in the drawer as a VC-team-maintained figure. Finance''s valuation_mark is authoritative (ADR-007). Post-launch it becomes a reconciliation signal between the two systems.';
 
 create index on company (sector_id);
 create index on company (affinity_org_id);
@@ -153,11 +163,16 @@ create table company_state (
   effective_from    date not null,
   effective_to      date,                        -- null = current
   stage_id          int references ref_stage,
-  health            text check (health in ('green','yellow','red')),
+  health            text check (health in ('green','yellow','red','acc')),
+  risk_grade        text check (risk_grade in ('A','B','C','ACC')),
+  lifecycle_status  text,                        -- Affinity Portfolio Status: Actively Fundraising, Winding Down, Exit Path, Closed
   set_by            uuid not null references app_user,
   set_at            timestamptz not null default now(),
   note              text
 );
+
+comment on column company_state.risk_grade is
+  'From Affinity Risk Assessment. A / B / C map to the green / yellow / red health display; ACC marks an accelerator investment and carries no risk grade.';
 
 create unique index company_state_current_uq
   on company_state (company_id) where effective_to is null;
@@ -205,6 +220,7 @@ create table investment_round (
 
   -- MANDATE FIELDS. Captured by the deal lead at close (ADR-012).
   -- NULL means "unknown" and is EXCLUDED from leverage, never imputed.
+  is_synthetic         boolean not null default false,  -- ADR-020
   round_total          numeric(18,2),
   nb_other             numeric(18,2),
 
@@ -259,6 +275,7 @@ create table transaction (
 
   -- ADR-018: financial rows are append-only. An error is voided by a
   -- dated reversal referencing the original; the original is never edited.
+  is_synthetic         boolean not null default false,  -- ADR-020
   voided_by_transaction_id bigint references transaction,
   voided_at            timestamptz,
   voided_reason        text,
@@ -301,6 +318,7 @@ create table valuation_mark (
   valuation_method_id int not null references ref_valuation_method,
   rationale           text not null,             -- REQUIRED. The audit narrative.
   prepared_by         uuid not null references app_user,
+  is_synthetic        boolean not null default false,  -- ADR-020
   status              text not null default 'final'
                         check (status in ('draft','final','superseded')),
   supersedes_id       bigint references valuation_mark,
@@ -364,6 +382,7 @@ create table company_ownership (
   as_of_date       date not null,
   ownership_pct    numeric(7,4) not null check (ownership_pct between 0 and 100),
   pro_rata_rights  boolean not null default false,
+  is_synthetic     boolean not null default false,  -- ADR-020
   fully_diluted    boolean not null default true,
   source_document  text,                         -- link to the SharePoint cap table version used
   entered_by       uuid not null references app_user
@@ -481,6 +500,7 @@ create table fund_investment_nav (
   fund_investment_id     text not null references fund_investment on delete cascade,
   as_of_date             date not null,
   nav                    numeric(18,2) not null,
+  is_synthetic           boolean not null default false,  -- ADR-020
   statement_received_at  date,
   source_document        text,
   entered_by             uuid not null references app_user
@@ -506,15 +526,38 @@ create table pipeline_deal (
   check_size              numeric(18,2),
   valuation               numeric(18,2),
   currency                char(3) not null default 'CAD',
-  owner_user_id           uuid references app_user,
+  vc_lead_user_id         uuid references app_user,
+  vc_secondary_user_id    uuid references app_user,
   next_step               text,
   date_added              date,
   closed_date             date,
   converted_company_id    text references company,
+  affinity_row_id         text,
+  stage_changed_date      date,
+  last_email_date         date,
+  last_meeting_date       date,
   synced_at               timestamptz not null default now()
 );
 
 create index on pipeline_deal (funnel_stage_id);
+
+-- Affinity's Owners field is person-multi and ACCUMULATES: observed three
+-- consecutive adds with no deletes on a single deal. The platform mirrors
+-- the full list rather than picking one (decision, 29 Jul 2026).
+create table pipeline_deal_owner (
+  pipeline_deal_owner_id bigint primary key generated always as identity,
+  deal_id      text not null references pipeline_deal on delete cascade,
+  user_id      uuid references app_user,
+  owner_email  text not null,
+  owner_name   text,
+  added_at     timestamptz,                      -- from the Affinity change log
+  synced_at    timestamptz not null default now()
+);
+
+create unique index on pipeline_deal_owner (deal_id, owner_email);
+
+comment on table pipeline_deal_owner is
+  'Owners governs the pipeline stages; VC Lead governs the portfolio stages. Ownership commonly changes hands at diligence, when a lead and a secondary are assigned. Display in added_at order.';
 
 comment on column pipeline_deal.converted_company_id is
   'Links a closed deal to the portfolio company it became, so the funnel can be measured end to end.';
@@ -814,3 +857,82 @@ select count(*)                                                as rounds_total,
        round(100.0 * count(*) filter (where round_total is not null)
              / nullif(count(*),0), 1)                          as pct_leverage_coverage
 from investment_round;
+
+-- =====================================================================
+-- 17. SYNTHETIC DATA GUARD (ADR-020)
+-- Development proceeds on generated financial data while Finance
+-- assembles the real history. Every synthetic row is flagged, so an
+-- environment can state loudly what it is holding and a cutover can
+-- remove it with certainty rather than with hope.
+-- =====================================================================
+
+create or replace view v_synthetic_data_status as
+select
+  (select count(*) from transaction        where is_synthetic) as synthetic_transactions,
+  (select count(*) from valuation_mark     where is_synthetic) as synthetic_marks,
+  (select count(*) from investment_round   where is_synthetic) as synthetic_rounds,
+  (select count(*) from fund_investment_nav where is_synthetic) as synthetic_lp_navs,
+  (select count(*) from company_ownership  where is_synthetic) as synthetic_ownership,
+  (select count(*) from transaction        where is_synthetic) > 0
+    or (select count(*) from valuation_mark where is_synthetic) > 0
+                                                              as contains_synthetic;
+
+comment on view v_synthetic_data_status is
+  'Read at application start. If contains_synthetic is true the UI must display a persistent synthetic-data banner on every screen and stamp every PDF export. A production environment reading true is a deployment error, not a warning.';
+
+-- =====================================================================
+-- 18. AFFINITY CHANGE LOG MIRROR
+-- Affinity's v2 field-value-changes endpoint already holds the full
+-- audit trail: every Status transition, who made it and when. Affinity
+-- is system of record; this table is a LOCAL MIRROR, not a derivation.
+--
+-- It exists because the endpoint is per-list-entry: rendering a funnel
+-- chart over 156 entries would otherwise mean 156 API calls. Sync once
+-- for full history, then incrementally, and query locally.
+-- =====================================================================
+
+create table affinity_field_change (
+  affinity_field_change_id bigint primary key,   -- the API's own change id
+  list_id           bigint not null,
+  list_entry_id     bigint not null,             -- matches the export's "Affinity Row ID"
+  entity_id         bigint not null,             -- v2 entity id; see note below
+  field_id          text not null,
+  field_name        text not null,
+  action_type       text not null check (action_type in ('add','update','delete')),
+  value_type        text not null,               -- ranked-dropdown | datetime | number | person-multi | company-multi
+  dropdown_option_id bigint,                     -- NULL when the option has since been deleted
+  value_text        text,                        -- 'text' for live options, 'displayValue' for deleted ones
+  value_rank        int,
+  value_number      numeric(18,2),
+  value_datetime    timestamptz,
+  value_json        jsonb,                       -- person-multi / company-multi payloads
+  changed_at        timestamptz not null,
+  changer_email     text,
+  synced_at         timestamptz not null default now()
+);
+
+create index on affinity_field_change (list_entry_id, changed_at);
+create index on affinity_field_change (field_name, changed_at);
+create index on affinity_field_change (entity_id);
+
+comment on column affinity_field_change.dropdown_option_id is
+  'NULL when the API returns referenceType = deleted-entity - a dropdown option removed from the field config that historical records still reference. The sync must store displayValue and must not fail on the missing id.';
+comment on column affinity_field_change.entity_id is
+  'The v2 API entity id. NOT verified to share a namespace with the CSV export column "Organization Id" - the observed magnitudes differ by two orders. Confirm before using either as a crosswalk key; website is the safer join.';
+
+-- Current and historical stage, derived from the mirror rather than stored twice.
+create or replace view v_deal_stage_history as
+select list_entry_id,
+       entity_id,
+       value_text                                             as stage,
+       value_rank                                             as stage_rank,
+       changed_at                                             as entered_at,
+       lead(changed_at) over (partition by list_entry_id
+                              order by changed_at)            as left_at,
+       changer_email                                          as changed_by
+from affinity_field_change
+where field_name = 'Status'
+  and action_type in ('add','update');
+
+comment on view v_deal_stage_history is
+  'Time-in-stage, funnel conversion and drop-off all derive from here. One row per Status transition; left_at is null for the current stage.';

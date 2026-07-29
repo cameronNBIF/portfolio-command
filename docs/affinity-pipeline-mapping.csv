@@ -1,0 +1,34 @@
+Affinity Field,Fill Rate,Distinct,Target Table,Target Column,Transform,Use?,Notes
+Affinity Row ID,76/76,76,pipeline_deal,affinity_row_id,direct,Yes,Stable key. Store but prefer Organization Id for joins.
+Organization Id,76/76,76,company,affinity_org_id,direct,Yes,THE entity-resolution spine. Same id follows the company into the Portfolio list.
+Name,76/76,76,pipeline_deal,name,trim,Yes,
+Website,37/76,37,company,website,normalise host,Yes,Only half populated in pipeline; 80/80 in portfolio.
+Status,76/76,6,pipeline_deal,funnel_stage_id,via affinity_status_map,Yes,"New, Reached Out, First Meeting, Second Meeting, Team Pitch, Diligence. No Term Sheet or Closed stage - closed deals leave the list."
+Owners,45/76,13,pipeline_deal,owner_user_id,split name <email>,Flag,Conflicts with VC Lead - 31 rows have Owners but no VC Lead. Which is authoritative?
+Potential Investment Amount,14/76,7,-,-,-,No,Financial - Finance is source. 18% fill.
+Source of Deal,73/76,15,pipeline_deal,source_channel_id,"normalise, split on ';'",Flag,"Messy: 'breakthru' lowercase and dominant (38), mixed program names and channel types, one multi-value row."
+Overall Score,0/76,0,-,-,-,No,Configured but never used.
+Deal Flow Stage Changed,75/76,23,pipeline_deal,stage_changed_date,parse MM/DD/YYYY,Yes,Enables time-in-stage once the platform retains history.
+Investment Type,73/76,1,-,-,-,No,Single value 'Initial Investment'. No signal.
+Investment Amount,7/76,4,-,-,-,No,Financial - Finance is source.
+Investment Round,18/76,1,-,-,-,No,Only value is 'Pre-Seed'. Not a usable round label.
+Investment Round Size,11/76,9,-,-,-,No,Financial. Would have been a leverage input but 14% fill makes it unusable.
+Co-investors,0/76,0,-,-,-,No,EMPTY. Confirms deal-close capture is the only path to NB co-investment data (ADR-012).
+Product/Service Industry,11/76,11,company_tag,tag,split on ';',Flag,"Crunchbase-style multi-value categories. Useful as tags, not as the primary sector."
+Priority Sector,52/76,8,company,sector_id,seed ref_sector,Yes,THE sector taxonomy. Replaces the prototype's generic list.
+CEO,52/76,52,company,ceo_name / ceo_email,split 'Name <email>',Yes,Composite field - parse into two columns.
+Company Location (Address),0/76,0,-,-,-,No,Empty.
+Company Location (City),53/76,10,company,hq_city,direct,Yes,
+Company Location (State),53/76,1,company,hq_region,direct,Yes,Always 'New Brunswick'.
+Company Location (Country),53/76,1,company,hq_country,map to ISO,Yes,Always 'Canada' -> CA.
+New Brunswick Region,51/76,4,company,nb_region,direct,New,"NEW DIMENSION: SW / SE / NW / NE. Mandate-relevant, not in the current schema."
+VC Lead (Full Name),14/76,3,pipeline_deal,owner_user_id,join app_user on email,Flag,Only 18% filled in pipeline vs 100% in portfolio. See Owners conflict.
+VC Lead (Email),14/76,5,-,-,join key,Flag,Two non-nbif.ca addresses will fail the app_user join.
+VC Secondary (Full Name),2/76,1,pipeline_deal,secondary_user_id,join app_user,Yes,Sparse but harmless.
+VC Secondary (Email),2/76,1,-,-,join key,Yes,
+Women in C-Suite,15/76,2,-,-,-,No,EXCLUDED by decision. Yes/No and not company-reported. NAMING COLLISION with the Visible-sourced count - keep the schema names distinct.
+Investment Committee Decision,0/76,0,-,-,-,No,Empty. IC decisions are platform-owned (memo.decision).
+Date Added,76/76,25,pipeline_deal,date_added,parse MM/DD/YYYY,Yes,
+Last Email,21/76,14,pipeline_deal,last_email_date,parse MM/DD/YYYY,Yes,"Relationship-intelligence signal, useful for a stale-deal alert."
+Last Meeting,17/76,14,pipeline_deal,last_meeting_date,parse MM/DD/YYYY,Yes,Same.
+Company Folder,0/76,0,-,-,-,No,Empty. Document links are platform-owned.

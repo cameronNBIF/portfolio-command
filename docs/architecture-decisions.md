@@ -152,6 +152,19 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - A stage mapping change is a row edit, not a code deploy.
 - Fields Affinity does not hold — round totals, NB co-investor amounts, ownership, valuations — are explicitly out of scope for this sync (ADR-012).
 
+**Confirmed against the live data, 28–29 July 2026.** Profiling the NBIF Master list exports and a `field-value-changes` response settled the following:
+
+- **One list, not two.** Pipeline and Portfolio are saved views of a single list (`listId 328745`) filtered by Status. A company keeps its identity across the whole journey. An earlier reading of the two exports as separate lists was wrong.
+- **Affinity holds the full audit trail.** `GET /v2/lists/{listId}/list-entries/{listEntryId}/field-value-changes` returns every Status transition with changer and timestamp. Affinity is system of record for stage history; the platform keeps a local mirror (`affinity_field_change`) purely for query performance, because the endpoint is per-list-entry and a funnel chart would otherwise fan out to one call per deal.
+- **Seed the funnel from field metadata, not observed data.** Observed ranks are 1, 3, 4, 5, 6, 7, 10 and 12; ranks 2, 8, 9 and 11 exist unobserved. A removed option (`Invested`) still appears in history as `referenceType: deleted-entity` with no `dropdownOptionId`, so the sync stores `displayValue` and tolerates the missing id.
+- **Sector taxonomy is Affinity's, unchanged.** The eight provincial priority sectors plus Other. No sectors are invented to absorb the Other population; that language is what the mandate is framed in.
+- **Risk Assessment drives health.** A / B / C map to green / yellow / red. Accelerator investments carry an `ACC` tag in place of a letter grade and no risk colour.
+- **New Brunswick Region (NW/NE/SW/SE) is carried across** as `company.nb_region`, a mandate reporting dimension the prototype lacked.
+- **Owners is multi-valued and accumulates.** The platform mirrors the full list. Owners governs pipeline stages; VC Lead governs portfolio.
+- **Source of Deal carries through verbatim.** No normalisation — whatever the VC team enters is what the platform shows. Case-folding is applied for chart grouping only.
+- **Website is the join key** across Affinity, Visible and Finance's records. It is populated on 80 of 80 portfolio rows and is namespace-independent. Note that the export's `Organization Id` and the v2 API's `entity.id` were observed in different numeric ranges and must not be assumed equivalent.
+- **Affinity's FMV and Total Investment Amount are stored as reference only** and never enter a calculation (see ADR-020).
+
 ---
 
 ## ADR-010 — Visible.vc is the system of record for company-reported KPIs, including jobs and diversity
@@ -218,6 +231,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - Known simplifications are inherited deliberately: net IRR as gross minus a fee-drag estimate, invested cost as a proxy for paid-in capital, and the waterfall assumptions in ADR-016. Each keeps its on-screen label.
 - **The one divergence is resolved (D-2).** The prototype presented company revenue as run-rate; Visible supplies the past quarter's actual. Revenue is now stored and displayed **as reported**, with no annualisation. The label changes from run-rate to quarterly revenue in the dashboard tile, the memo prefill text and the user guide; the arithmetic is untouched.
 - Two second-order effects of D-2 to carry into build. The aggregate revenue figure is now roughly a quarter of the number the same tile showed under the run-rate label, so any board comparison against earlier output needs the basis change stated once. And same-store QoQ growth on actuals now carries seasonality that a run-rate framing masked — a same-quarter year-over-year comparison is the more robust measure for seasonal businesses, and is worth revisiting in phase 2 rather than changing now under ADR-013.
+- **Accelerator investments are included in fund-wide figures (decision, 29 July 2026).** MOIC, leverage and FMV growth are computed across the whole portfolio, accelerator positions included. Where those figures appear on the dashboard a toggle keyed on the `ACC` tag lets the reader exclude them. The default is inclusive; the metric functions take an `includeAccelerator` option so the toggle changes one argument rather than forking the definition.
 - A definitions review against the funding agreement is no longer required as a blocker. The platform is not the system of submission for provincial reporting (ADR-017), so its mandate figures are management information rather than filed numbers.
 
 ---
@@ -248,7 +262,7 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 **Decision.** Backfill is a distinct workstream beginning immediately and running in parallel with development, not a phase that follows it. Sequence: transactions first (they anchor everything), then rounds, then marks, then ownership. Each batch is loaded with a `batch_id` and reconciled against Finance's own totals before the next begins.
 
 **Consequences.**
-- **Backfill is the critical path, not the code.** The application can be built against demo data; it cannot go live without history. Starting it late is the most likely cause of schedule slip.
+- **Backfill gates launch, not development (revised — see ADR-020).** The application is built against synthetic financial data and does not wait on Finance. The dependency has not disappeared, it has moved: a finished application that cannot go live is still a stalled programme, so Track B must keep moving even though nothing is waiting on it day to day.
 - Reconciliation is the gate. Loaded totals must agree with Finance's records period by period before any metric built on them is trusted.
 - Early rounds will lack round totals and NB co-investor detail, which no process can now recover. Mandate coverage will be lower for older vintages and must be reported honestly rather than imputed.
 - Archaeology will surface contradictions between sources. Those decisions need recording as they are made; the reconciliation notes are themselves a deliverable.
@@ -324,6 +338,35 @@ Records that represent judgement rather than fact — health rating, risk flags,
 
 ---
 
+## ADR-020 — Development proceeds on synthetic financial data; real data is a cutover event
+
+**Status:** Accepted
+
+**Context.** Finance is assembling fifteen-plus years of transactions, valuation marks and LP activity from spreadsheets and closing documents. That work is measured in months and is not under the development team's control. Sequencing the build behind it would idle the only developer available, at a point when development capacity exceeds Finance's extraction capacity.
+
+Meanwhile Affinity and Visible.vc are live, disciplined and API-accessible today. Company identity, pipeline and quarterly KPIs can be real from early in the build. Only the financial spine — transactions, marks, rounds, ownership, LP cashflows — is missing.
+
+**Decision.** The platform is built and tested end to end against a **generated financial dataset attached to real companies pulled from Affinity**. Every feature, including the Finance entry interfaces, alerts, memo builder, reporting and modelling, is completed to production standard against that data. Real financial history is loaded once, as a designed cutover phase, immediately before go-live.
+
+Four conditions attach to this decision, and it is not sound without them.
+
+1. **The synthetic data is dirty on purpose.** Data generated cleanly from Affinity is by construction perfectly resolvable, which is precisely what real data will not be. The generator deliberately produces orphan transactions, unresolvable company names, rounds with missing totals at a rate matching what Finance expects for old vintages, a renamed company, a duplicate, a mark predating its first investment, a non-CAD transaction, and a company reporting no KPIs. Exception handling is built against dirt, not against the happy path.
+2. **Every synthetic row is flagged and every environment says so.** `is_synthetic` is set on `transaction`, `valuation_mark`, `investment_round`, `fund_investment_nav` and `company_ownership`. The application reads `v_synthetic_data_status` at start and displays a persistent, unmissable banner on every screen and every PDF export while synthetic rows exist. In a small organisation, a plausible-looking NAV on a screen someone walks past becomes a number in a conversation.
+3. **A small real sample arrives early, not with the full backfill.** Five to ten companies with complete real history — transactions, rounds, marks, ownership — requested from Finance during the synthetic-data phase. This is a day of their time rather than months, and it is the only way to discover whether the schema actually fits how Finance holds the data.
+4. **The Finance entry interfaces are walked through with the Director of Finance before they are built,** using the synthetic dataset. Building an entry workflow entirely without its user, on the strength of a schema, is how you reach cutover with something correct and unusable.
+
+**Consequences.**
+- Development is unblocked from Finance's timeline, which was the largest schedule risk in the programme.
+- Synthetic data can be made harder than real data — deliberately adversarial volumes, distributions and edge cases — which makes it a better test bed than a partial real load would be.
+- The frontend can be ported against a static seed fixture before any backend exists, because ADR-001 makes the export contract and the API response the same shape. The fixture *is* the contract.
+- **Cutover becomes a designed phase carrying real risk**, rather than a configuration change. It requires reconciliation against Finance's control totals, verified removal of every synthetic row, and a parallel run against the prototype for one reporting cycle.
+- Condition 3 is the load-bearing one. Without a real sample, a mismatch between the schema and how Finance actually holds transactions — granularity, aggregation, missing early years, fund-level-only marks — surfaces at cutover, after everything has been built on the assumption. That is the worst possible moment to find it.
+- **The generator is calibrated to Affinity's real figures (decision, 29 July 2026).** Affinity holds a VC-team-maintained FMV and Total Investment Amount for every portfolio company. These are *not* used as metric inputs — the metrics are ratios across fields, and mixing a real FMV with a synthetic invested cost produces a MOIC that is neither real nor coherent. Instead the generator works backward from them as targets, so synthetic rounds sum to roughly the real invested amount and synthetic marks land near the real FMV. Company-level figures land in the right ballpark, making a pilot with the VC team lead meaningful, while the dataset stays internally consistent and flagged synthetic throughout.
+- **Affinity's figures are additionally stored as labelled reference columns** (`company.affinity_fmv`, `company.affinity_total_investment`), displayed in the company drawer as VC-team-maintained values and never entering a calculation. Post-launch they become a standing reconciliation signal between the two systems. The change log justifies the caution: one deal's Potential Investment Amount ran 1,000,000 → 500,000 → deleted → 1,000,000 → 1,500 → 1,500,000, the fat-finger corrected 33 seconds later. Accurate enough to steer by, not to calculate from.
+- The metrics golden-master fixtures remain derived from Daniel's demo dataset (ADR-013), not from the synthetic financial data. They test different things: one that the port is faithful, the other that the application survives realistic volume and mess.
+
+---
+
 ## Resolved open items
 
 | Ref | Item | Resolution |
@@ -351,7 +394,9 @@ Records that represent judgement rather than fact — health rating, risk flags,
 | Ref | Action | Owner |
 |---|---|---|
 | A‑1 | Add women in C-suite and C-suite size to the Visible quarterly request | VC team |
-| A‑2 | Open the historical backfill workstream: transactions, then rounds, then marks, then ownership | Systems & Data Analyst + Finance |
+| A‑2 | Historical backfill: transactions, rounds, marks, ownership. Runs asynchronously; gates launch, not development (ADR-020) | Systems & Data Analyst + Finance |
+| A‑8 | Request a 5–10 company **real sample** with complete history, during the synthetic-data phase | Finance |
+| A‑9 | Walk the transaction and mark entry workflow through with the Director of Finance before building it | Systems & Data Analyst |
 | A‑3 | Issue the staging templates to Finance and reconcile a first batch against agreed control totals | Systems & Data Analyst + Finance |
 | A‑4 | Build the company crosswalk — Finance name → Affinity organisation → internal company_id — before any transaction loads | Systems & Data Analyst |
 | A‑5 | Establish how far back *per-company* marks exist, as opposed to fund-level NAV only | Finance |

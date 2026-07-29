@@ -1,0 +1,37 @@
+Reference Table,Affinity Value,Count,Proposed Target Value,Notes
+ref_sector,ICT,33 pf / 17 pl,ICT,Dominant sector.
+,Digital Health,10 / 3,Digital Health,
+,Agritech,8 / 0,Agritech,Portfolio only.
+,Energy,7 / 1,Energy,
+,Cybersecurity,6 / 3,Cybersecurity,
+,Advanced Manufacturing,5 / 3,Advanced Manufacturing,
+,Oceans,3 / 0,Oceans,Portfolio only.
+,Forestry,0 / 2,Forestry,Pipeline only. Union of both lists gives nine values.
+,Other,7 / 22,Other,22 of 52 pipeline rows are 'Other' - the taxonomy may need extending for early-stage deals.
+ref_funnel_stage,New,42,Sourced,Sort order 1.
+,Reached Out,14,Contacted,Sort 2. No prototype equivalent.
+,First Meeting,8,First Meeting,Sort 3.
+,Second Meeting,2,Second Meeting,Sort 4.
+,Team Pitch,1,Team Pitch,Sort 5. Replaces the prototype's 'IC Review'.
+,Diligence,9,Diligence,Sort 6.
+,(none),-,Closed,"Sort 7, terminal. NOT in Affinity - inferred when a deal leaves Pipeline and appears in Portfolio."
+,(none),-,Passed,"Sort 8, terminal. NOT in Affinity - inferred when a deal leaves Pipeline without appearing in Portfolio."
+health,A Grade,12,green,From Risk Assessment.
+,B Grade,26,yellow,Largest bucket.
+,"C Grade ""At Risk""",22,red,Note the embedded quotes in the source value.
+,Accelerator Investments,20,"(segment, not a grade)",DECISION NEEDED - see Findings 3 and 4.
+nb_region,SW,44 pf / 39 pl,SW,Heavy concentration.
+,SE,12 / 10,SE,
+,NE,1 / 1,NE,
+,NW,0 / 1,NW,
+ref_source_channel,breakthru,38,Breakthru,"Dominant channel, lowercase in source. Normalise casing."
+,Network,6,Network,
+,Personal Outreach,6,Personal Outreach,
+,BMO Startup Challenge,5,BMO Startup Challenge,"Program name, not a channel type."
+,Proposals,3,Proposals,
+,Investor connection,3,Investor Connection,Casing.
+,Propel / Apex / AVF / ONB / AllNB,6 total,(as listed),Program and partner names.
+,UNB Student Pitch Competition,2,UNB Student Pitch Competition,
+,Conference,2,Conference,
+,Portfolio Introduction,1,Portfolio Introduction,
+,Network; Personal Outreach,1,(split into two),Multi-value row - the loader must split on ';'.
