@@ -1,0 +1,26 @@
+# Local development database. Azure Database for PostgreSQL Flexible Server
+# (Canada Central) is the production target; pin the exact minor to match the
+# provisioned server at the A0 Azure step.
+# Credentials come from .env (gitignored) - see .env.example.
+name: portfolio-command
+
+services:
+  db:
+    image: postgres:17
+    container_name: portfolio-command-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-portfolio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-portfolio_command}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-portfolio} -d ${POSTGRES_DB:-portfolio_command}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:
