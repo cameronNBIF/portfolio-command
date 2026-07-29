@@ -1,0 +1,24 @@
+Affinity Field,Fill Rate,Distinct,Target Table,Target Column,Transform,Use?,Notes
+Affinity Row ID,80/80,80,company,affinity_row_id,direct,Yes,
+Organization Id,80/80,80,company,affinity_org_id,direct,Yes,Joins to the same id in the Pipeline list - the only way to stitch funnel history.
+Name,80/80,80,company,name,trim,Flag,"Some entries are domains ('agrogenesolutions.com', 'Trippl.ca'). Normalise before crosswalking to Finance records."
+Website,80/80,80,company,website,normalise host,Yes,Fully populated - a better crosswalk key than name.
+Status,80/80,1,-,-,-,No,Always 'Portfolio'. Membership of this list is the signal.
+Portfolio Status,29/80,5,company_state,lifecycle_status,direct,Flag,"36% fill, and contains 'Diligence' which looks like a leaked pipeline value. Values: Actively Fundraising, Winding Down, Closed, Exit Path, Diligence."
+Total Investment Amount,80/80,38,-,-,-,No,Financial - Finance is source. But 100% populated and visible to the team daily. See Finding 7.
+FMV,80/80,44,-,-,-,No,Financial - Finance's semi-annual exercise is authoritative (ADR-007). Same divergence problem.
+Risk Assessment,80/80,4,company_state,health / segment,split - see Findings 3 and 4,Flag,"A / B / C 'At Risk' map to health. 'Accelerator Investments' is a SEGMENT, not a grade."
+Investment Type,13/80,2,-,-,-,No,16% fill. Initial Investment / Follow-on. Round-level truth comes from Finance.
+VC Lead (Full Name),80/80,6,company,owner_user_id,join app_user on email,Yes,"100% populated here, unlike pipeline."
+VC Lead (Email),80/80,6,-,-,join key,Flag,Two of six leads use non-nbif.ca addresses.
+VC Secondary (Full Name),7/80,5,company,secondary_user_id,join app_user,Yes,
+VC Secondary (Email),7/80,5,-,-,join key,Yes,
+CEO (Email),79/80,79,company,ceo_email,direct,Yes,Cleaner than parsing the composite CEO field.
+CEO,79/80,79,company,ceo_name,split 'Name <email>',Yes,
+Priority Sector,79/80,8,company,sector_id,seed ref_sector,Yes,ICT dominates at 33 of 79.
+New Brunswick Region,57/80,3,company,nb_region,direct,New,"SW 44, SE 12, NE 1. 23 blank."
+Last Email,76/80,50,company,last_email_date,parse MM/DD/YYYY,Yes,Feeds an engagement-staleness alert.
+Last Meeting,76/80,48,company,last_meeting_date,parse MM/DD/YYYY,Yes,Cross-check against board.nextMeeting.
+Total Funding Amount (USD),52/80,46,company,cb_total_funding_usd,"direct, keep USD",Flag,"Crunchbase-derived, USD. NOT a leverage source. Useful as an independent cross-check once Finance's round totals land."
+CB Investors,0/80,0,-,-,-,No,Explicitly not exportable via CSV. Check whether the API exposes it - it would be a co-investor signal.
+Company Folder,0/80,0,-,-,-,No,Empty.
