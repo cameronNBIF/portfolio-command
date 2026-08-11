@@ -367,11 +367,92 @@ Four conditions attach to this decision, and it is not sound without them.
 
 ---
 
-## ADR-021 — The metrics package's input contract and unit boundary.
+## ADR-021 — The metrics package's input contract and unit boundary
+
+**Status:** Accepted
+
+**Context.** A1 ports the prototype's metric functions into `packages/metrics`. Those functions must be handed something to compute over, and three shapes are available.
+
+The generated database types (`packages/db/src/generated/db.ts`) carry `numeric` as **string** — a property deliberately kept at A0.1 so money cannot silently become a float — plus nullable columns throughout, snake_case names, surrogate integer keys, and amounts in dollars. The views in `schema.sql` sit closer to what a metric needs but are still dollars-and-strings and still shaped by storage concerns. The ADR-001 export contract is denormalised, camelCase, `$M`, plain numbers, and is precisely the tree the prototype's functions already read.
+
+That third option is not merely convenient. ADR-013 freezes the definitions at the prototype's implementations, and the A1 golden-master tests assert the port reproduces them over `docs/reference/demo.json` — which *is* a contract-shaped document. A port that took database rows would need an adapter inside its own test harness before it could be compared against the prototype at all, and that adapter would be untested code standing between the thing under test and the thing it is tested against.
+
+There is also a units question. ADR-008 stores money as `numeric(18,2)` in dollars; ADR-001 emits `$M` in the contract and places the conversion in the API layer, in exactly one place. A metrics package taking dollars would become a second such place, and every golden-master fixture would sit on the far side of a conversion the prototype never performed.
+
+ADR-023 constrains the shape further. `v_round_leverage` applies `where round_total >= our_invested` in SQL, but that predicate *is* the leverage definition, frozen under ADR-013 and owned by TypeScript. A contract that delivered pre-filtered rounds would make the metrics package structurally incapable of reproducing the prototype, because the rows it would need to exclude would already be gone.
+
+Finally, purity. `fundMetrics`, `fiMetrics` and `fiIrr` each call `new Date()` to date the terminal NAV in their IRR cashflow series. This is an undeclared input. Two consecutive calls on identical data return different numbers — measurably so — and the figure drifts roughly one percentage point per quarter with no data change at all. A function that reads the clock cannot be golden-mastered, and a board number that moves on its own cannot be reconciled.
+
+**Decision.**
+
+Metric functions take the **ADR-001 contract shape** as input: denormalised, camelCase, money in `$M` as plain `number`, percentages as plain numbers (11.2 = 11.2%), dates as `YYYY-MM-DD` strings. They never receive a database row type, never receive `numeric`-as-string, and never receive dollars.
+
+The contract types move into a new workspace package, **`packages/contract`** — TypeScript types and nothing else. No runtime code, no I/O, no dependencies. It is imported by `packages/metrics`, by `apps/web` and by the API layer at A3. `docs/reference/demo.json` type-checks against it, which is what makes the fixture and the contract one artefact rather than two that must be kept in step.
+
+**A3 owns an adapter** from view rows to contract objects. It is the single place where dollars become `$M`, `numeric` strings become numbers, and NULL becomes `null` or a documented default. Nothing downstream of it converts anything. This is the same "exactly one place" that ADR-001 already asserts; ADR-021 names where it lives.
+
+**The contract carries rounds unfiltered.** Every round appears with `invested`, `roundTotal` and `nbOther` exactly as stored, including rounds whose `roundTotal` is null or below `invested`. The metrics package applies the exclusion predicate itself. This is the direct consequence of ADR-023: the leverage definition is expressed once, in TypeScript, under test.
+
+**Metric functions are pure in the strict sense** — same input, same output, no ambient reads. Specifically:
+
+- No metric function reads the clock. Where the prototype calls `new Date()`, the port takes a **required** `asOf` (a `YYYY-MM-DD` date) and constructs the terminal cashflow from it. There is no default, because a default would let a caller silently receive "today", which is the failure mode being removed.
+- No metric function reads a global. Where the prototype reads `DB` or `DB.fund`, the port takes an explicit parameter: `fundMetrics(db, { asOf, includeAccelerator })` rather than `fundMetrics()`.
+- `includeAccelerator` (ADR-013, 29 July 2026) is an option on the same function, never a fork of the definition.
+
+**Consequences.**
+
+- The golden-master comparison is direct. The prototype reads `demo.json`; the port reads `demo.json`; nothing sits between them. This is the property that makes ADR-013's guarantee testable rather than aspirational.
+- **`asOf` is the sole departure from a literally verbatim port, and it is a change of signature, not of definition.** Given the same date the arithmetic is identical to the prototype's, character for character. It is taken because the alternative — freezing the clock inside the test harness while the production function still reads `new Date()` — would leave a board number changing daily in production while a green test asserted it was frozen. ADR-013 protects definitions; it does not require preserving an undeclared input.
+- **The fixtures pin `asOf = 2026-03-31`**, the effective date of every valuation mark in `demo.json` and the end of its last `navHistory` quarter. Any other date makes the terminal NAV inconsistent with the marks behind it. Gross IRR reads 18.98% at that date against 17.55% at the time of writing — but the latter was never a value the prototype would reproduce the following day, so nothing reproducible has changed.
+- In production, `asOf` comes from the same place the report's as-at date comes from, which makes the reporting-lag stamp in ADR-007 and the IRR terminal date the same fact rather than two that can silently disagree.
+- `packages/contract` is a fourth workspace package. The cost is one `package.json` and one `tsconfig.json`. The benefit is that `apps/web` at A2 imports the same types the API will satisfy at A3, so the fixture-to-API swap is a change of data source and not of types.
+- Kysely's `numeric`-as-string never leaves the data layer, so the property that protects money from float arithmetic is preserved where it matters — in storage and in the adapter — without forcing every metric function to parse strings.
+- The metrics package acquires no dependency on `packages/db`. It can be typechecked, tested and reasoned about with no database and no generated types present, which is the whole point of ADR-003's "one person's working memory".
+- **The residual risk is adapter drift.** The adapter at A3 is the one component that can produce a well-typed contract object holding wrong numbers, and no golden-master test covers it — the fixtures start at the contract, not at the database. A3 needs its own reconciliation test: build the contract from a seeded database, and assert the aggregates match what the same rows sum to directly.
 
 ---
 
-## ADR-022 — Golden-master methodology.
+## ADR-022 — Golden-master methodology
+
+**Status:** Accepted
+
+**Context.** ADR-013 freezes metric definitions at the prototype's implementations and names golden-master tests as the mechanism. The mechanism itself has not been specified, and several of the choices are load-bearing enough that making them implicitly would undermine the guarantee.
+
+The prototype is a single HTML file of roughly 1,700 lines with one inline `<script>` block. Its metric functions are pure-ish but reach for `document`, `Chart` and `localStorage` at load, and the module-level `DB` is a `let` binding rather than a global property. Its outputs are consumed on screen as formatted strings, not as floats — a change that alters `2.0787898936170217` without altering `"2.08x"` is invisible to the board, and a change that alters `"$1.09B"` to `"$1092.1M"` is visible to the board while leaving the float untouched. Freezing only one of the two freezes the wrong half.
+
+`docs/reference/demo.json` was replaced this phase with a full export from the prototype. It is byte-identical to the prototype's boot state — verified — which means it is not an arbitrary sample but the canonical demo dataset, reproducible from the committed HTML.
+
+**Decision.**
+
+**The prototype's script is extracted from the committed HTML at test time and never vendored.** The harness reads `docs/reference/vc-toolkit.html`, pulls the single inline `<script>` block, and evaluates it in a `node:vm` context with `document`, `Chart`, `localStorage`, `requestAnimationFrame` and `getComputedStyle` stubbed. No copy of the prototype's JavaScript is committed anywhere in the repository. This mirrors `packages/db/test/migration-parity.test.ts`, which reads `docs/schema.sql` directly rather than trusting a copy: in both cases the reference document is the thing under test, and a stale duplicate is the failure mode being designed out.
+
+Two mechanical consequences follow and are recorded here because both are easy to get wrong once and never notice:
+
+- Top-level `let`/`const` bindings — `DB`, `fmt`, `PF`, `MODEL` — do not become properties of the vm context. The harness appends a short epilogue **inside the same lexical scope** exporting the bindings it needs, including an accessor pair for `DB`. This epilogue is harness code, and it is the only text ever appended to the prototype's source.
+- The demo generator's `mulberry32(42)` is a module-level singleton whose stream is consumed at boot by `loadDB()`. Calling `freshDB()` a second time in the same context yields *different* companies. The harness loads the prototype once per run and never calls `freshDB()`.
+
+**The fixture input is `docs/reference/demo.json`, and it is frozen.** Fixtures are captured against the committed file. Re-exporting it from the prototype invalidates every fixture at once, so it is treated as a frozen artefact: it changes only by deliberate decision, and that decision is a full fixture recapture and a line in `BUILD-LOG.md`. To make an accidental drift loud rather than quiet, the harness asserts that `demo.json` still equals the prototype's boot state before capturing anything.
+
+**Fixtures capture both full-precision values and formatted display strings.** Every metric is frozen twice: the raw float, and the string the board actually reads, produced by the prototype's own `fmt.m`, `fmt.x`, `fmt.pct` and `fmt.pct0`. Display strings are asserted **exactly**. Floats are asserted to **1e-12 relative** tolerance, which is loose enough to survive a reassociated sum and tight enough that no change a person would call a change survives it.
+
+**`fundMetrics` ports as one function returning the same field bag.** Its thirty-one outputs share intermediates — `paidIn` feeds three multiples, `roundsTotal` and `oursInRounds` feed leverage and `capitalAttracted` — and splitting them into independent functions would recompute those intermediates in ways that are individually defensible and collectively a different implementation. Named selectors (`leverage(m)`, `fmvGrowth(m)`) are layered **on top of** the returned bag, so the ergonomics improve without the arithmetic forking. The same applies to `fiMetrics`.
+
+**`includeAccelerator: true` is the only golden-mastered path.** The prototype has no ACC concept, so it can only ever produce the inclusive figure; a fixture for the exclusive path would be a fixture for something the prototype never computed. The exclusion path gets ordinary unit tests with hand-constructed inputs, asserting that excluding an ACC-tagged company removes exactly its contribution and nothing else.
+
+**`meta.savedAt` is normalised out of the ADR-001 contract snapshot.** It is a wall-clock stamp written by `saveDB()`; it is `null` in the committed export only because that export was taken from an unsaved session. Leaving it in the snapshot would make a future re-export fail the build for a reason that has nothing to do with the contract. The snapshot asserts `schemaVersion`, field names, nesting and units; `savedAt` is replaced with a sentinel before comparison.
+
+**The harness fails loudly or not at all.** If the prototype throws, if a metric returns `undefined` where the fixture expects a number, or if the `demo.json` identity check fails, the harness exits non-zero and writes **no** fixture file. A partially written fixture set is worse than none: it freezes the subset that happened to succeed and silently drops the rest.
+
+**Consequences.**
+
+- Editing `vc-toolkit.html` breaks the golden-master run immediately, which is correct — it is the reference document, not a build input, and it should not be edited at all.
+- Capturing display strings catches a whole class of change the floats do not. `fmt.m` switches from `"M"` to `"B"` at an absolute value of 1000, and `roundsTotal` on this fixture is 1092.1 — so the `"B"` branch is exercised, and a refactor that dropped it would fail.
+- Asserting floats at 1e-12 relative rather than exact equality is a deliberate loosening. Exact bit equality would make the tests hostage to summation order, and reordering a `reduce` is not a change to a board number. Anything that survives 1e-12 and matters will also change the display string.
+- **A pinned `asOf` (ADR-021) is part of the fixture, recorded in its header.** Without it the IRR fixtures could not be written at all: two consecutive calls to `fundMetrics()` on identical data currently return different values.
+- The fixture file carries a header stating what it was captured from — the `demo.json` sha-256, the prototype's sha-256, the pinned `asOf` — and, explicitly, **which metrics it does not meaningfully exercise**. The demo dataset does not exercise every path: no round fails the leverage predicate, no diversity field is null, and only seven companies of sixty-four carry the two KPI periods that same-store growth requires. A fixture that freezes a trivial or null result is not a golden master, and the header is what stops a reader mistaking one for the other.
+- Paths the fixture cannot reach are covered by conventional unit tests with constructed inputs, and those tests are held to the same standard: they assert the prototype's rule, not a rule that seems reasonable.
+- `runScenario` returns a closure (`proceedsAt`) inside its result bag. The fixture captures it as a sampled series at fixed exit values rather than dropping it, since it is the function the waterfall chart is drawn from.
+- **This methodology tests fidelity, not correctness.** A golden-master suite passing means the port reproduces the prototype, including its mistakes. The mistakes are inventoried separately in `packages/metrics/INHERITED-COERCIONS.md` (ADR-013), and that file is where a future correctness review starts. Passing tests are not evidence that a number is right.
 
 ---
 
