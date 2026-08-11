@@ -5,9 +5,11 @@
   "main": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "capture:fixtures": "tsx test/harness/capture.ts"
   },
   "devDependencies": {
+    "tsx": "^4.19.0",
     "vitest": "^3.1.0"
   }
 }
