@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   AS_OF,
+  DISPLAY_LOCALE,
   assertDemoMatchesBoot,
   loadDemoJson,
   loadPrototype,
@@ -45,7 +46,7 @@ const asX: Formatter = (v, fmt) => fmt.x(v);
 const asPct: Formatter = (v, fmt) => fmt.pct(v);
 const asInt: Formatter = (v) => (v == null ? '-' : String(v));
 /** renderDashboard :703 -- `m.fte.toLocaleString()`. Locale-sensitive by construction. */
-const asCount: Formatter = (v) => (v == null ? '-' : v.toLocaleString());
+const asCount: Formatter = (v) => (v == null ? '-' : v.toLocaleString(DISPLAY_LOCALE));
 /** renderDashboard :700 -- `m.leverage.toFixed(1)+" : 1"`. */
 const asRatio: Formatter = (v) => (v == null ? '-' : `${v.toFixed(1)} : 1`);
 /** renderDashboard :699,:702 -- `(v>=0?"+":"")+v.toFixed(1)+"%"`. */
@@ -99,7 +100,7 @@ function freeze(
 }
 
 function capture() {
-  const { api, bootDb, prototypeSha256, scriptBytes, resolvedLocale } = loadPrototype();
+  const { api, bootDb, prototypeSha256, scriptBytes } = loadPrototype();
   const { demo, sha256: demoSha256 } = loadDemoJson();
 
   assertDemoMatchesBoot(bootDb, demo);
@@ -220,11 +221,12 @@ function capture() {
       asOfNote:
         'fundMetrics/fiMetrics/fiIrr date their terminal NAV with new Date(). Pinned ' +
         'to AS_OF so the IRR figures are reproducible (ADR-021). Arithmetic unchanged.',
-      resolvedLocale,
+      displayLocale: DISPLAY_LOCALE,
       localeNote:
-        'fte / fteAtEntry / fteNB display strings come from Number.toLocaleString() with ' +
-        'no explicit locale. They are locale-sensitive; a CI mismatch here is a locale ' +
-        'difference, not a metric change. The TypeScript port must pin a locale.',
+        'fte / fteAtEntry / fteNB display strings come from Number.toLocaleString(), which ' +
+        'the prototype calls with NO locale -- so in a browser it follows the reader machine ' +
+        'and there is no single correct string to freeze. Pinned here and in src/format.ts ' +
+        'so the capture reproduces on a Windows laptop and a Linux runner alike.',
     },
     coverageGaps: [
       'LEVERAGE EXCLUSION NEVER EXERCISED: all 78 rounds have roundTotal > 0 and ' +
@@ -277,7 +279,7 @@ function main() {
     `  ${c.companies} companies (${c.active} active / ${c.exited} exited), ${c.rounds} rounds, ` +
       `${c.fundInvestments} LP positions, ${c.healthAlerts} alerts, ${c.scenarios} scenarios`,
   );
-  console.log(`  asOf ${fixture.capturedFrom.asOf}, locale ${fixture.capturedFrom.resolvedLocale}`);
+  console.log(`  asOf ${fixture.capturedFrom.asOf}, locale ${fixture.capturedFrom.displayLocale}`);
 }
 
 main();
