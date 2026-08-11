@@ -13,12 +13,14 @@
  * freezes the subset that happened to succeed and silently drops the rest,
  * which is worse than no fixtures.
  */
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   AS_OF,
+  DISPLAY_LOCALE,
+  FLOAT_TOLERANCE,
   assertDemoMatchesBoot,
   loadDemoJson,
   loadPrototype,
@@ -45,7 +47,7 @@ const asX: Formatter = (v, fmt) => fmt.x(v);
 const asPct: Formatter = (v, fmt) => fmt.pct(v);
 const asInt: Formatter = (v) => (v == null ? '-' : String(v));
 /** renderDashboard :703 -- `m.fte.toLocaleString()`. Locale-sensitive by construction. */
-const asCount: Formatter = (v) => (v == null ? '-' : v.toLocaleString());
+const asCount: Formatter = (v) => (v == null ? '-' : v.toLocaleString(DISPLAY_LOCALE));
 /** renderDashboard :700 -- `m.leverage.toFixed(1)+" : 1"`. */
 const asRatio: Formatter = (v) => (v == null ? '-' : `${v.toFixed(1)} : 1`);
 /** renderDashboard :699,:702 -- `(v>=0?"+":"")+v.toFixed(1)+"%"`. */
@@ -99,7 +101,7 @@ function freeze(
 }
 
 function capture() {
-  const { api, bootDb, prototypeSha256, scriptBytes, resolvedLocale } = loadPrototype();
+  const { api, bootDb, prototypeSha256, scriptBytes } = loadPrototype();
   const { demo, sha256: demoSha256 } = loadDemoJson();
 
   assertDemoMatchesBoot(bootDb, demo);
@@ -220,11 +222,12 @@ function capture() {
       asOfNote:
         'fundMetrics/fiMetrics/fiIrr date their terminal NAV with new Date(). Pinned ' +
         'to AS_OF so the IRR figures are reproducible (ADR-021). Arithmetic unchanged.',
-      resolvedLocale,
+      displayLocale: DISPLAY_LOCALE,
       localeNote:
-        'fte / fteAtEntry / fteNB display strings come from Number.toLocaleString() with ' +
-        'no explicit locale. They are locale-sensitive; a CI mismatch here is a locale ' +
-        'difference, not a metric change. The TypeScript port must pin a locale.',
+        'fte / fteAtEntry / fteNB display strings come from Number.toLocaleString(), which ' +
+        'the prototype calls with NO locale -- so in a browser it follows the reader machine ' +
+        'and there is no single correct string to freeze. Pinned here and in src/format.ts ' +
+        'so the capture reproduces on a Windows laptop and a Linux runner alike.',
     },
     coverageGaps: [
       'LEVERAGE EXCLUSION NEVER EXERCISED: all 78 rounds have roundTotal > 0 and ' +
@@ -260,7 +263,68 @@ function capture() {
   };
 }
 
+/**
+ * Compare a freshly captured fixture against the committed one.
+ *
+ * Structure, strings and booleans must match EXACTLY. Numbers must match
+ * within FLOAT_TOLERANCE, because bit equality is not available across
+ * platforms -- see the note on that constant.
+ *
+ * Returns a list of human-readable mismatches; empty means the committed
+ * fixture still describes what the prototype produces.
+ */
+function compare(actual: unknown, expected: unknown, at = '', out: string[] = []): string[] {
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    if (Object.is(actual, expected)) return out;
+    const relative = expected === 0 ? Math.abs(actual) : Math.abs((actual - expected) / expected);
+    if (relative >= FLOAT_TOLERANCE) {
+      out.push(`${at}: ${actual} vs committed ${expected} (relative ${relative.toExponential(3)})`);
+    }
+    return out;
+  }
+
+  if (Array.isArray(expected) || Array.isArray(actual)) {
+    if (!Array.isArray(expected) || !Array.isArray(actual)) {
+      out.push(`${at}: array/non-array mismatch`);
+      return out;
+    }
+    if (actual.length !== expected.length) {
+      out.push(`${at}: length ${actual.length} vs committed ${expected.length}`);
+      return out;
+    }
+    expected.forEach((e, i) => compare(actual[i], e, `${at}[${i}]`, out));
+    return out;
+  }
+
+  if (expected !== null && typeof expected === 'object') {
+    if (actual === null || typeof actual !== 'object') {
+      out.push(`${at}: object/non-object mismatch`);
+      return out;
+    }
+    const a = actual as Record<string, unknown>;
+    const e = expected as Record<string, unknown>;
+    const keys = [...new Set([...Object.keys(e), ...Object.keys(a)])].sort();
+    for (const k of keys) {
+      const p = at ? `${at}.${k}` : k;
+      if (!(k in e)) out.push(`${p}: present in capture, absent from committed fixture`);
+      else if (!(k in a)) out.push(`${p}: present in committed fixture, absent from capture`);
+      else compare(a[k], e[k], p, out);
+    }
+    return out;
+  }
+
+  if (!Object.is(actual, expected)) {
+    out.push(`${at}: ${JSON.stringify(actual)} vs committed ${JSON.stringify(expected)}`);
+  }
+  return out;
+}
+
 function main() {
+  // `--check` verifies without writing. CI uses it instead of recapturing and
+  // running `git diff`, because a byte diff would assert bit-identical floats
+  // across operating systems and JavaScript does not offer that.
+  const checkOnly = process.argv.includes('--check');
+
   let fixture: ReturnType<typeof capture>;
   try {
     fixture = capture();
@@ -270,14 +334,39 @@ function main() {
     process.exit(1);
     return;
   }
-  writeFileSync(FIXTURE_PATH, `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
+
   const c = fixture.counts;
-  console.log(`wrote ${path.relative(process.cwd(), FIXTURE_PATH)}`);
-  console.log(
+  const summary =
     `  ${c.companies} companies (${c.active} active / ${c.exited} exited), ${c.rounds} rounds, ` +
-      `${c.fundInvestments} LP positions, ${c.healthAlerts} alerts, ${c.scenarios} scenarios`,
-  );
-  console.log(`  asOf ${fixture.capturedFrom.asOf}, locale ${fixture.capturedFrom.resolvedLocale}`);
+    `${c.fundInvestments} LP positions, ${c.healthAlerts} alerts, ${c.scenarios} scenarios\n` +
+    `  asOf ${fixture.capturedFrom.asOf}, locale ${fixture.capturedFrom.displayLocale}`;
+
+  if (checkOnly) {
+    const committed = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as unknown;
+    const mismatches = compare(fixture, committed);
+    if (mismatches.length) {
+      console.error('\nCOMMITTED FIXTURE NO LONGER MATCHES WHAT THE PROTOTYPE PRODUCES.\n');
+      console.error('This means one of:');
+      console.error('  - docs/reference/vc-toolkit.html was edited (it is a reference');
+      console.error('    document, not a build input, and should not be edited at all);');
+      console.error('  - docs/reference/demo.json was re-exported, which invalidates every');
+      console.error('    fixture at once (ADR-022);');
+      console.error('  - the fixture was hand-edited, which is the one thing ADR-013 exists');
+      console.error('    to prevent. A failing golden-master test means the CODE is wrong.\n');
+      console.error(`${mismatches.length} mismatch(es):`);
+      for (const m of mismatches.slice(0, 40)) console.error(`  ${m}`);
+      if (mismatches.length > 40) console.error(`  ... and ${mismatches.length - 40} more`);
+      process.exit(1);
+      return;
+    }
+    console.log('committed fixture still matches the prototype');
+    console.log(summary);
+    return;
+  }
+
+  writeFileSync(FIXTURE_PATH, `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
+  console.log(`wrote ${path.relative(process.cwd(), FIXTURE_PATH)}`);
+  console.log(summary);
 }
 
 main();

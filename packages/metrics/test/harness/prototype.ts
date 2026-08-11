@@ -38,6 +38,42 @@ export const DEMO_PATH = path.join(REPO_ROOT, 'docs/reference/demo.json');
  */
 export const AS_OF = '2026-03-31';
 
+/**
+ * Locale for the grouped job counts the dashboard renders through
+ * `Number.toLocaleString()` (vc-toolkit.html :703, :1258).
+ *
+ * The prototype passes no locale, so in a browser it follows the reader's
+ * machine and there is no single "correct" string to freeze. Pinning it here
+ * makes the capture reproducible on a Windows laptop and a Linux runner alike.
+ *
+ * Deliberately duplicated from `src/format.ts` rather than imported: the
+ * harness must not depend on the implementation it exists to check (ADR-022).
+ * `golden-master.test.ts` asserts the two agree, so the duplication cannot rot.
+ */
+export const DISPLAY_LOCALE = 'en-CA';
+
+/**
+ * Relative tolerance for comparing a captured float against a frozen one.
+ *
+ * Two independent reasons it cannot be exact equality.
+ *
+ * Reassociating a `reduce` changes the last bits of a sum, and reordering a
+ * summation is not a change to a board number.
+ *
+ * More sharply: **`Math.pow` is implementation-approximated in ECMAScript.**
+ * The spec does not require it to be correctly rounded, and V8 on Linux and
+ * V8 on Windows genuinely differ in the final ULP. `runScenario`'s
+ * `Math.pow(mo, 1/yrs)` produces 49.30267835392137 on one and
+ * 49.30267835392135 on the other -- a relative difference of 4e-16, with an
+ * identical display string. `xirr` is unaffected, because 120 bisection
+ * halvings of a fixed bracket converge to a stable point either way.
+ *
+ * 1e-12 is loose enough to absorb both and tight enough that nothing a person
+ * would call a change survives it. Anything that does survive will also move
+ * the display string, which is compared exactly.
+ */
+export const FLOAT_TOLERANCE = 1e-12;
+
 /** The shape the epilogue exports out of the prototype's lexical scope. */
 export interface PrototypeApi {
   DB: PrototypeDb;
@@ -112,10 +148,21 @@ export interface LoadedPrototype {
   bootDb: PrototypeDb;
   prototypeSha256: string;
   scriptBytes: number;
-  resolvedLocale: string;
 }
 
-const sha256 = (s: string) => createHash('sha256').update(s, 'utf8').digest('hex');
+/**
+ * Line endings are normalised before hashing so a digest describes CONTENT,
+ * not a checkout. Development happens on Windows (CRLF working copy) while CI
+ * runs on Linux (LF); without this the same committed file hashes two
+ * different ways and the capture stops being reproducible across platforms.
+ * `migration-parity.test.ts` normalises for the same reason.
+ *
+ * Nothing downstream of this is affected by line endings -- demo.json parses
+ * identically either way, and the prototype's behaviour under `vm` does not
+ * depend on them -- so this only touches the recorded provenance.
+ */
+const normaliseEol = (s: string) => s.replace(/\r\n/g, '\n');
+const sha256 = (s: string) => createHash('sha256').update(normaliseEol(s), 'utf8').digest('hex');
 
 /**
  * A Date whose zero-argument constructor is pinned to AS_OF. Every other form
@@ -248,8 +295,7 @@ export function loadPrototype(): LoadedPrototype {
     api,
     bootDb: api.DB,
     prototypeSha256: sha256(html),
-    scriptBytes: source.length,
-    resolvedLocale: new Intl.NumberFormat().resolvedOptions().locale,
+    scriptBytes: normaliseEol(source).length,
   };
 }
 

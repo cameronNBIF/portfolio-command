@@ -18,8 +18,12 @@ import { fileURLToPath } from 'node:url';
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { describe, expect, it } from 'vitest';
 
+// The tolerance is shared with the capture harness's --check mode so there is
+// one number, not two that can drift. Importing a constant does no I/O.
+import { FLOAT_TOLERANCE } from './harness/prototype.js';
 import {
   count,
+  DISPLAY_LOCALE,
   fiDpi,
   fiIrr,
   fmt,
@@ -54,7 +58,7 @@ interface Frozen {
   display: string;
 }
 interface GoldenMaster {
-  capturedFrom: { asOf: string; resolvedLocale: string; demoJsonSha256: string };
+  capturedFrom: { asOf: string; displayLocale: string; demoJsonSha256: string };
   counts: Record<string, number>;
   fundMetrics: Record<string, Frozen>;
   fiMetrics: Record<string, Frozen>;
@@ -103,7 +107,7 @@ interface GoldenMaster {
  * summation order. Anything that survives 1e-12 and matters will also move the
  * display string, which IS asserted exactly.
  */
-const RELATIVE_TOLERANCE = 1e-12;
+const RELATIVE_TOLERANCE = FLOAT_TOLERANCE;
 
 function expectClose(actual: number | null | undefined, expected: number | null, label: string): void {
   if (expected === null) {
@@ -139,10 +143,13 @@ describe('fixture provenance', () => {
     expect(golden.scenarios).toHaveLength(demo.companies.length);
   });
 
-  it('was captured under the locale the port pins', () => {
-    // If this fails, the fixture was captured elsewhere. The job-count display
-    // strings would differ for a locale reason, not a metric reason.
-    expect(golden.capturedFrom.resolvedLocale).toBe('en-CA');
+  it('was captured under the same locale the port pins', () => {
+    // The harness defines its own DISPLAY_LOCALE rather than importing this
+    // one, so it does not depend on the implementation it checks (ADR-022).
+    // This is the assertion that stops the two copies drifting apart -- and
+    // that stops a job-count string differing for a locale reason rather than
+    // a metric one.
+    expect(golden.capturedFrom.displayLocale).toBe(DISPLAY_LOCALE);
   });
 });
 

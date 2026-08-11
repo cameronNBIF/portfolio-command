@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "capture:fixtures": "tsx test/harness/capture.ts"
+    "capture:fixtures": "tsx test/harness/capture.ts",
+    "verify:fixtures": "tsx test/harness/capture.ts --check"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
