@@ -10,6 +10,14 @@ rebuild that quietly improves numbers is a rebuild nobody can verify. The
 golden-master fixtures test **fidelity, not correctness** (ADR-022). A green
 suite means the port reproduces the prototype, including everything below.
 
+**Where these are asserted.** Most are pinned by the golden-master fixtures in
+`test/golden-master.test.ts`. The ones `demo.json` cannot reach — the leverage
+exclusion, diversity nulls, the `outsideCapital` clamp, the formatter guards —
+have constructed tests in `test/coverage-gaps.test.ts`, each cross-referenced
+back to a section here. Every item below is under test, which means **removing
+one of these quirks fails the build**. That is the intended behaviour: a
+correction should be a deliberate act with a visible diff, not a tidy-up.
+
 **When this file becomes actionable:** A4, A5 and A6, when real Affinity data,
 real Visible KPIs and the synthetic financial dataset first meet these code
 paths. Most of what follows is invisible on `demo.json` precisely because that
