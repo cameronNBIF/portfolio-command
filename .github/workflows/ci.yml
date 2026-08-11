@@ -139,3 +139,21 @@ jobs:
         run: |
           npm run db:types
           git diff --exit-code -- packages/db/src/generated/db.ts
+
+      # A3's verification, and the reason this job now matters more than it did.
+      #
+      # The importer loads docs/reference/demo.json into the normalised schema
+      # and the adapter reads it back; the round-trip test asserts the document
+      # that comes out is the document that went in, then runs the A1
+      # golden-master metrics over the DATABASE-BUILT document.
+      #
+      # This is what closes the residual risk ADR-021 names: the adapter is the
+      # one component that can produce a well-typed contract holding wrong
+      # numbers, and the metrics fixtures start at the contract rather than at
+      # the database, so nothing else covers it. These tests skip silently
+      # without DATABASE_URL, which is exactly why they run here and not in the
+      # no-services job.
+      - name: Contract round-trips through Postgres
+        run: |
+          npm run import:fixture
+          npm run test -w @portfolio-command/api
