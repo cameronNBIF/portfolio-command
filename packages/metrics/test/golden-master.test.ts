@@ -18,6 +18,9 @@ import { fileURLToPath } from 'node:url';
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { describe, expect, it } from 'vitest';
 
+// The tolerance is shared with the capture harness's --check mode so there is
+// one number, not two that can drift. Importing a constant does no I/O.
+import { FLOAT_TOLERANCE } from './harness/prototype.js';
 import {
   count,
   DISPLAY_LOCALE,
@@ -104,7 +107,7 @@ interface GoldenMaster {
  * summation order. Anything that survives 1e-12 and matters will also move the
  * display string, which IS asserted exactly.
  */
-const RELATIVE_TOLERANCE = 1e-12;
+const RELATIVE_TOLERANCE = FLOAT_TOLERANCE;
 
 function expectClose(actual: number | null | undefined, expected: number | null, label: string): void {
   if (expected === null) {

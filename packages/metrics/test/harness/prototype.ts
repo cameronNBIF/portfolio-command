@@ -52,6 +52,28 @@ export const AS_OF = '2026-03-31';
  */
 export const DISPLAY_LOCALE = 'en-CA';
 
+/**
+ * Relative tolerance for comparing a captured float against a frozen one.
+ *
+ * Two independent reasons it cannot be exact equality.
+ *
+ * Reassociating a `reduce` changes the last bits of a sum, and reordering a
+ * summation is not a change to a board number.
+ *
+ * More sharply: **`Math.pow` is implementation-approximated in ECMAScript.**
+ * The spec does not require it to be correctly rounded, and V8 on Linux and
+ * V8 on Windows genuinely differ in the final ULP. `runScenario`'s
+ * `Math.pow(mo, 1/yrs)` produces 49.30267835392137 on one and
+ * 49.30267835392135 on the other -- a relative difference of 4e-16, with an
+ * identical display string. `xirr` is unaffected, because 120 bisection
+ * halvings of a fixed bracket converge to a stable point either way.
+ *
+ * 1e-12 is loose enough to absorb both and tight enough that nothing a person
+ * would call a change survives it. Anything that does survive will also move
+ * the display string, which is compared exactly.
+ */
+export const FLOAT_TOLERANCE = 1e-12;
+
 /** The shape the epilogue exports out of the prototype's lexical scope. */
 export interface PrototypeApi {
   DB: PrototypeDb;

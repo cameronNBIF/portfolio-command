@@ -58,8 +58,8 @@ jobs:
         run: npm test
 
       # The golden-master fixtures are only trustworthy if they still describe
-      # what the prototype actually produces. Re-running the capture and
-      # diffing catches three separate things:
+      # what the prototype actually produces. Re-capturing and comparing
+      # catches three separate things:
       #
       #   - someone edited docs/reference/vc-toolkit.html (it is a reference
       #     document, not a build input, and should not be edited at all);
@@ -68,13 +68,15 @@ jobs:
       #   - someone hand-edited a fixture to make a failing test pass, which is
       #     the one thing ADR-013 exists to prevent.
       #
-      # The capture is deterministic: the clock is pinned to AS_OF, the locale
-      # is pinned, and digests are computed over line-ending-normalised content
-      # so a Linux runner and a Windows laptop agree.
+      # This is `--check`, not a re-capture plus `git diff`, and the difference
+      # matters. A byte diff asserts bit-identical floats across operating
+      # systems, which JavaScript does not offer: `Math.pow` is
+      # implementation-approximated, so runScenario's IRR differs in the final
+      # ULP between this runner and a Windows laptop. `--check` compares
+      # structure and strings exactly and floats within FLOAT_TOLERANCE, so it
+      # keeps every drift property above without failing on 4e-16.
       - name: Golden-master fixtures still reproduce
-        run: |
-          npm run capture:fixtures -w @portfolio-command/metrics
-          git diff --exit-code -- packages/metrics/test/fixtures/golden-master.json
+        run: npm run verify:fixtures -w @portfolio-command/metrics
 
       - name: Build web
         run: npm run build -w @portfolio-command/web
