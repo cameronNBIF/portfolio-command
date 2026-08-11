@@ -8,8 +8,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@portfolio-command/api": "*",
     "@portfolio-command/contract": "*",
     "@portfolio-command/metrics": "*",
+    "dotenv": "^16.6.1",
     "next": "^15.4.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

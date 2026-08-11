@@ -528,6 +528,260 @@ Two carve-outs, both narrow:
 
 ---
 
+## ADR-024 — Reframe the golden master as a change ledger
+
+**Status:** Rejected, 11 August 2026. Recorded here so the number is not reused
+and the reasoning is not re-derived.
+
+It would have permitted accepted divergences from the prototype where its
+behaviour is an implementation accident rather than a validated definition. Ten
+candidate repairs were measured against `demo.json`: eight were provably
+zero-impact, two moved board numbers by 0.30% and 0.15%. The decision was to
+continue the verbatim port, because A4/A5/A6 — real Affinity data, real Visible
+KPIs, a synthetic financial dataset — is the point at which it becomes possible
+to tell which coercions actually matter rather than guessing. The measurements
+are preserved in `packages/metrics/INHERITED-COERCIONS.md` so the work is not
+repeated. See BUILD-LOG.md, 2026-08-11.
+
+---
+
+## ADR-025 — Fund-level distributions remain a stored series; the ADR-002 correction is deferred
+
+**Status:** Accepted
+
+**Context.** ADR-002 states that transactions are the only stored financial
+facts, and names this divergence explicitly as the thing it resolves: the
+prototype holds realizations twice, with `fund.distributions[]` driving fund
+TVPI and DPI while `company.realized` drives company MOIC. ADR-013 freezes the
+metric definitions at the prototype's implementations, and A1's golden-master
+fixtures assert them. A3 is where the two meet, and on this dataset they cannot
+both hold.
+
+The gap on `demo.json` is $5.5M, and it decomposes exactly:
+
+| | |
+|---|---|
+| Cobalt Harbor $4.0M, Solvine $27.5M | present in **both** representations |
+| Nimbus Grid $6.9M, Quorum Capital OS $6.5M, Greyline Data $8.1M = **$21.5M** | company-level **only** |
+| two "Generated exits" aggregate rows = **$16.0M** | fund-level **only** |
+
+$21.5M − $16.0M = $5.5M. The prototype's demo generator itemised three exits per
+company and then wrote two aggregate rows at fund level covering the same events,
+rather than the same three. The divergence is an artifact of how the fixture was
+generated, not a definition anyone validated.
+
+Deriving `fund.distributions[]` from realization transactions, as ADR-002
+requires, was measured against the frozen fixtures. Five board numbers move, and
+all five move visibly in the display string, not merely in the float:
+
+| Figure | Frozen (A1) | ADR-002-derived |
+|---|---|---|
+| TVPI | 2.08x | 2.10x |
+| DPI | 0.16x | 0.18x |
+| Gross IRR | 19.0% | 19.1% |
+| Net IRR | 16.7% | 16.8% |
+| Dry powder | $146.7M | $152.2M |
+
+There is also a structural obstacle independent of the arithmetic.
+`transaction`'s `txn_one_subject` constraint requires every row to carry either a
+`company_id` or a `fund_investment_id`. Two of the four fixture distributions can
+satisfy neither: `"Generated exits"` is an aggregate with no company, and
+`"Solvine"` does not match the roster's `"Solvine (exited)"`. The transaction
+registry as designed has nowhere to put a fund-level realization that is not
+attributable to a current portfolio company — which is a real gap for historical
+data too, not only for this fixture.
+
+**Decision.** For A3, `fund.distributions[]` is served from a stored
+`fund_distribution` table and the frozen values survive unchanged. The
+correction ADR-002 calls for is **deferred to A6/A13**, when real data makes it
+possible to tell whether the divergence is a generator artifact or a real
+property of how realizations are recorded.
+
+The table is deliberately a separate object rather than a nullable-subject
+`transaction` row. An exception that is greppable is an exception that gets
+removed; one hidden as a nullable column is one that quietly becomes permanent.
+Its SQL comment names this ADR.
+
+**Consequences.**
+
+- **A3 keeps its strongest available test.** With every board number identical
+  either side of the storage swap, any figure that moves during A3 is an adapter
+  bug rather than an intended change. Deriving now would forfeit exactly the
+  signal the phase exists to produce, at the one moment the adapter is least
+  proven. This is the primary reason for the decision.
+- **`company.realized` and `fund.distributions[]` are never summed together**,
+  and nothing in the contract invites it. Each drives its own frozen metric, as
+  the prototype does. The double-representation ADR-002 objects to is preserved
+  under a stated exception with a stated end date, not resolved.
+- The precedent is ADR-024's rejection, and the reasoning is the same one: a
+  correction made against synthetic data is a guess, and A4/A5/A6 is when
+  guessing stops being necessary.
+- **This is a known unpaid debt, not a settled position.** ADR-002 remains the
+  standing rule. When the correction lands it will move published board numbers,
+  so it needs the VC team lead's sign-off and a golden-master recapture — which
+  is precisely why it should happen once, on real data, rather than twice.
+- The schema gains the place a fund-level realization can live, which historical
+  backfill (ADR-015) is likely to need regardless of how this resolves: fifteen
+  years of history will contain realizations from companies that predate the
+  roster.
+
+---
+
+## ADR-026 — The importer preserves contract strings verbatim and resolves reference keys opportunistically
+
+**Status:** Accepted
+
+**Context.** ADR-001 freezes the export contract field for field, which means
+whatever goes in must come back out unchanged. The storage model underneath
+normalises to controlled vocabularies with foreign keys. Loading the reference
+fixture through that model surfaced the collision between the two, in six
+places at once:
+
+- **Sectors.** The fixture carries ten generic values — `AI / ML Infra`,
+  `Enterprise SaaS`, `Defense & Space`. `ref_sector` holds the nine real Affinity
+  provincial priority sectors — `ICT`, `Digital Health`, `Agritech`, `Oceans`.
+  They overlap on `Cybersecurity` and nothing else.
+- **Valuation methods.** `ref_valuation_method` holds the six canonical methods.
+  The fixture's marks carry fourteen free-text variants — `Revenue multiple,
+  discounted`, `Last round + backlog coverage`, `Scenario-weighted (PWERM)`.
+- **Source channels.** Eight generic fixture values against fourteen seeded
+  Affinity channels, overlapping on none.
+- **Pipeline sources**, which are free text with parentheticals: `Founder
+  referral (Northline CEO)`, `Conference (Compute Summit)`.
+- **Exit types.** The fixture carries `Strategic acquisition`; the `company_exit`
+  CHECK constraint permits only `Acquisition`, `IPO`, `Secondary`,
+  `Shutdown / write-off`.
+- **Covenant statuses**, which are free text carrying their own explanation:
+  `breached - waiver signed 2026-05`, `watch - 1.9x in Q1`.
+
+Three responses were available. Normalising to the nearest reference value
+loses information the contract must return, so the export would no longer
+reproduce its input. Inserting the fixture's vocabulary into the reference
+tables keeps the round trip but pollutes the Affinity taxonomy that ADR-009
+makes Affinity the system of record for, and leaves A4 arriving into a table it
+has to clean before it can populate. Widening every CHECK constraint to
+free text discards the validation that makes the constraints worth having.
+
+**Decision.** Where a contract field is free text over a normalised column, the
+importer stores **both**: the verbatim string, and a resolved reference key
+where — and only where — an exact match exists. The adapter serialises the
+verbatim string. The reference key is what queries, groups and filters.
+
+No importer invents a reference row, and no importer coerces a value to its
+nearest neighbour. An unresolvable value leaves the key null, is counted, and is
+named in the import's reconciliation report alongside the D-1 derived-field
+warnings.
+
+**Consequences.**
+
+- **The contract round-trips exactly**, which is what makes A3's verification a
+  real test rather than an assertion that the adapter agrees with itself.
+- **The Affinity taxonomy stays clean**, so A4 is a clean overwrite rather than a
+  cleanup. This matters more than it looks: the fixture roster is temporary, and
+  every fixture value written into `ref_sector` would have to be found and
+  removed later by someone who no longer remembers it was put there.
+- **Unresolved keys are visible rather than silent.** A null `sector_id` across
+  the whole fixture roster is the correct and informative state — it says the
+  demo roster is not the Affinity roster, which is true.
+- The cost is one extra column on six tables and a slightly wider `company` row.
+  Against roughly 70 companies this is not a consideration.
+- **The verbatim columns are not permanent fixtures of the schema.** Once the
+  roster is real and its vocabulary is Affinity's, most will hold values
+  identical to their resolved reference row. They become redundant at that point
+  and are candidates for removal — but only for values Affinity actually governs.
+  Covenant status and pipeline source are free text at source and stay that way.
+- Widening the `company_exit` and `company_covenant` CHECK constraints is
+  handled separately and narrowly: `Strategic acquisition` joins the exit-type
+  vocabulary because it is a genuine exit type the original list omitted, while
+  covenant status keeps its three-value constraint and gains a verbatim detail
+  column, because `breached - waiver signed 2026-05` is a status plus a
+  narrative and the schema should hold them apart.
+
+---
+
+## ADR-027 — Four fields in ADR-002's derived inventory are independent facts and are stored
+
+**Status:** Accepted. **Amends ADR-002.**
+
+**Context.** ADR-002 lists eighteen fields as Derived and states they must not be
+stored. A3 is the first phase that has to actually produce all eighteen from
+storage, and four of them cannot be produced, because the values in the contract
+are not a function of anything else in it. This was established by measurement
+against `docs/reference/demo.json`, not by inspection:
+
+| Field | ADR-002 says | What the data shows |
+|---|---|---|
+| `reservesDeployed` | Derived | Disagrees with any round sum on 4 of 70 companies. C001 reads $1.5M against a $3.5M follow-on round; C004 reads $6.0M against $8.0M of follow-ons. |
+| `kpis[].runwayMo` | Derived | `cash / burn` reproduces it on **10 of 71** KPI rows. C004 reports 99 months against a computed 610. |
+| `fteAtEntry` | Derived | The KPI series covers 2025-Q3 to 2026-Q1. Every entry headcount predates it, by up to a decade for old vintages. |
+| `company.instrument` | Derived | C009 reads `Debt-to-Note` while its latest round is `Preferred Equity`, so it is neither the first nor the last round's instrument. |
+
+The distinction that matters is the one ADR-002's own prohibition is phrased
+around — *"if you find yourself adding a column that duplicates a sum, stop."*
+None of these four duplicates a sum. Each is an independent fact that the
+inventory classified as derived on the reasonable-looking assumption that a
+derivation existed. `invested`, `fmv`, `realized`, `called`, `distributions`,
+`capitalToDirect` and the rest genuinely are sums, and remain derived.
+
+Each of the four also has a reason to be independent that survives the arrival
+of real data, which is what distinguishes an inventory error from fixture dirt:
+
+- **`runwayMo` is company-reported.** Visible collects months of runway as a KPI.
+  A founder nets committed-but-undrawn capital and expected inflows against
+  burn; the platform is not the system of submission (ADR-017) and does not get
+  to overrule the submitter. It also drives the runway health alert, so
+  substituting a computed figure would change which companies appear on the
+  watchlist.
+- **`reservesDeployed` is an investment-team decision.** A follow-on can be
+  funded from a fresh allocation rather than the reserve, and a reserve can be
+  released without ever being deployed.
+- **`fteAtEntry` is a point-in-time snapshot** taken before quarterly reporting
+  existed for that company. No future KPI arrival makes it reconstructable.
+- **`company.instrument` is the headline instrument**, a characterisation of the
+  position rather than a mechanical read of one round.
+
+**Decision.** The four are stored: `reserve_allocation.deployed`,
+`company_kpi.runway_months`, `company.fte_at_entry`, and `company.instrument_id`
+with its ADR-026 verbatim label. ADR-002's derived inventory is reduced from
+eighteen fields to fourteen. Everything else in it stays derived, and the
+prohibition stands unchanged in substance: **a column that duplicates a sum is
+still forbidden.**
+
+**A separate and narrower case: three LP fields are *carried*, not reclassified.**
+`coInvestsDone`, `referrals` and `capitalToDirect` are genuinely derivable —
+`v_lp_capital_to_direct` already derives all three from `round_coinvestor`. But
+that table is populated by the ADR-012 deal-close capture form, which arrives at
+A8, and the ADR-001 contract carries no co-investor detail to reconstruct it
+from. For an imported legacy position the carried scalar is the only value in
+existence. They are therefore stored on `fund_investment` as nullable carried
+values, and the distinction from the four above is deliberate: these have a
+derivation that works, waiting on data, whereas those have no derivation at all.
+When a position's co-investor rows exist, the derived figure is authoritative
+and the carried one becomes a reconciliation signal — the same relationship
+`company.affinity_fmv` already has with `valuation_mark` (ADR-009).
+
+**Consequences.**
+
+- The round trip becomes possible. Without this the export cannot reproduce its
+  input, and A3's central verification could not exist.
+- **`runway_months` is nullable and carries no computed fallback.** A company
+  that has not reported runway shows nothing rather than a number the platform
+  invented — the same rule D-5 applies to diversity, for the same reason.
+- **ADR-002's inventory should be treated as a design-time estimate that A3
+  tested, not as a verified list.** The remaining fourteen were checked against
+  the fixture during A3 and do derive: `vintage` is exactly the year of the first
+  round on all 70 companies, `invested` is exactly the sum of round cheques,
+  `fmv` is exactly the latest mark, and LP `called` and `distributions` are
+  exactly their cashflow sums.
+- The risk this leaves is that a stored independent fact can drift from the
+  transactions that ought to relate to it — precisely the failure mode ADR-002
+  exists to prevent. It is accepted narrowly here because the alternative is
+  fabricating a derivation that the source data contradicts. `reservesDeployed`
+  against follow-on totals is a sensible future data-quality check, in the same
+  spirit as `v_mandate_completeness`, and is not one at A3.
+
+---
+
 ## Resolved open items
 
 | Ref | Item | Resolution |

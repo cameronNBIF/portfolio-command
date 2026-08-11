@@ -1,0 +1,87 @@
+/**
+ * The authorisation model.
+ *
+ * ADR-005: staff only, four roles, no row-level security and no guest
+ * lifecycle. Authorisation reduces to role checks, which is why this file is
+ * short and why it should stay short.
+ *
+ * WHERE ROLES LIVE, and why it matters: in `app_user.role`, not in an Entra
+ * app-role claim. Entra proves WHO someone is; the platform decides WHAT they
+ * may do. Three consequences, all of them wanted:
+ *
+ *   - The Azure app registration needs only sign-in configured. No app roles,
+ *     no role assignments, no directory admin in the loop to change someone
+ *     from `vc` to `finance`.
+ *   - `audit_log.changed_by` references the same `app_user` row the check was
+ *     made against, so "who was allowed to do this" and "who did it" cannot
+ *     drift apart.
+ *   - Revoking access is a database update, available to whoever is holding
+ *     the pager at 9pm, rather than a tenant change.
+ */
+
+/** The four roles from ADR-005. */
+export type Role = 'vc' | 'finance' | 'leadership' | 'admin';
+
+export const ROLES: readonly Role[] = ['vc', 'finance', 'leadership', 'admin'] as const;
+
+export interface Principal {
+  userId: string;
+  entraObjectId: string;
+  email: string;
+  displayName: string;
+  role: Role;
+}
+
+/** Thrown when a caller is authenticated but not permitted. Maps to HTTP 403. */
+export class ForbiddenError extends Error {
+  constructor(readonly required: readonly Role[], readonly actual: Role) {
+    super(`Requires one of [${required.join(', ')}]; caller holds "${actual}".`);
+    this.name = 'ForbiddenError';
+  }
+}
+
+/** Thrown when there is no valid caller at all. Maps to HTTP 401. */
+export class UnauthorizedError extends Error {
+  constructor(message = 'Authentication required.') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
+/**
+ * Everyone who may read the portfolio.
+ *
+ * All four roles, deliberately: ADR-005 gives leadership read-all and issues no
+ * accounts below that. Narrowing reads is not a thing the platform does, and a
+ * list that happens to contain everyone is clearer than an absent check that a
+ * reader has to infer was intentional.
+ */
+export const CAN_READ: readonly Role[] = ROLES;
+
+/**
+ * Who may edit judgement records -- health, flags, milestones, covenants,
+ * reserves, board seats, memos, diligence gates (ADR-018).
+ *
+ * Finance is excluded on purpose. The ADR-005 split follows the source of
+ * record: Finance owns transactions and valuation marks, the investment team
+ * owns judgement. Leadership reads.
+ */
+export const CAN_EDIT_JUDGEMENT: readonly Role[] = ['vc', 'admin'];
+
+/**
+ * Who may write financial rows -- transactions, valuation marks, LP cashflows.
+ *
+ * Not reachable at A3: the write path exposes judgement fields only, and
+ * financial entry arrives at A7 with the ADR-018 Reverse and Correct actions
+ * rather than an Edit button. Declared here so the boundary is visible from the
+ * authorisation model rather than only from the absence of an endpoint.
+ */
+export const CAN_WRITE_FINANCIAL: readonly Role[] = ['finance', 'admin'];
+
+export function requireRole(principal: Principal, allowed: readonly Role[]): void {
+  if (!allowed.includes(principal.role)) throw new ForbiddenError(allowed, principal.role);
+}
+
+export function isRole(value: string): value is Role {
+  return (ROLES as readonly string[]).includes(value);
+}

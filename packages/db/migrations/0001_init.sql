@@ -130,7 +130,9 @@ create table company (
   name                text not null,
   legal_name          text,
   sector_id           int references ref_sector,
+  sector_label        text,                      -- verbatim contract string (ADR-026)
   source_channel_id   int references ref_source_channel,
+  source_label        text,                      -- verbatim contract string (ADR-026)
   ceo_name            text,
   hq_city             text,
   hq_region           text,                      -- province/state. Drives the NB mandate split.
@@ -139,6 +141,9 @@ create table company (
   description         text,
   website             text,
   ceo_email           text,
+  instrument_id       int references ref_instrument,  -- headline instrument (ADR-027)
+  instrument_label    text,                      -- verbatim contract string (ADR-026)
+  fte_at_entry        int,                       -- ADR-027
   cb_total_funding_usd numeric(18,2),            -- Crunchbase-derived. Cross-check only, never a leverage input.
   affinity_fmv        numeric(18,2),            -- REFERENCE ONLY. VC-team maintained. Never enters a calculation.
   affinity_total_investment numeric(18,2),      -- REFERENCE ONLY. Same.
@@ -151,6 +156,12 @@ create table company (
 
 comment on column company.affinity_fmv is
   'REFERENCE ONLY, shown in the drawer as a VC-team-maintained figure. Finance''s valuation_mark is authoritative (ADR-007). Post-launch it becomes a reconciliation signal between the two systems.';
+comment on column company.fte_at_entry is
+  'ADR-027. Headcount at first investment. NOT derivable from company_kpi: the KPI series begins when Visible reporting begins, which for an old vintage is a decade after entry. On the reference dataset the series covers three quarters and every entry figure predates it.';
+comment on column company.instrument_id is
+  'ADR-027. The company''s headline instrument, which is NOT mechanically the first or last round''s: C009 in the reference dataset reads Debt-to-Note against a latest round of Preferred Equity. Stored because it is an independent fact, not a sum.';
+comment on column company.sector_label is
+  'ADR-026. The verbatim string the ADR-001 contract carries, which the API serialises. sector_id is the resolved reference key and is NULL where no exact match exists - the importer never invents a ref_sector row and never coerces to a nearest neighbour. Expected to be redundant once the roster is real and its vocabulary is Affinity''s (ADR-009).';
 
 create index on company (sector_id);
 create index on company (affinity_org_id);
@@ -189,8 +200,12 @@ create table company_risk_flag (
 
 create table company_threshold (
   company_id           text primary key references company on delete cascade,
-  min_runway_months    int not null default 12,
-  max_burn_multiple    numeric(6,2) default 1.5,
+  -- NULLABLE with no default, deliberately. The contract makes minRunwayMo
+  -- optional and gives 0 the distinct meaning "alert disabled", so a default of
+  -- 12 would invent a threshold for a company that has none and put it on the
+  -- watchlist on the strength of a number nobody set.
+  min_runway_months    int,
+  max_burn_multiple    numeric(6,2),
   updated_by           uuid not null references app_user,
   updated_at           timestamptz not null default now()
 );
@@ -198,8 +213,11 @@ create table company_threshold (
 create table company_exit (
   company_id   text primary key references company on delete cascade,
   exit_date    date not null,
+  -- 'Strategic acquisition' added at A3: a genuine exit type the original
+  -- list omitted, not a vocabulary collision (ADR-026).
   exit_type    text not null
-                 check (exit_type in ('Acquisition','IPO','Secondary','Shutdown / write-off')),
+                 check (exit_type in ('Acquisition','Strategic acquisition','IPO',
+                                      'Secondary','Shutdown / write-off')),
   note         text,
   recorded_by  uuid not null references app_user
 );
@@ -225,7 +243,12 @@ create table investment_round (
   nb_other             numeric(18,2),
 
   post_money           numeric(18,2),            -- null for SAFE / convertible note
-  ownership_after_pct  numeric(7,4),
+  -- Scale carries a full IEEE-754 double, not a claim about cap-table accuracy.
+  -- ADR-001 requires the export to reproduce its input, and the contract's
+  -- ownershipAfter is a computed float: the reference dataset holds values like
+  -- 10.521185332909226. numeric(7,4) would round that to 10.5212 and the round
+  -- trip would fail on four rows. Display formatting is the UI's business.
+  ownership_after_pct  numeric(19,16),
   lead_investor        text,
   note                 text,
   source_document      text,                     -- SharePoint link to closing docs
@@ -315,9 +338,11 @@ create table valuation_mark (
   booked_at           timestamptz not null default now(),
   fmv                 numeric(18,2) not null check (fmv >= 0),
   currency            char(3) not null default 'CAD',
-  valuation_method_id int not null references ref_valuation_method,
+  valuation_method_id int references ref_valuation_method,
+  method_label        text not null,             -- verbatim contract string (ADR-026)
   rationale           text not null,             -- REQUIRED. The audit narrative.
-  prepared_by         uuid not null references app_user,
+  prepared_by         uuid references app_user,
+  prepared_by_label   text not null,             -- verbatim contract string (ADR-026)
   is_synthetic        boolean not null default false,  -- ADR-020
   status              text not null default 'final'
                         check (status in ('draft','final','superseded')),
@@ -334,6 +359,8 @@ comment on table valuation_mark is
   'Only source of company FMV. Between exercises the most recent final mark is carried forward; companies with no mark yet are held at cost (ADR-007).';
 comment on column valuation_mark.rationale is
   'Not optional. This is what a board or auditor reads when they challenge a number.';
+comment on column valuation_mark.method_label is
+  'ADR-026. The verbatim method string the ADR-001 contract carries, which the API serialises. Marks routinely qualify a canonical method in free text - "Revenue multiple, discounted", "Last round + backlog coverage" - and that qualification is meaningful to whoever reads the mark. valuation_method_id resolves to ref_valuation_method only on an exact match and is NULL otherwise; it is what grouping and filtering use.';
 
 -- =====================================================================
 -- 7. COMPANY KPIs
@@ -351,6 +378,7 @@ create table company_kpi (
   revenue         numeric(18,2),                 -- run-rate
   monthly_burn    numeric(18,2),                 -- negative = cash-flow positive
   cash_balance    numeric(18,2),
+  runway_months   numeric(8,2),                  -- as reported, NOT cash/burn (ADR-027)
   fte             int,                           -- MANDATE: jobs
   fte_nb          int,                           -- MANDATE: NB jobs
   women_csuite    int,                           -- MANDATE: diversity
@@ -369,6 +397,8 @@ create table company_kpi (
 create unique index on company_kpi (company_id, period_end);
 create index on company_kpi (period_end);
 
+comment on column company_kpi.runway_months is
+  'ADR-027. AS REPORTED by the company, not computed. cash_balance / monthly_burn reproduces it on 10 of 71 rows in the reference dataset - C004 reports 99 months against a computed 610 - because a founder nets expected inflows and a committed round against the burn, and the platform is not the system of submission (ADR-017). It drives the runway health alert, so a computed substitute would change which companies appear on the watchlist.';
 comment on column company_kpi.request_version is
   'Definitions for FTE / NB FTE / C-suite live in the Visible request text. Stamping the version makes a definition change visible as a break in the series rather than a silent shift (Q6).';
 
@@ -380,7 +410,8 @@ create table company_ownership (
   company_ownership_id bigint primary key generated always as identity,
   company_id       text not null references company on delete cascade,
   as_of_date       date not null,
-  ownership_pct    numeric(7,4) not null check (ownership_pct between 0 and 100),
+  -- Scale matches investment_round.ownership_after_pct; see the note there.
+  ownership_pct    numeric(19,16) not null check (ownership_pct between 0 and 100),
   pro_rata_rights  boolean not null default false,
   is_synthetic     boolean not null default false,  -- ADR-020
   fully_diluted    boolean not null default true,
@@ -397,6 +428,7 @@ create table reserve_allocation (
   reserve_allocation_id bigint primary key generated always as identity,
   company_id     text not null references company on delete cascade,
   allocated      numeric(18,2) not null,
+  deployed       numeric(18,2) not null default 0,  -- ADR-027
   policy_basis   text,                            -- e.g. "0.8x initial check, green + pro-rata"
   effective_from date not null default current_date,
   set_by         uuid not null references app_user,
@@ -404,6 +436,9 @@ create table reserve_allocation (
 );
 
 create index on reserve_allocation (company_id, effective_from desc);
+
+comment on column reserve_allocation.deployed is
+  'ADR-027. How much of the allocated reserve has been drawn. NOT the sum of follow-on rounds, and the difference is not rounding: C001 in the reference dataset reads 1.5 against a 3.5 follow-on, C004 reads 6.0 against 8.0. A follow-on can be funded from a new allocation rather than the reserve, and a reserve can be released without being deployed. Reserve accounting is a decision the investment team records, not an arithmetic consequence of the transactions.';
 
 -- =====================================================================
 -- 9. GOVERNANCE AND MONITORING
@@ -434,7 +469,10 @@ create table company_covenant (
   company_covenant_id bigint primary key generated always as identity,
   company_id     text not null references company on delete cascade,
   covenant_text  text not null,
+  -- status stays a three-value vocabulary; the narrative that arrives with it
+  -- in the contract ("watch - 1.9x in Q1") lives in status_detail (ADR-026).
   status         text not null check (status in ('compliant','watch','breach')),
+  status_detail  text,                            -- verbatim contract string
   source_document text,
   updated_by     uuid not null references app_user,
   updated_at     timestamptz not null default now()
@@ -478,6 +516,14 @@ create table fund_investment (
   currency           char(3) not null default 'CAD',
   co_invest_rights   boolean not null default false,
   women_senior_gp    boolean,
+  -- CARRIED, not derived, and only until deal-close capture exists (ADR-027).
+  -- v_lp_capital_to_direct derives all three from round_coinvestor, which is
+  -- populated by the ADR-012 capture form at A8. Legacy positions predate that
+  -- form and the ADR-001 contract carries no co-investor detail to reconstruct
+  -- it from, so an imported value is the only value there is.
+  co_invests_done    int,
+  referrals          int,
+  capital_to_direct  numeric(18,2),
   next_call_est      date,
   agm_date           date,
   ir_contact         text,
@@ -520,8 +566,12 @@ create table pipeline_deal (
   affinity_opportunity_id text unique,
   name                    text not null,
   sector_id               int references ref_sector,
-  funnel_stage_id         int not null references ref_funnel_stage,
+  sector_label            text,                  -- verbatim contract string (ADR-026)
+  funnel_stage_id         int references ref_funnel_stage,
+  funnel_label            text,                  -- verbatim contract string (ADR-026)
   source_channel_id       int references ref_source_channel,
+  source_label            text,                  -- verbatim contract string (ADR-026)
+  owner_label             text,                  -- verbatim contract string (ADR-026)
   referred_by_fund_id     text references fund_investment,   -- LP referral scorecard
   check_size              numeric(18,2),
   valuation               numeric(18,2),
@@ -561,6 +611,11 @@ comment on table pipeline_deal_owner is
 
 comment on column pipeline_deal.converted_company_id is
   'Links a closed deal to the portfolio company it became, so the funnel can be measured end to end.';
+
+comment on column pipeline_deal.funnel_stage_id is
+  'NULLABLE at A3 only, and deliberately (ADR-026). ref_funnel_stage holds Affinity''s vocabulary; the reference fixture carries the prototype''s, and the two overlap on four values of seven - Screening, IC Review and Term Sheet have no exact Affinity equivalent. Rather than invent reference rows or coerce IC Review to Team Pitch, the key is left NULL and funnel_label carries the verbatim string. RESTORE NOT NULL at A4, when the pipeline is real and every stage resolves.';
+comment on column pipeline_deal.owner_label is
+  'ADR-026. The contract carries owner as a single free-text string, including "-" for unowned. vc_lead_user_id resolves it to an app_user where the name matches one; pipeline_deal_owner holds the full multi-owner list that Affinity actually governs (ADR-009).';
 
 create table deal_gate (
   deal_gate_id bigint primary key generated always as identity,
@@ -649,6 +704,45 @@ create unique index on fund_nav_snapshot (fund_id, period_end);
 
 comment on table fund_nav_snapshot is
   'Replaces the MVP''s manual fund.navHistory[]. Computed from marks and transactions, then frozen. Once frozen the row is never recomputed.';
+
+-- ---------------------------------------------------------------------
+-- FUND-LEVEL DISTRIBUTIONS (ADR-025)
+--
+-- A STATED EXCEPTION TO ADR-002, with a stated end date. ADR-002 makes
+-- `transaction` the only store of money movement and names this exact
+-- duplication as the thing it resolves: fund.distributions[] drives fund
+-- TVPI/DPI while company.realized drives company MOIC, and the two can
+-- disagree. On the reference dataset they disagree by $5.5M.
+--
+-- Deriving this series from realization transactions moves five board
+-- numbers that ADR-013 freezes (TVPI 2.08x->2.10x, DPI 0.16x->0.18x, gross
+-- IRR 19.0%->19.1%, net IRR 16.7%->16.8%, dry powder $146.7M->$152.2M).
+-- A3 keeps them frozen so that any number moving during the fixture-to-API
+-- swap is an adapter bug rather than an intended change. The correction is
+-- deferred to A6/A13, on real data, with the VC team lead's sign-off and a
+-- golden-master recapture. See ADR-025.
+--
+-- Deliberately a separate table rather than a nullable-subject transaction
+-- row: an exception that is greppable is an exception that gets removed.
+-- It is also the only place a realization from a company that predates the
+-- roster can live, which historical backfill will need regardless (ADR-015).
+create table fund_distribution (
+  fund_distribution_id bigint primary key generated always as identity,
+  fund_id           int not null references fund,
+  distribution_date date not null,
+  amount            numeric(18,2) not null,      -- DOLLARS, not millions
+  company_label     text not null,               -- verbatim; may name no company we hold
+  company_id        text references company,     -- resolved on exact name match only (ADR-026)
+  note              text,
+  is_synthetic      boolean not null default false,  -- ADR-020
+  entered_by        uuid not null references app_user,
+  batch_id          uuid                         -- reversible wholesale (ADR-018)
+);
+
+create index on fund_distribution (fund_id, distribution_date);
+
+comment on column fund_distribution.company_label is
+  'The contract''s distributions[].company, verbatim. On the reference dataset two of four rows resolve to no company: "Generated exits" is an aggregate, and "Solvine" does not match the roster''s "Solvine (exited)". Both are legitimate states for historical fund-level realizations, not import errors.';
 
 -- =====================================================================
 -- 14. AUDIT
@@ -745,31 +839,54 @@ returns numeric language sql stable as $$
   );
 $$;
 
--- ADR-023: this view assembles FACTS ONLY. It sums, filters to live rows,
+-- ADR-023: this function assembles FACTS ONLY. It sums, filters to live rows,
 -- picks the latest row by date and joins. It computes no metric.
 --
 -- A `moic` column lived here until A1 and has been removed: it divided one
 -- aggregate by another, which is the definition of a metric under ADR-023.
 -- MOIC is owned by packages/metrics and computed nowhere else (ADR-021).
 --
--- TODO (A3): `current_date` makes this view non-deterministic and pins "now"
--- to the database clock. ADR-007's reporting lag means a report re-run after
--- Finance books a mark legitimately differs from the same report run before.
--- When the read path is designed, this becomes an as-of parameter supplied by
--- the caller -- the same date the metrics package takes as `asOf` (ADR-021).
--- Left as-is for now rather than guessed at ahead of A3.
-create or replace view v_company_current as
+-- A3 resolved the `current_date` TODO that stood here: the read path now takes
+-- an explicit as-of date, so a board report re-run reproduces itself and the
+-- date is the same fact the ADR-007 reporting-lag stamp shows on screen.
+--
+-- THE PARAMETER REACHES EXACTLY ONE COLUMN, AND THAT IS DELIBERATE. `fmv` is
+-- genuinely as-at-a-date: NAV as at any date is the sum of each company's most
+-- recent mark on or before it. The others are not, and dating them would
+-- silently change frozen definitions (ADR-013):
+--
+--   * `invested` and `realized` sum every live transaction regardless of date.
+--     The prototype's scalars carry no date semantics at all. On the reference
+--     dataset two exits are dated AFTER the pinned as-of - Nimbus Grid 2029,
+--     Quorum Capital OS 2027 - so filtering realizations by date would erase
+--     $13.4M of realized proceeds and move company MOIC and fund realized.
+--   * `exited` is the existence of a company_exit row, not a comparison of its
+--     date against the as-of, for the same reason.
+--
+-- If a genuinely as-at-a-date `invested` is ever wanted, it is a NEW function
+-- with a new name, not a predicate added here.
+create or replace function company_current_asof(p_as_of date)
+returns table (
+  company_id text, name text, sector text, sector_label text, stage text,
+  health text, hq_city text, hq_region text, is_nb_based boolean,
+  source_channel text, source_label text, invested numeric,
+  first_investment_date date, vintage_year int, fmv numeric, realized numeric,
+  exited boolean, exit_date date, exit_type text,
+  ownership_pct numeric, pro_rata_rights boolean
+) language sql stable as $$
 select c.company_id,
        c.name,
        s.name                                    as sector,
+       c.sector_label,
        cs.stage,
        cs.health,
        c.hq_city, c.hq_region, c.is_nb_based,
        sc.name                                   as source_channel,
+       c.source_label,
        inv.invested,
        inv.first_investment_date,
        extract(year from inv.first_investment_date)::int as vintage_year,
-       company_fmv_asof(c.company_id, current_date)      as fmv,
+       company_fmv_asof(c.company_id, p_as_of)           as fmv,
        rz.realized,
        (ce.company_id is not null)               as exited,
        ce.exit_date, ce.exit_type,
@@ -791,6 +908,14 @@ left join lateral (
       from company_ownership co
      where co.company_id = c.company_id
      order by co.as_of_date desc limit 1) own on true;
+$$;
+
+-- CONVENIENCE ONLY. Finance's ad-hoc queries want "as at today" without
+-- passing a date. The API NEVER reads this view: it calls
+-- company_current_asof() with the same explicit date it hands the metrics
+-- package as `asOf` (ADR-021), so a re-run reproduces itself.
+create or replace view v_company_current as
+  select * from company_current_asof(current_date);
 
 -- Leverage: third-party capital per our dollar. Rounds with a missing or
 -- invalid round_total are EXCLUDED, never imputed. Preserved exactly from
@@ -900,8 +1025,10 @@ select
   (select count(*) from investment_round   where is_synthetic) as synthetic_rounds,
   (select count(*) from fund_investment_nav where is_synthetic) as synthetic_lp_navs,
   (select count(*) from company_ownership  where is_synthetic) as synthetic_ownership,
+  (select count(*) from fund_distribution  where is_synthetic) as synthetic_fund_distributions,
   (select count(*) from transaction        where is_synthetic) > 0
     or (select count(*) from valuation_mark where is_synthetic) > 0
+    or (select count(*) from fund_distribution where is_synthetic) > 0
                                                               as contains_synthetic;
 
 comment on view v_synthetic_data_status is

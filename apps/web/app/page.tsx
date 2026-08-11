@@ -1,95 +1,40 @@
-'use client';
-
 /**
- * The application. Eight tabs, ported one-to-one from the prototype (ADR-014),
- * rendering from the ADR-001 contract shape.
+ * The application's entry point, and A3's exit criterion made concrete: the
+ * portfolio now comes from Postgres rather than from `docs/reference/demo.json`.
  *
- * Data comes from `lib/data.ts`, which serves docs/reference/demo.json as a
- * static fixture. A3 swaps that for the API and nothing here changes, because
- * the fixture and the API response are the same shape (ADR-020).
+ * A server component, so the document is assembled through `packages/api` on
+ * the server and the client receives the same ADR-001 shape it received from
+ * the fixture at A2. Nothing in `PortfolioApp` or the eight tabs changed to
+ * accommodate it, which is the property ADR-020 promised and the reason A2
+ * could be built ahead of the backend at all.
+ *
+ * IT CALLS THE API LAYER DIRECTLY RATHER THAN FETCHING ITS OWN HTTP ENDPOINT.
+ * `GET /api/v1/export` exists and serves the identical document via the
+ * identical function -- it is the contract for Daniel's export/re-import loop
+ * and for any external consumer. But a server component fetching its own origin
+ * has to reconstruct a bearer token it already has the identity for, and adds a
+ * network hop and a second failure mode to a call that is otherwise a function
+ * invocation. Both paths run the same authorisation and the same adapter.
  */
-import { fmt, fundMetrics, isEvergreen } from '@portfolio-command/metrics';
+import { headers } from 'next/headers';
 
-import { AppShell, NotYetPorted, TABS, useApp, type TabId } from '../components/AppShell';
-import { CompanyDrawer } from '../components/drawers/CompanyDrawer';
-import { DealDrawer } from '../components/drawers/DealDrawer';
-import { FundInvestmentDrawer } from '../components/drawers/FundInvestmentDrawer';
-import { DashboardTab } from '../components/tabs/DashboardTab';
-import { DataTab } from '../components/tabs/DataTab';
-import { FundsTab } from '../components/tabs/FundsTab';
-import { PipelineTab } from '../components/tabs/PipelineTab';
-import { MemoTab } from '../components/tabs/MemoTab';
-import { ModelingTab } from '../components/tabs/ModelingTab';
-import { PortfolioTab } from '../components/tabs/PortfolioTab';
-import { ReportsTab } from '../components/tabs/ReportsTab';
-import { asOfDate, loadPortfolio } from '../lib/data';
-import { EditableProvider, useEditable } from '../lib/editable';
+import { buildExport, CAN_READ, db, requireRole, resolveAsOf, resolvePrincipal } from '@portfolio-command/api';
 
-const db = loadPortfolio();
-const asOf = asOfDate(db);
+import { PortfolioApp } from './PortfolioApp';
 
-function DrawerContent() {
-  const { drawer } = useApp();
-  const { pipeline } = useEditable();
-  if (!drawer) return null;
+// Board numbers are never served from a cache. The portfolio changes when
+// someone writes to it, and a stale figure is worse than a slow page.
+export const dynamic = 'force-dynamic';
 
-  if (drawer.kind === 'company') {
-    const company = db.companies.find((c) => c.id === drawer.id);
-    return company ? <CompanyDrawer company={company} /> : null;
-  }
-  if (drawer.kind === 'lp') {
-    const position = db.fundInvestments.find((f) => f.id === drawer.id);
-    return position ? <FundInvestmentDrawer position={position} asOf={asOf} /> : null;
-  }
-  if (drawer.kind === 'deal') {
-    // Read from the editable copy so a gate change is reflected immediately.
-    const deal = pipeline.find((d) => d.id === drawer.id);
-    return deal ? <DealDrawer deal={deal} /> : null;
-  }
-  return null;
-}
+export default async function Home() {
+  const principal = await resolvePrincipal(db(), await headers());
+  requireRole(principal, CAN_READ);
 
-function FundTag() {
-  const m = fundMetrics(db, { asOf });
-  return (
-    <>
-      <b>{db.fund.name}</b>
-      {isEvergreen(db) && <span style={{ color: '#7fb0ff' }}> EVERGREEN</span>}
-      <br />
-      NAV {fmt.m(m.fmv)} - TVPI {fmt.x(m.tvpi)} - {m.nActive} companies
-    </>
-  );
-}
+  // Derived from the latest final valuation mark, never from the clock, so the
+  // page reproduces itself and its date is the date its marks are as at
+  // (ADR-007, ADR-021).
+  const asOf = await resolveAsOf(db());
+  const doc = await buildExport(db(), { asOf });
 
-function Tab({ tab }: { tab: TabId }) {
-  switch (tab) {
-    case 'dashboard':
-      return <DashboardTab db={db} asOf={asOf} />;
-    case 'portfolio':
-      return <PortfolioTab db={db} />;
-    case 'funds':
-      return <FundsTab db={db} asOf={asOf} />;
-    case 'pipeline':
-      return <PipelineTab db={db} asOf={asOf} />;
-    case 'modeling':
-      return <ModelingTab db={db} asOf={asOf} />;
-    case 'memo':
-      return <MemoTab db={db} asOf={asOf} />;
-    case 'reports':
-      return <ReportsTab db={db} asOf={asOf} />;
-    case 'data':
-      return <DataTab db={db} asOf={asOf} />;
-    default:
-      return <NotYetPorted tab={TABS.find((t) => t.id === tab)?.label ?? tab} />;
-  }
-}
-
-export default function Home() {
-  return (
-    <EditableProvider db={db}>
-      <AppShell fundTag={<FundTag />} drawerContent={<DrawerContent />}>
-        {(tab: TabId) => <Tab tab={tab} />}
-      </AppShell>
-    </EditableProvider>
-  );
+  return <PortfolioApp db={doc} asOf={asOf} />;
 }

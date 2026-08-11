@@ -1,6 +1,26 @@
+import path from 'node:path';
+
+import { config as loadEnv } from 'dotenv';
 import type { NextConfig } from 'next';
 
-const WORKSPACE_PACKAGES = ['@portfolio-command/metrics', '@portfolio-command/contract'];
+/**
+ * Next reads `.env` from the app directory; this repo keeps ONE `.env` at the
+ * workspace root, shared with db:migrate, db:seed, db:types and the importer.
+ * Loading it here runs before the server boots, so `DATABASE_URL`,
+ * `AUTH_MODE` and the Entra settings reach the API layer.
+ *
+ * One env file rather than two: a second copy under apps/web is a second thing
+ * to keep in step, and the failure mode is a server quietly talking to the
+ * wrong database.
+ */
+loadEnv({ path: path.resolve(import.meta.dirname, '../../.env') });
+
+const WORKSPACE_PACKAGES = [
+  '@portfolio-command/metrics',
+  '@portfolio-command/contract',
+  '@portfolio-command/api',
+  '@portfolio-command/db',
+];
 
 const nextConfig: NextConfig = {
   /**

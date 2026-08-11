@@ -111,6 +111,31 @@ function targetsFor(vocab: VocabRow[], table: string): { name: string; notes: st
   return out;
 }
 
+/**
+ * The system principal.
+ *
+ * Every financial and mandate table carries `entered_by` / `created_by` NOT NULL
+ * against app_user, so nothing loads until one exists. Automated writers -- the
+ * ADR-001 importer, and the Affinity and Visible syncs at A4/A5 -- attribute to
+ * this row rather than borrowing a person's identity, which keeps `audit_log`
+ * honest about what a machine did versus what someone decided.
+ *
+ * The id is a fixed literal, not uuid_generate_v4(), so an import is
+ * reproducible and a seeded database is byte-comparable with another one.
+ *
+ * `entra_object_id` is a sentinel: no Entra principal backs this row and none
+ * should. The email is deliberately non-routable so it can never be mistaken
+ * for a mailbox or resolve against the tenant (ADR-005 issues accounts to staff
+ * only).
+ */
+const SYSTEM_USER = {
+  id: '00000000-0000-0000-0000-000000000001',
+  entraObjectId: 'system:portfolio-command',
+  displayName: 'Portfolio Command (system)',
+  email: 'system@portfolio-command.invalid',
+  role: 'admin',
+} as const;
+
 // --- fixed vocabularies (prototype constants, vc-toolkit.html:204-205)
 const STAGES = ['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C+', 'Growth'];
 const INSTRUMENTS = ['SAFE', 'Convertible Note', 'Debt-to-Note', 'Preferred Equity', 'Common Equity'];
@@ -145,6 +170,38 @@ await client.connect();
 try {
   await client.query('begin');
   await client.query('set local search_path = pc, public');
+
+  await client.query(
+    `insert into app_user (user_id, entra_object_id, display_name, email, role)
+     values ($1, $2, $3, $4, $5)
+     on conflict (user_id) do update
+       set display_name = excluded.display_name,
+           email        = excluded.email,
+           role         = excluded.role,
+           is_active    = true`,
+    [
+      SYSTEM_USER.id,
+      SYSTEM_USER.entraObjectId,
+      SYSTEM_USER.displayName,
+      SYSTEM_USER.email,
+      SYSTEM_USER.role,
+    ],
+  );
+
+  // Optional local development principal. AUTH_MODE=dev resolves
+  // DEV_PRINCIPAL_EMAIL against app_user, and a developer needs a row that is
+  // NOT the system principal -- an automated writer and a person must stay
+  // distinguishable in audit_log. Set DEV_ADMIN_EMAIL in .env to create one.
+  // Nobody's address is committed here, and unset means no row.
+  const devAdminEmail = process.env.DEV_ADMIN_EMAIL;
+  if (devAdminEmail) {
+    await client.query(
+      `insert into app_user (entra_object_id, display_name, email, role)
+       values ($1, $2, $3, 'admin')
+       on conflict (email) do update set is_active = true, role = 'admin'`,
+      [`dev:${devAdminEmail}`, devAdminEmail, devAdminEmail],
+    );
+  }
 
   for (const [i, s] of sectors.entries()) {
     await client.query(
@@ -193,7 +250,8 @@ try {
   await client.query('commit');
 
   const counts = await client.query(`
-    select 'ref_sector' as t, count(*) from pc.ref_sector
+    select 'app_user' as t, count(*) from pc.app_user
+    union all select 'ref_sector', count(*) from pc.ref_sector
     union all select 'ref_funnel_stage', count(*) from pc.ref_funnel_stage
     union all select 'ref_source_channel', count(*) from pc.ref_source_channel
     union all select 'ref_stage', count(*) from pc.ref_stage

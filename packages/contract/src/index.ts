@@ -248,7 +248,8 @@ export interface PipelineDeal {
   funnel: 'Sourced' | 'Screening' | 'Diligence' | 'IC Review' | 'Term Sheet' | 'Closed' | 'Passed' | string;
   source: string;
   checkSize: number;
-  valuation: number;
+  /** Null where the deal has not been priced yet. Never 0 -- that would be a claim, not a gap. */
+  valuation: number | null;
   owner: string;
   nextStep: string;
   added: string;

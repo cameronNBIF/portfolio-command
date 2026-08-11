@@ -15,6 +15,7 @@
     "db:migrate": "npm run migrate -w @portfolio-command/db",
     "db:seed": "npm run seed -w @portfolio-command/db",
     "db:types": "kysely-codegen --dialect postgres --default-schema pc --include-pattern \"pc.*\" --out-file packages/db/src/generated/db.ts",
+    "import:fixture": "npm run import:contract -w @portfolio-command/api",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
