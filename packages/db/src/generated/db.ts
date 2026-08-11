@@ -110,15 +110,29 @@ export interface Company {
   created_at: Generated<Timestamp>;
   created_by: string;
   description: string | null;
+  /**
+   * ADR-027. Headcount at first investment. NOT derivable from company_kpi: the KPI series begins when Visible reporting begins, which for an old vintage is a decade after entry. On the reference dataset the series covers three quarters and every entry figure predates it.
+   */
+  fte_at_entry: number | null;
   hq_city: string | null;
   hq_country: Generated<string | null>;
   hq_region: string | null;
+  /**
+   * ADR-027. The company's headline instrument, which is NOT mechanically the first or last round's: C009 in the reference dataset reads Debt-to-Note against a latest round of Preferred Equity. Stored because it is an independent fact, not a sum.
+   */
+  instrument_id: number | null;
+  instrument_label: string | null;
   is_nb_based: Generated<boolean | null>;
   legal_name: string | null;
   name: string;
   nb_region: string | null;
   sector_id: number | null;
+  /**
+   * ADR-026. The verbatim string the ADR-001 contract carries, which the API serialises. sector_id is the resolved reference key and is NULL where no exact match exists - the importer never invents a ref_sector row and never coerces to a nearest neighbour. Expected to be redundant once the roster is real and its vocabulary is Affinity's (ADR-009).
+   */
+  sector_label: string | null;
   source_channel_id: number | null;
+  source_label: string | null;
   synced_at: Timestamp | null;
   visible_company_id: string | null;
   website: string | null;
@@ -130,6 +144,7 @@ export interface CompanyCovenant {
   covenant_text: string;
   source_document: string | null;
   status: string;
+  status_detail: string | null;
   updated_at: Generated<Timestamp>;
   updated_by: string;
 }
@@ -169,6 +184,10 @@ export interface CompanyKpi {
    */
   request_version: string | null;
   revenue: Numeric | null;
+  /**
+   * ADR-027. AS REPORTED by the company, not computed. cash_balance / monthly_burn reproduces it on 10 of 71 rows in the reference dataset - C004 reports 99 months against a computed 610 - because a founder nets expected inflows and a committed round against the burn, and the platform is not the system of submission (ADR-017). It drives the runway health alert, so a computed substitute would change which companies appear on the watchlist.
+   */
+  runway_months: Numeric | null;
   source_system: Generated<string>;
   women_csuite: number | null;
 }
@@ -234,8 +253,8 @@ export interface CompanyTask {
 
 export interface CompanyThreshold {
   company_id: string;
-  max_burn_multiple: Generated<Numeric | null>;
-  min_runway_months: Generated<number>;
+  max_burn_multiple: Numeric | null;
+  min_runway_months: number | null;
   updated_at: Generated<Timestamp>;
   updated_by: string;
 }
@@ -274,9 +293,27 @@ export interface Fund {
   updated_at: Generated<Timestamp>;
 }
 
+export interface FundDistribution {
+  amount: Numeric;
+  batch_id: string | null;
+  company_id: string | null;
+  /**
+   * The contract's distributions[].company, verbatim. On the reference dataset two of four rows resolve to no company: "Generated exits" is an aggregate, and "Solvine" does not match the roster's "Solvine (exited)". Both are legitimate states for historical fund-level realizations, not import errors.
+   */
+  company_label: string;
+  distribution_date: Timestamp;
+  entered_by: string;
+  fund_distribution_id: Generated<Int8>;
+  fund_id: number;
+  is_synthetic: Generated<boolean>;
+  note: string | null;
+}
+
 export interface FundInvestment {
   agm_date: Timestamp | null;
+  capital_to_direct: Numeric | null;
   co_invest_rights: Generated<boolean>;
+  co_invests_done: number | null;
   committed: Numeric;
   created_by: string;
   currency: Generated<string>;
@@ -286,6 +323,7 @@ export interface FundInvestment {
   name: string;
   next_call_est: Timestamp | null;
   rationale: string | null;
+  referrals: number | null;
   source_document: string | null;
   strategy: string | null;
   vintage_year: number | null;
@@ -376,14 +414,24 @@ export interface PipelineDeal {
   currency: Generated<string>;
   date_added: Timestamp | null;
   deal_id: string;
-  funnel_stage_id: number;
+  funnel_label: string | null;
+  /**
+   * NULLABLE at A3 only, and deliberately (ADR-026). ref_funnel_stage holds Affinity's vocabulary; the reference fixture carries the prototype's, and the two overlap on four values of seven - Screening, IC Review and Term Sheet have no exact Affinity equivalent. Rather than invent reference rows or coerce IC Review to Team Pitch, the key is left NULL and funnel_label carries the verbatim string. RESTORE NOT NULL at A4, when the pipeline is real and every stage resolves.
+   */
+  funnel_stage_id: number | null;
   last_email_date: Timestamp | null;
   last_meeting_date: Timestamp | null;
   name: string;
   next_step: string | null;
+  /**
+   * ADR-026. The contract carries owner as a single free-text string, including "-" for unowned. vc_lead_user_id resolves it to an app_user where the name matches one; pipeline_deal_owner holds the full multi-owner list that Affinity actually governs (ADR-009).
+   */
+  owner_label: string | null;
   referred_by_fund_id: string | null;
   sector_id: number | null;
+  sector_label: string | null;
   source_channel_id: number | null;
+  source_label: string | null;
   stage_changed_date: Timestamp | null;
   synced_at: Generated<Timestamp>;
   valuation: Numeric | null;
@@ -441,6 +489,10 @@ export interface RefValuationMethod {
 export interface ReserveAllocation {
   allocated: Numeric;
   company_id: string;
+  /**
+   * ADR-027. How much of the allocated reserve has been drawn. NOT the sum of follow-on rounds, and the difference is not rounding: C001 in the reference dataset reads 1.5 against a 3.5 follow-on, C004 reads 6.0 against 8.0. A follow-on can be funded from a new allocation rather than the reserve, and a reserve can be released without being deployed. Reserve accounting is a decision the investment team records, not an arithmetic consequence of the transactions.
+   */
+  deployed: Generated<Numeric>;
   effective_from: Generated<Timestamp>;
   policy_basis: string | null;
   reserve_allocation_id: Generated<Int8>;
@@ -508,7 +560,12 @@ export interface ValuationMark {
   effective_date: Timestamp;
   fmv: Numeric;
   is_synthetic: Generated<boolean>;
-  prepared_by: string;
+  /**
+   * ADR-026. The verbatim method string the ADR-001 contract carries, which the API serialises. Marks routinely qualify a canonical method in free text - "Revenue multiple, discounted", "Last round + backlog coverage" - and that qualification is meaningful to whoever reads the mark. valuation_method_id resolves to ref_valuation_method only on an exact match and is NULL otherwise; it is what grouping and filtering use.
+   */
+  method_label: string;
+  prepared_by: string | null;
+  prepared_by_label: string;
   /**
    * Not optional. This is what a board or auditor reads when they challenge a number.
    */
@@ -517,7 +574,7 @@ export interface ValuationMark {
   status: Generated<string>;
   supersedes_id: Int8 | null;
   valuation_mark_id: Generated<Int8>;
-  valuation_method_id: number;
+  valuation_method_id: number | null;
 }
 
 export interface VCompanyCurrent {
@@ -537,7 +594,9 @@ export interface VCompanyCurrent {
   pro_rata_rights: boolean | null;
   realized: Numeric | null;
   sector: string | null;
+  sector_label: string | null;
   source_channel: string | null;
+  source_label: string | null;
   stage: string | null;
   vintage_year: number | null;
 }
@@ -607,6 +666,7 @@ export interface VRoundLeverage {
 
 export interface VSyntheticDataStatus {
   contains_synthetic: boolean | null;
+  synthetic_fund_distributions: Int8 | null;
   synthetic_lp_navs: Int8 | null;
   synthetic_marks: Int8 | null;
   synthetic_ownership: Int8 | null;
@@ -655,6 +715,7 @@ export interface DB {
   company_threshold: CompanyThreshold;
   deal_gate: DealGate;
   fund: Fund;
+  fund_distribution: FundDistribution;
   fund_investment: FundInvestment;
   fund_investment_nav: FundInvestmentNav;
   fund_nav_snapshot: FundNavSnapshot;
