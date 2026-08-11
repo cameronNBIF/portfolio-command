@@ -184,3 +184,33 @@ pre.schema { background: #0f172a; color: #cfe0f4; font: 11px/1.55 var(--mono); p
 /* The prototype left the body scrollable behind the drawer. Locking it is a
    fix for a real annoyance, not a restyle -- nothing visible moves. */
 body.drawer-open { overflow: hidden; }
+
+/* ADR-020 condition 3: the synthetic-data banner. Not in the prototype, which
+   had no concept of real versus generated data.
+
+   Deliberately loud and deliberately not dismissible. The failure mode it
+   guards against is a screenshot of generated numbers reaching a board pack,
+   so it has to survive being looked at every day without becoming invisible --
+   and it must never acquire a close button. It sits above the header rather
+   than inside it so it cannot scroll away. */
+#syntheticbanner {
+  background: #b3261e;
+  color: #fff;
+  font: 600 12px var(--font);
+  letter-spacing: .01em;
+  padding: 7px 18px;
+  text-align: center;
+  flex: none;
+}
+#syntheticbanner b { letter-spacing: .06em; margin-right: 4px; }
+
+@media print {
+  /* Every PDF export carries it too (ADR-020). A11 replaces this print path
+     with Playwright; the banner requirement does not change. */
+  #syntheticbanner {
+    display: block !important;
+    background: #fff;
+    color: #b3261e;
+    border-bottom: 2px solid #b3261e;
+  }
+}

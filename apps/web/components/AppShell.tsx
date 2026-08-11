@@ -60,12 +60,22 @@ export function useApp(): AppState {
 export function AppShell({
   fundTag,
   drawerContent,
+  containsSynthetic,
   children,
 }: {
   /** The header's right-hand summary line. */
   fundTag: ReactNode;
   /** Rendered inside `#drawer` when a target is set. */
   drawerContent: ReactNode;
+  /**
+   * `v_synthetic_data_status.contains_synthetic`, straight from the database.
+   *
+   * ADR-020, condition 3: while this is true a persistent banner appears on
+   * every screen, and it is never suppressed. It disappears only when the
+   * synthetic row count actually reads zero at cutover (A13) -- not when
+   * someone decides the numbers look plausible enough to demo without it.
+   */
+  containsSynthetic: boolean;
   children: (tab: TabId) => ReactNode;
 }) {
   const [tab, setTab] = useState<TabId>('dashboard');
@@ -115,6 +125,12 @@ export function AppShell({
   return (
     <AppContext.Provider value={value}>
       <div id="app">
+        {containsSynthetic && (
+          <div id="syntheticbanner" role="status">
+            <b>SYNTHETIC DATA</b> — financial figures on this screen are generated for development
+            and are not NBIF&rsquo;s real portfolio. Do not quote them.
+          </div>
+        )}
         <header>
           <div className="logo">
             PORTFOLIO<span>COMMAND</span>
