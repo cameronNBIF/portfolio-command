@@ -1,55 +1,6332 @@
 {
   "fund": {
     "name": "Ridgeline Direct Investments",
-    "currency": "USD", "vintage": 2019,        
-    "style": "evergreen",                      
-    "capitalBase": 400,                        
-    "committed": 400, "called": 310,           
-    "distributionPolicy": "Realized proceeds recycle ...",
-    "feeDragPct": 2.3,                         
-    "navHistory": [{ "q": "2026-Q1", "nav": 498.5, "cost": 269.0 }],   
-    "annualPlatformTarget": 5, "ytdPlatformsClosed": 2,
-    "distributions": [{ "date": "2024-10-15", "amount": 27.5, "company": "Solvine", "note": "..." }]
+    "currency": "USD",
+    "vintage": 2019,
+    "style": "evergreen",
+    "capitalBase": 400,
+    "committed": 400,
+    "called": 310,
+    "distributionPolicy": "Realized proceeds recycle into new platforms and follow-ons; distributions to shareholders at board discretion.",
+    "feeDragPct": 2.3,
+    "navHistory": [
+      {
+        "q": "2024-Q1",
+        "nav": 362,
+        "cost": 224
+      },
+      {
+        "q": "2024-Q2",
+        "nav": 371,
+        "cost": 230
+      },
+      {
+        "q": "2024-Q3",
+        "nav": 384,
+        "cost": 236
+      },
+      {
+        "q": "2024-Q4",
+        "nav": 401,
+        "cost": 243
+      },
+      {
+        "q": "2025-Q1",
+        "nav": 415,
+        "cost": 248
+      },
+      {
+        "q": "2025-Q2",
+        "nav": 431,
+        "cost": 252
+      },
+      {
+        "q": "2025-Q3",
+        "nav": 452,
+        "cost": 258
+      },
+      {
+        "q": "2025-Q4",
+        "nav": 471,
+        "cost": 263
+      },
+      {
+        "q": "2026-Q1",
+        "nav": 498.5,
+        "cost": 269
+      }
+    ],
+    "annualPlatformTarget": 5,
+    "annualFollowOnBudget": 20,
+    "ytdPlatformsClosed": 2,
+    "reservesPolicy": "Reserve 0.5-0.8x initial check for companies rated green/yellow with pro-rata rights.",
+    "distributions": [
+      {
+        "date": "2023-10-20",
+        "amount": 4,
+        "company": "Cobalt Harbor",
+        "note": "Partial secondary at Series C"
+      },
+      {
+        "date": "2024-10-15",
+        "amount": 27.5,
+        "company": "Solvine",
+        "note": "Acquisition proceeds"
+      },
+      {
+        "date": "2025-06-30",
+        "amount": 9.2,
+        "company": "Generated exits",
+        "note": "Aggregate realizations"
+      },
+      {
+        "date": "2026-02-28",
+        "amount": 6.8,
+        "company": "Generated exits",
+        "note": "Aggregate realizations"
+      }
+    ]
   },
-  "companies": [{
-    "id": "C001", "name": "...", "sector": "...", "stage": "Series B", "vintage": 2021,
-    "health": "green|yellow|red", "riskFlags": ["..."],
-    "instrument": "SAFE|Convertible Note|Debt-to-Note|Preferred Equity|Common Equity",
-    "ownershipPct": 11.2, "invested": 8.5, "fmv": 24.7, "realized": 0,   
-    "exited": false, "proRata": true,
-    "reservesAllocated": 4.0, "reservesDeployed": 1.5,
-    "board": { "seat": "Director|Observer|None", "holder": "...", "nextMeeting": "2026-08-12" },
-    "kpis": [{ "period": "2026-Q1", "revenue": 14.2, "burn": 0.9, "cash": 22.4, "runwayMo": 25 }],
-    "thresholds": { "minRunwayMo": 12 },       
-    "source": "University spinout",            
-    "fte": 145, "fteNB": 98, "fteAtEntry": 38, 
-    "womenCSuite": 2, "cSuiteSize": 5,         
-    "rounds": [{ "date": "2021-03-15", "label": "Series A", "instrument": "...",
-                 "invested": 5.0, "roundTotal": 12,          
-                 "nbOther": 1.5,                             
-                 "postMoney": 42, "ownershipAfter": 11.9, "lead": "Us", "note": "..." }],
-    "milestones": [{ "title": "...", "due": "2026-12-31", "status": "on-track|at-risk|pending" }],
-    "covenants": [{ "text": "...", "status": "compliant|watch|breached" }],
-    "govFunding": { "program": "...", "amount": 45, "conditions": "...", "status": "active|conditions pending" },
-    "marks": [{ "date": "2026-03-31", "fmv": 24.7, "method": "...", "by": "...", "rationale": "..." }],
-    "tasks": [{ "title": "...", "due": "2026-08-05", "done": false }]
-  }],
-  "pipeline": [{
-    "id": "P001", "name": "...", "sector": "...", "funnel": "Sourced|Screening|Diligence|IC Review|Term Sheet|Closed|Passed",
-    "source": "...", "checkSize": 7.0, "valuation": 52, "owner": "...", "nextStep": "...", "added": "2026-04-02",
-    "gates": [{ "name": "Initial screen", "status": "pending|in-progress|passed|failed" }],
-    "termSheet": { "security": "...", "preMoney": 45, "postMoney": 52, "investment": 7.0, "ownership": 13.5,
-                   "liquidation": "...", "antiDilution": "...", "board": "...", "proRata": "...",
-                   "dividends": "...", "optionPool": "...", "founderVesting": "..." }
-  }],
-  "fundInvestments": [{                       
-    "id": "F001", "name": "Meridian Growth Fund III", "manager": "...", "strategy": "Growth equity",
-    "vintage": 2021, "committed": 15, "called": 11.0, "distributions": 1.5, "nav": 13.8,   
-    "coInvestRights": true, "coInvestsDone": 2, "referrals": 3,
-    "capitalToDirect": 6.5,                    
-    "womenSeniorGP": true,                     
-    "nextCallEst": "2026-09-30", "agm": "2026-10-15", "contact": "...", "rationale": "...",
-    "cashflows": [{ "date": "2021-06-30", "amount": -3.0 }]   
-  }],
-  "memos": {}   
+  "companies": [
+    {
+      "id": "C001",
+      "name": "Vantara Systems",
+      "sector": "Enterprise SaaS",
+      "stage": "Series B",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 11.2,
+      "invested": 8.5,
+      "fmv": 24.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Maya Lindqvist",
+      "hq": "Fredericton, NB",
+      "desc": "Workflow automation platform for regulated back-office operations in insurance and banking.",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 4,
+      "reservesDeployed": 1.5,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-08-12"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 14.2,
+          "burn": 0.9,
+          "cash": 22.4,
+          "runwayMo": 25
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 12.8,
+          "burn": 1,
+          "cash": 25.1,
+          "runwayMo": 25
+        },
+        {
+          "period": "2025-Q3",
+          "revenue": 11.1,
+          "burn": 1.1,
+          "cash": 28.2,
+          "runwayMo": 26
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2021-03-15",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 5,
+          "postMoney": 42,
+          "ownershipAfter": 11.9,
+          "lead": "Us",
+          "note": "Led round, 2 board seats total",
+          "roundTotal": 12,
+          "nbOther": 1.5
+        },
+        {
+          "date": "2023-06-20",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 3.5,
+          "postMoney": 120,
+          "ownershipAfter": 11.2,
+          "lead": "Meridian Growth",
+          "note": "Pro-rata plus modest super pro-rata",
+          "roundTotal": 30,
+          "nbOther": 2
+        }
+      ],
+      "milestones": [
+        {
+          "title": "$20M ARR",
+          "due": "2026-12-31",
+          "status": "on-track"
+        },
+        {
+          "title": "EU market entry",
+          "due": "2026-09-30",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 24.7,
+          "method": "Last round + revenue multiple calibration",
+          "by": "D. Armali",
+          "rationale": "Comps at 8-10x forward ARR; held at calibrated 7.5x on $14.2M ARR run-rate, minority discount applied."
+        },
+        {
+          "date": "2025-12-31",
+          "fmv": 22.1,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Uplift from Q4 ARR growth; multiple unchanged."
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Review Q2 board pack",
+          "due": "2026-08-05",
+          "done": false
+        }
+      ],
+      "fteAtEntry": 38,
+      "fte": 145,
+      "fteNB": 98,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "source": "University spinout"
+    },
+    {
+      "id": "C002",
+      "name": "Heliograph Energy",
+      "sector": "Climate & Energy",
+      "stage": "Series A",
+      "vintage": 2022,
+      "health": "yellow",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 14.5,
+      "invested": 6,
+      "fmv": 9.3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Tomás Reyes",
+      "hq": "Saint John, NB",
+      "desc": "Long-duration thermal storage for industrial heat decarbonization.",
+      "riskFlags": [
+        "Runway below 12 months",
+        "DOE milestone at risk"
+      ],
+      "proRata": true,
+      "reservesAllocated": 3,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-07-22"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.8,
+          "burn": 1.4,
+          "cash": 14,
+          "runwayMo": 10
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 1.5,
+          "burn": 1.3,
+          "cash": 18.2,
+          "runwayMo": 14
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2022-05-10",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 6,
+          "postMoney": 38,
+          "ownershipAfter": 14.5,
+          "lead": "Us",
+          "note": "Board seat; DOE grant condition attached",
+          "roundTotal": 15,
+          "nbOther": 2.5
+        }
+      ],
+      "milestones": [
+        {
+          "title": "Pilot plant COD",
+          "due": "2026-10-15",
+          "status": "at-risk"
+        },
+        {
+          "title": "Series B raise",
+          "due": "2027-01-31",
+          "status": "pending"
+        }
+      ],
+      "covenants": [
+        {
+          "text": "Minimum cash balance $8M until pilot COD",
+          "status": "compliant"
+        }
+      ],
+      "govFunding": {
+        "program": "DOE LPO conditional commitment",
+        "amount": 45,
+        "conditions": "Pilot COD by Q4 2026; 30% private match; Davis-Bacon compliance",
+        "status": "conditions pending"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 9.3,
+          "method": "Calibrated last round, milestone-adjusted",
+          "by": "D. Armali",
+          "rationale": "10% haircut vs. prior mark for pilot delay risk; DOE unlock remains base case."
+        },
+        {
+          "date": "2025-12-31",
+          "fmv": 10.3,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Held at Series A calibration."
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Bridge/insider round decision",
+          "due": "2026-07-30",
+          "done": false
+        },
+        {
+          "title": "DOE milestone review call",
+          "due": "2026-07-15",
+          "done": false
+        }
+      ],
+      "fteAtEntry": 22,
+      "fte": 64,
+      "fteNB": 51,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "source": "Outbound thesis work"
+    },
+    {
+      "id": "C003",
+      "name": "Northline Robotics",
+      "sector": "Industrial Tech",
+      "stage": "Series B",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 9.8,
+      "invested": 9,
+      "fmv": 31.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Sarah Okafor",
+      "hq": "Moncton, NB",
+      "desc": "Autonomous material handling for mid-size warehouses; RaaS model.",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 5,
+      "reservesDeployed": 3,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-09-03"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 19.5,
+          "burn": 0.6,
+          "cash": 31,
+          "runwayMo": 52
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 17.2,
+          "burn": 0.8,
+          "cash": 33.1,
+          "runwayMo": 41
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2020-09-01",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 4,
+          "postMoney": 30,
+          "ownershipAfter": 13.3,
+          "lead": "Us",
+          "note": "",
+          "roundTotal": 10,
+          "nbOther": 1
+        },
+        {
+          "date": "2022-11-15",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 3,
+          "postMoney": 110,
+          "ownershipAfter": 10.4,
+          "lead": "Foundry Industrial",
+          "note": "Pro-rata",
+          "roundTotal": 28,
+          "nbOther": 2.5
+        },
+        {
+          "date": "2024-08-20",
+          "label": "B-1 extension",
+          "instrument": "Preferred Equity",
+          "invested": 2,
+          "postMoney": 145,
+          "ownershipAfter": 9.8,
+          "lead": "Inside round",
+          "note": "Reserves deployment",
+          "roundTotal": 8,
+          "nbOther": 1
+        }
+      ],
+      "milestones": [
+        {
+          "title": "Cash-flow breakeven",
+          "due": "2027-06-30",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 31.4,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "4.5x forward revenue on $28M forward bookings, DLOM 15%."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 30,
+      "fte": 180,
+      "fteNB": 120,
+      "womenCSuite": 2,
+      "cSuiteSize": 6,
+      "source": "Accelerator"
+    },
+    {
+      "id": "C004",
+      "name": "Cobalt Harbor",
+      "sector": "Fintech",
+      "stage": "Series C+",
+      "vintage": 2019,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 6.1,
+      "invested": 12,
+      "fmv": 58.9,
+      "realized": 4,
+      "exited": false,
+      "ceo": "Priya Raman",
+      "hq": "Fredericton, NB",
+      "desc": "Treasury and FX risk infrastructure for mid-market corporates.",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 6,
+      "reservesDeployed": 6,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-07-29"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 41,
+          "burn": -0.5,
+          "cash": 66,
+          "runwayMo": 99
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 37.6,
+          "burn": 0.1,
+          "cash": 61,
+          "runwayMo": 99
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2019-04-10",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 4,
+          "postMoney": 36,
+          "ownershipAfter": 11.1,
+          "lead": "Us",
+          "note": "",
+          "roundTotal": 9,
+          "nbOther": 1
+        },
+        {
+          "date": "2021-02-25",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 4,
+          "postMoney": 150,
+          "ownershipAfter": 8.9,
+          "lead": "Granite Capital",
+          "note": "Pro-rata",
+          "roundTotal": 35,
+          "nbOther": 3
+        },
+        {
+          "date": "2023-10-05",
+          "label": "Series C",
+          "instrument": "Preferred Equity",
+          "invested": 4,
+          "postMoney": 420,
+          "ownershipAfter": 6.4,
+          "lead": "Sovereign Growth",
+          "note": "Partial secondary sold: $4.0M at C round",
+          "roundTotal": 80,
+          "nbOther": 5
+        }
+      ],
+      "milestones": [
+        {
+          "title": "IPO readiness review",
+          "due": "2027-03-31",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 58.9,
+          "method": "Last round + public comps",
+          "by": "D. Armali",
+          "rationale": "Series C price supported by public fintech comps at 9x NTM revenue."
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Secondary opportunity assessment",
+          "due": "2026-09-15",
+          "done": false
+        }
+      ],
+      "fteAtEntry": 45,
+      "fte": 390,
+      "fteNB": 160,
+      "womenCSuite": 3,
+      "cSuiteSize": 7,
+      "source": "Founder referral"
+    },
+    {
+      "id": "C005",
+      "name": "Ferrous Gate",
+      "sector": "Cybersecurity",
+      "stage": "Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 7,
+      "invested": 2,
+      "fmv": 3.5,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Alex Brandt",
+      "hq": "Fredericton, NB",
+      "desc": "OT/ICS threat detection for critical infrastructure operators.",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 2.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-08-20"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.1,
+          "burn": 0.35,
+          "cash": 5.6,
+          "runwayMo": 16
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 9,
+        "maxBurnMult": 2
+      },
+      "rounds": [
+        {
+          "date": "2024-06-12",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 2,
+          "postMoney": 28.5,
+          "ownershipAfter": 7,
+          "lead": "Us",
+          "note": "Post-money SAFE, $28.5M cap, no discount; side letter: pro-rata + info rights",
+          "roundTotal": 4.5,
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [
+        {
+          "title": "SAFE conversion at Series A",
+          "due": "2026-11-30",
+          "status": "on-track"
+        },
+        {
+          "title": "$2M ARR",
+          "due": "2026-12-31",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": {
+        "program": "AFWERX SBIR Phase II",
+        "amount": 1.2,
+        "conditions": "Deliverables through Q3 2026",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.5,
+          "method": "Milestone / calibration",
+          "by": "K. Patel",
+          "rationale": "Uplift to expected Series A cap conversion value; term sheet conversations underway at $50M+."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 8,
+      "fte": 26,
+      "fteNB": 22,
+      "womenCSuite": 1,
+      "cSuiteSize": 3,
+      "source": "Fund referral"
+    },
+    {
+      "id": "C006",
+      "name": "Arbor Health",
+      "sector": "Healthtech",
+      "stage": "Series A",
+      "vintage": 2021,
+      "health": "red",
+      "instrument": "Convertible Note",
+      "ownershipPct": 8.4,
+      "invested": 5.5,
+      "fmv": 1.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Interim - board search",
+      "hq": "Moncton, NB",
+      "desc": "Value-based care enablement for independent primary-care groups.",
+      "riskFlags": [
+        "CEO departure",
+        "Runway under 6 months",
+        "Covenant breach",
+        "Down-round likely"
+      ],
+      "proRata": false,
+      "reservesAllocated": 2,
+      "reservesDeployed": 2,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-07-10"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 3.2,
+          "burn": 1.1,
+          "cash": 5,
+          "runwayMo": 5
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 3.4,
+          "burn": 1.3,
+          "cash": 8.6,
+          "runwayMo": 7
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2021-08-15",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 3.5,
+          "postMoney": 32,
+          "ownershipAfter": 10.9,
+          "lead": "Us",
+          "note": "",
+          "roundTotal": 8,
+          "nbOther": 1
+        },
+        {
+          "date": "2025-05-01",
+          "label": "Bridge note",
+          "instrument": "Convertible Note",
+          "invested": 2,
+          "postMoney": null,
+          "ownershipAfter": 8.4,
+          "lead": "Insiders",
+          "note": "8% PIK, 25% discount, $20M cap, maturity 2026-11-01",
+          "roundTotal": 3.5,
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [
+        {
+          "title": "New CEO hired",
+          "due": "2026-08-31",
+          "status": "at-risk"
+        },
+        {
+          "title": "Recap or sale decision",
+          "due": "2026-09-30",
+          "status": "pending"
+        }
+      ],
+      "covenants": [
+        {
+          "text": "Minimum cash $6M (bridge note)",
+          "status": "breached - waiver signed 2026-05"
+        }
+      ],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1.7,
+          "method": "Scenario-weighted (PWERM)",
+          "by": "D. Armali",
+          "rationale": "60% recap at $8M pre / 25% sale ~1x preference / 15% write-off. Note value reflects discount + PIK."
+        },
+        {
+          "date": "2025-12-31",
+          "fmv": 3.4,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Initial markdown on CEO exit and pipeline slippage."
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Recap term negotiation",
+          "due": "2026-07-18",
+          "done": false
+        }
+      ],
+      "fteAtEntry": 25,
+      "fte": 41,
+      "fteNB": 30,
+      "womenCSuite": 0,
+      "cSuiteSize": 4,
+      "source": "Inbound"
+    },
+    {
+      "id": "C007",
+      "name": "Skyward Dynamics",
+      "sector": "Defense & Space",
+      "stage": "Series B",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 8.9,
+      "invested": 10,
+      "fmv": 34.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Col. (ret.) Dana Whitfield",
+      "hq": "Saint John, NB",
+      "desc": "Resilient tactical comms mesh for contested environments.",
+      "riskFlags": [
+        "Customer concentration (DoD 85%)"
+      ],
+      "proRata": true,
+      "reservesAllocated": 5,
+      "reservesDeployed": 4,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-09-17"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 22,
+          "burn": 0.7,
+          "cash": 29.5,
+          "runwayMo": 42
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2022-02-28",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 6,
+          "postMoney": 55,
+          "ownershipAfter": 10.9,
+          "lead": "Us",
+          "note": "",
+          "roundTotal": 14,
+          "nbOther": 2
+        },
+        {
+          "date": "2024-04-15",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 4,
+          "postMoney": 210,
+          "ownershipAfter": 8.9,
+          "lead": "Vanguard Defense Partners",
+          "note": "Pro-rata",
+          "roundTotal": 45,
+          "nbOther": 3
+        }
+      ],
+      "milestones": [
+        {
+          "title": "Program of record decision",
+          "due": "2026-12-15",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": {
+        "program": "OSC STRATFI",
+        "amount": 15,
+        "conditions": "Matched private capital certified; milestones through 2027",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 34.2,
+          "method": "Last round + backlog coverage",
+          "by": "K. Patel",
+          "rationale": "Series B held; $60M contracted backlog supports mark."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 40,
+      "fte": 210,
+      "fteNB": 150,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "source": "Accelerator"
+    },
+    {
+      "id": "C008",
+      "name": "Loomwright",
+      "sector": "AI / ML Infra",
+      "stage": "Series A",
+      "vintage": 2023,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 12,
+      "invested": 7,
+      "fmv": 21,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Jun Park",
+      "hq": "Fredericton, NB",
+      "desc": "Evaluation and observability layer for production LLM applications.",
+      "riskFlags": [
+        "Competitive intensity"
+      ],
+      "proRata": true,
+      "reservesAllocated": 4.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-08-06"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 6.8,
+          "burn": 0.9,
+          "cash": 16,
+          "runwayMo": 18
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 5.1,
+          "burn": 0.9,
+          "cash": 18.5,
+          "runwayMo": 20
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2023-09-20",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 7,
+          "postMoney": 58,
+          "ownershipAfter": 12,
+          "lead": "Us",
+          "note": "Led; 1.5x participating cap removed in negotiation, standard 1x NP",
+          "roundTotal": 16,
+          "nbOther": 1
+        }
+      ],
+      "milestones": [
+        {
+          "title": "Series B raise",
+          "due": "2026-10-31",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 21,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "12x ARR run-rate vs. peer set 10-15x; strong net retention (135%)."
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Series B pro-rata sizing memo",
+          "due": "2026-08-25",
+          "done": false
+        }
+      ],
+      "fteAtEntry": 15,
+      "fte": 72,
+      "fteNB": 40,
+      "womenCSuite": 2,
+      "cSuiteSize": 4,
+      "source": "Founder referral"
+    },
+    {
+      "id": "C009",
+      "name": "Tidemark Logistics",
+      "sector": "Logistics",
+      "stage": "Series B",
+      "vintage": 2020,
+      "health": "yellow",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 10.5,
+      "invested": 8,
+      "fmv": 8.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Marcus Webb",
+      "hq": "Moncton, NB",
+      "desc": "Cross-border freight orchestration with embedded customs workflow.",
+      "riskFlags": [
+        "Gross margin compression",
+        "Burn above plan"
+      ],
+      "proRata": true,
+      "reservesAllocated": 3,
+      "reservesDeployed": 1,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-07-31"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 24,
+          "burn": 1.6,
+          "cash": 19,
+          "runwayMo": 12
+        },
+        {
+          "period": "2025-Q4",
+          "revenue": 23.1,
+          "burn": 1.4,
+          "cash": 23.5,
+          "runwayMo": 17
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "rounds": [
+        {
+          "date": "2020-11-30",
+          "label": "Venture debt converted",
+          "instrument": "Debt-to-Note",
+          "invested": 3,
+          "postMoney": null,
+          "ownershipAfter": 4.2,
+          "lead": "Us",
+          "note": "Original venture debt restructured to convertible note 2022, converted at Series B",
+          "roundTotal": 3,
+          "nbOther": 0.5
+        },
+        {
+          "date": "2022-07-14",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 5,
+          "postMoney": 95,
+          "ownershipAfter": 10.5,
+          "lead": "Latitude Ventures",
+          "note": "Note converted at 20% discount",
+          "roundTotal": 22,
+          "nbOther": 2
+        }
+      ],
+      "milestones": [
+        {
+          "title": "Gross margin > 30%",
+          "due": "2026-12-31",
+          "status": "at-risk"
+        }
+      ],
+      "covenants": [
+        {
+          "text": "Quarterly covenant: burn multiple < 2.0x",
+          "status": "watch - 1.9x in Q1"
+        }
+      ],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 8.8,
+          "method": "Revenue multiple, discounted",
+          "by": "D. Armali",
+          "rationale": "0.9x revenue on margin profile; 20% markdown vs. Series B calibration."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 60,
+      "fte": 230,
+      "fteNB": 170,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "source": "Banker outreach"
+    },
+    {
+      "id": "C010",
+      "name": "Quillon Bio",
+      "sector": "Healthtech",
+      "stage": "Series A",
+      "vintage": 2023,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 13.1,
+      "invested": 6.5,
+      "fmv": 13,
+      "realized": 0,
+      "exited": false,
+      "ceo": "Dr. Elena Vasquez",
+      "hq": "Sackville, NB",
+      "desc": "Computational protein design for next-gen enzyme therapeutics.",
+      "riskFlags": [
+        "Binary clinical risk"
+      ],
+      "proRata": true,
+      "reservesAllocated": 4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-09-10"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.4,
+          "burn": 1,
+          "cash": 21,
+          "runwayMo": 21
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 15,
+        "maxBurnMult": 3
+      },
+      "rounds": [
+        {
+          "date": "2023-03-08",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 6.5,
+          "postMoney": 50,
+          "ownershipAfter": 13.1,
+          "lead": "Us",
+          "note": "Co-led with Helix Partners",
+          "roundTotal": 14,
+          "nbOther": 2.5
+        }
+      ],
+      "milestones": [
+        {
+          "title": "IND filing",
+          "due": "2026-11-30",
+          "status": "on-track"
+        },
+        {
+          "title": "Pharma partnership LOI",
+          "due": "2026-08-31",
+          "status": "on-track"
+        }
+      ],
+      "covenants": [],
+      "govFunding": {
+        "program": "NIH SBIR Phase II",
+        "amount": 2,
+        "conditions": "Milestone reporting; IND progress",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 13,
+          "method": "Milestone-based uplift",
+          "by": "K. Patel",
+          "rationale": "2x step-up on preclinical data package + partnership interest; conservative vs. term-sheet chatter."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 12,
+      "fte": 48,
+      "fteNB": 40,
+      "womenCSuite": 2,
+      "cSuiteSize": 4,
+      "source": "University spinout"
+    },
+    {
+      "id": "C011",
+      "name": "Solvine (exited)",
+      "sector": "Enterprise SaaS",
+      "stage": "Series B",
+      "vintage": 2019,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 0,
+      "invested": 6,
+      "fmv": 0,
+      "realized": 27.5,
+      "exited": true,
+      "exitDate": "2024-10-15",
+      "exitType": "Strategic acquisition",
+      "ceo": "-",
+      "hq": "Fredericton, NB",
+      "desc": "Procurement analytics. Acquired by enterprise software strategic at 4.6x our cost.",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [],
+      "thresholds": {},
+      "rounds": [
+        {
+          "date": "2019-06-20",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 6,
+          "postMoney": 40,
+          "ownershipAfter": 15,
+          "lead": "Us",
+          "note": "",
+          "roundTotal": 13,
+          "nbOther": 1.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2024-10-15",
+          "fmv": 0,
+          "method": "Realized",
+          "by": "D. Armali",
+          "rationale": "All-cash acquisition closed; $27.5M gross proceeds distributed."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 0,
+      "fte": 0,
+      "fteNB": 0,
+      "womenCSuite": 0,
+      "cSuiteSize": 0,
+      "source": "Accelerator"
+    },
+    {
+      "id": "C012",
+      "name": "Praxa Labs (written off)",
+      "sector": "Consumer",
+      "stage": "Seed",
+      "vintage": 2021,
+      "health": "red",
+      "instrument": "SAFE",
+      "ownershipPct": 0,
+      "invested": 1.5,
+      "fmv": 0,
+      "realized": 0,
+      "exited": true,
+      "exitDate": "2025-02-28",
+      "exitType": "Shutdown / write-off",
+      "ceo": "-",
+      "hq": "Moncton, NB",
+      "desc": "D2C wellness marketplace. Wound down after failed Series A process.",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [],
+      "thresholds": {},
+      "rounds": [
+        {
+          "date": "2021-11-05",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 1.5,
+          "postMoney": 15,
+          "ownershipAfter": 10,
+          "lead": "Us",
+          "note": "",
+          "roundTotal": 3,
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2025-02-28",
+          "fmv": 0,
+          "method": "Write-off",
+          "by": "D. Armali",
+          "rationale": "Assignment for benefit of creditors; no recovery expected."
+        }
+      ],
+      "tasks": [],
+      "fteAtEntry": 0,
+      "fte": 0,
+      "fteNB": 0,
+      "womenCSuite": 0,
+      "cSuiteSize": 0,
+      "source": "Inbound"
+    },
+    {
+      "id": "C013",
+      "name": "Northgate Materials",
+      "sector": "Fintech",
+      "stage": "Series A",
+      "vintage": 2024,
+      "health": "yellow",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 11.9,
+      "invested": 2.3,
+      "fmv": 3.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "K. Quinn",
+      "hq": "Fredericton, NB",
+      "source": "Angel network",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months",
+        "Customer concentration"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 8,
+          "burn": 1.37,
+          "cash": 13.7,
+          "runwayMo": 10
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 8,
+      "fteAtEntry": 8,
+      "fteNB": 8,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2024-01-15",
+          "label": "Series A",
+          "instrument": "Debt-to-Note",
+          "invested": 2.3,
+          "roundTotal": 5.2,
+          "postMoney": 19,
+          "ownershipAfter": 11.9,
+          "lead": "Granite Capital",
+          "note": "",
+          "nbOther": 0.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "EDC facility",
+        "amount": 2.9,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.2,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C014",
+      "name": "Cinder Aero",
+      "sector": "Industrial Tech",
+      "stage": "Seed",
+      "vintage": 2023,
+      "health": "yellow",
+      "instrument": "Convertible Note",
+      "ownershipPct": 11.8,
+      "invested": 1.3,
+      "fmv": 1.9,
+      "realized": 0,
+      "exited": false,
+      "ceo": "B. Singh",
+      "hq": "Saint John, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.7,
+          "burn": 0.6,
+          "cash": 4.8,
+          "runwayMo": 8
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 5,
+      "fteAtEntry": 13,
+      "fteNB": 4,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2023-11-15",
+          "label": "Seed",
+          "instrument": "Convertible Note",
+          "invested": 1.3,
+          "roundTotal": 2.6,
+          "postMoney": null,
+          "ownershipAfter": 11.8,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 0.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1.9,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C015",
+      "name": "Kestrel Data",
+      "sector": "Cybersecurity",
+      "stage": "Pre-Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 8.8,
+      "invested": 2.8,
+      "fmv": 3.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Rossi",
+      "hq": "Saint John, NB",
+      "source": "Angel network",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.2,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.8,
+          "burn": 1.34,
+          "cash": 13.2,
+          "runwayMo": 10
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 15,
+      "fteAtEntry": 11,
+      "fteNB": 13,
+      "womenCSuite": 2,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2024-02-15",
+          "label": "Seed",
+          "instrument": "Debt-to-Note",
+          "invested": 2.8,
+          "roundTotal": 8.6,
+          "postMoney": 32,
+          "ownershipAfter": 8.8,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 2.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.4,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C016",
+      "name": "Thistle AI",
+      "sector": "Fintech",
+      "stage": "Series A",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 14.2,
+      "invested": 2.7,
+      "fmv": 8.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "N. Moreau",
+      "hq": "Charlottetown, PE",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 1.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-08-02"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 7.2,
+          "burn": 0.77,
+          "cash": 7,
+          "runwayMo": 9
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 40,
+      "fteAtEntry": 22,
+      "fteNB": 18,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2020-05-15",
+          "label": "Series A",
+          "instrument": "Preferred Equity",
+          "invested": 2.7,
+          "roundTotal": 5.1,
+          "postMoney": 19,
+          "ownershipAfter": 14.2,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "EDC facility",
+        "amount": 4.8,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 8.4,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C017",
+      "name": "Juniper Aero",
+      "sector": "Defense & Space",
+      "stage": "Series A",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 10.7,
+      "invested": 5,
+      "fmv": 15.6,
+      "realized": 0,
+      "exited": false,
+      "ceo": "D. Grant",
+      "hq": "Miramichi, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 2.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-08-09"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 4.6,
+          "burn": 1.14,
+          "cash": 22.8,
+          "runwayMo": 20
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 7,
+      "fteAtEntry": 19,
+      "fteNB": 5,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2021-05-15",
+          "label": "Series A",
+          "instrument": "Debt-to-Note",
+          "invested": 5,
+          "roundTotal": 18.6,
+          "postMoney": 47,
+          "ownershipAfter": 10.7,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 1
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 15.6,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C018",
+      "name": "Foxglove Data",
+      "sector": "Defense & Space",
+      "stage": "Series A",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 14,
+      "invested": 4.5,
+      "fmv": 5.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "A. Duran",
+      "hq": "Sackville, NB",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 3.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 8.9,
+          "burn": 0.94,
+          "cash": 34.7,
+          "runwayMo": 37
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 46,
+      "fteAtEntry": 20,
+      "fteNB": 37,
+      "womenCSuite": 3,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2024-08-15",
+          "label": "Series A",
+          "instrument": "SAFE",
+          "invested": 4.5,
+          "roundTotal": 12.4,
+          "postMoney": null,
+          "ownershipAfter": 14,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 1.1
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "NSF award",
+        "amount": 3.1,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 5.8,
+          "method": "Scenario-weighted",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C019",
+      "name": "Sable Sensing",
+      "sector": "Enterprise SaaS",
+      "stage": "Series A",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 4.8,
+      "invested": 4.7,
+      "fmv": 14.5,
+      "realized": 0,
+      "exited": false,
+      "ceo": "J. Lombardi",
+      "hq": "Miramichi, NB",
+      "source": "Outbound thesis work",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0.6,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-10-13"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 6.4,
+          "burn": 0.35,
+          "cash": 12.4,
+          "runwayMo": 35
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 28,
+      "fteAtEntry": 15,
+      "fteNB": 19,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2020-04-15",
+          "label": "Series A",
+          "instrument": "SAFE",
+          "invested": 4.7,
+          "roundTotal": 10.3,
+          "postMoney": null,
+          "ownershipAfter": 4.8,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 2.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 14.5,
+          "method": "Calibrated last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C020",
+      "name": "Palisade Materials",
+      "sector": "Fintech",
+      "stage": "Pre-Seed",
+      "vintage": 2020,
+      "health": "red",
+      "instrument": "Common Equity",
+      "ownershipPct": 10.3,
+      "invested": 0.7,
+      "fmv": 1.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "N. Nakamura",
+      "hq": "Halifax, NS",
+      "source": "Angel network",
+      "desc": "",
+      "riskFlags": [
+        "Covenant watch"
+      ],
+      "proRata": false,
+      "reservesAllocated": 0.3,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-07-04"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.7,
+          "burn": 0.2,
+          "cash": 16.1,
+          "runwayMo": 81
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 6,
+      "fteAtEntry": 10,
+      "fteNB": 3,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2020-07-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 0.7,
+          "roundTotal": 3.1,
+          "postMoney": 7,
+          "ownershipAfter": 10.3,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1.4,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C021",
+      "name": "Quarry Platforms",
+      "sector": "Cybersecurity",
+      "stage": "Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 9.4,
+      "invested": 1.2,
+      "fmv": 2.5,
+      "realized": 0,
+      "exited": false,
+      "ceo": "M. Lombardi",
+      "hq": "Sackville, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": false,
+      "reservesAllocated": 0.6,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.2,
+          "burn": 1.48,
+          "cash": 13.9,
+          "runwayMo": 9
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 10,
+      "fteAtEntry": 20,
+      "fteNB": 8,
+      "womenCSuite": 2,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2022-05-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 1.2,
+          "roundTotal": 5,
+          "postMoney": 13,
+          "ownershipAfter": 9.4,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2.5,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C022",
+      "name": "Trellis Data",
+      "sector": "Logistics",
+      "stage": "Seed",
+      "vintage": 2024,
+      "health": "yellow",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 5.4,
+      "invested": 0.9,
+      "fmv": 1.3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "L. Jensen",
+      "hq": "Fredericton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.3,
+          "burn": 1.41,
+          "cash": 30.1,
+          "runwayMo": 21
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 11,
+      "fteAtEntry": 15,
+      "fteNB": 7,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2024-07-15",
+          "label": "Seed",
+          "instrument": "Preferred Equity",
+          "invested": 0.9,
+          "roundTotal": 1.7,
+          "postMoney": 17,
+          "ownershipAfter": 5.4,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1.3,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C023",
+      "name": "Vector Platforms",
+      "sector": "Enterprise SaaS",
+      "stage": "Series A",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 4.3,
+      "invested": 2.3,
+      "fmv": 4.6,
+      "realized": 0,
+      "exited": false,
+      "ceo": "K. Fischer",
+      "hq": "Moncton, NB",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.8,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 8.2,
+          "burn": 1.61,
+          "cash": 15.1,
+          "runwayMo": 9
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 35,
+      "fteAtEntry": 6,
+      "fteNB": 24,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2024-11-15",
+          "label": "Series A",
+          "instrument": "SAFE",
+          "invested": 2.3,
+          "roundTotal": 4.9,
+          "postMoney": null,
+          "ownershipAfter": 4.3,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4.6,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C024",
+      "name": "Nimbus Grid",
+      "sector": "Logistics",
+      "stage": "Seed",
+      "vintage": 2025,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 0,
+      "invested": 2.1,
+      "fmv": 0,
+      "realized": 6.9,
+      "exited": true,
+      "exitDate": "2029-04-15",
+      "exitType": "Acquisition",
+      "ceo": "-",
+      "hq": "Charlottetown, PE",
+      "source": "Outbound thesis work",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "R. Osei",
+        "nextMeeting": null
+      },
+      "kpis": [],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 0,
+      "fteAtEntry": 0,
+      "fteNB": 0,
+      "womenCSuite": 0,
+      "cSuiteSize": 0,
+      "rounds": [
+        {
+          "date": "2025-03-15",
+          "label": "Seed",
+          "instrument": "Convertible Note",
+          "invested": 2.1,
+          "roundTotal": 4.6,
+          "postMoney": null,
+          "ownershipAfter": 10.521185332909226,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 0.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "EDC facility",
+        "amount": 2.3,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 0,
+          "method": "Realized",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C025",
+      "name": "Quorum Capital OS",
+      "sector": "Cybersecurity",
+      "stage": "Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 0,
+      "invested": 2.4,
+      "fmv": 0,
+      "realized": 6.5,
+      "exited": true,
+      "exitDate": "2027-05-15",
+      "exitType": "Acquisition",
+      "ceo": "-",
+      "hq": "Moncton, NB",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 0,
+      "fteAtEntry": 0,
+      "fteNB": 0,
+      "womenCSuite": 0,
+      "cSuiteSize": 0,
+      "rounds": [
+        {
+          "date": "2022-03-15",
+          "label": "Seed",
+          "instrument": "Debt-to-Note",
+          "invested": 2.4,
+          "roundTotal": 9.8,
+          "postMoney": 30,
+          "ownershipAfter": 5.8746009529568255,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.7
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 0,
+          "method": "Realized",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C026",
+      "name": "Marrow Therapeutics",
+      "sector": "Defense & Space",
+      "stage": "Series B",
+      "vintage": 2022,
+      "health": "yellow",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 6.3,
+      "invested": 1.8,
+      "fmv": 2.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "S. Huang",
+      "hq": "Saint John, NB",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-07-25"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 13,
+          "burn": 1.4,
+          "cash": 18.9,
+          "runwayMo": 14
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 93,
+      "fteAtEntry": 21,
+      "fteNB": 67,
+      "womenCSuite": 2,
+      "cSuiteSize": 3,
+      "rounds": [
+        {
+          "date": "2022-07-15",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 1.8,
+          "roundTotal": 5.9,
+          "postMoney": 29,
+          "ownershipAfter": 6.3,
+          "lead": "Granite Capital",
+          "note": "",
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "DOE grant",
+        "amount": 3.9,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2.2,
+          "method": "Calibrated last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C027",
+      "name": "Thistle Analytics",
+      "sector": "Climate & Energy",
+      "stage": "Seed",
+      "vintage": 2023,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 8.7,
+      "invested": 2.8,
+      "fmv": 5.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "B. Osei",
+      "hq": "Bathurst, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0.9,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-12-03"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.3,
+          "burn": 1.06,
+          "cash": 20.8,
+          "runwayMo": 20
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 13,
+      "fteAtEntry": 16,
+      "fteNB": 11,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2023-08-15",
+          "label": "Seed",
+          "instrument": "Preferred Equity",
+          "invested": 2.8,
+          "roundTotal": 11.5,
+          "postMoney": 32,
+          "ownershipAfter": 8.7,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 0.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 5.8,
+          "method": "Scenario-weighted",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C028",
+      "name": "Cloverfield Compute",
+      "sector": "Enterprise SaaS",
+      "stage": "Pre-Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 15,
+      "invested": 0.6,
+      "fmv": 1,
+      "realized": 0,
+      "exited": false,
+      "ceo": "C. Huang",
+      "hq": "Miramichi, NB",
+      "source": "University spinout",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.8,
+          "burn": 1.53,
+          "cash": 19.2,
+          "runwayMo": 13
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 14,
+      "fteAtEntry": 13,
+      "fteNB": 13,
+      "womenCSuite": 2,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2024-06-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 0.6,
+          "roundTotal": 2.4,
+          "postMoney": 4,
+          "ownershipAfter": 15,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 0.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1,
+          "method": "Calibrated last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C029",
+      "name": "Oakline Capital OS",
+      "sector": "Climate & Energy",
+      "stage": "Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 11.4,
+      "invested": 2.1,
+      "fmv": 3.1,
+      "realized": 0,
+      "exited": false,
+      "ceo": "L. Quinn",
+      "hq": "Saint John, NB",
+      "source": "Angel network",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 1.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.5,
+          "burn": 1.11,
+          "cash": 4.8,
+          "runwayMo": 4
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 8,
+      "fteAtEntry": 21,
+      "fteNB": 7,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2024-07-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 2.1,
+          "roundTotal": 7.4,
+          "postMoney": 18,
+          "ownershipAfter": 11.4,
+          "lead": "Helix Partners",
+          "note": "",
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.1,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C030",
+      "name": "Fathom Mobility",
+      "sector": "AI / ML Infra",
+      "stage": "Pre-Seed",
+      "vintage": 2019,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 11.5,
+      "invested": 2.4,
+      "fmv": 4.3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "L. Rossi",
+      "hq": "Sackville, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.7,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-08-05"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.8,
+          "burn": 0.44,
+          "cash": 30.2,
+          "runwayMo": 69
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 16,
+      "fteAtEntry": 23,
+      "fteNB": 11,
+      "womenCSuite": 1,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2019-11-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 2.4,
+          "roundTotal": 7.1,
+          "postMoney": null,
+          "ownershipAfter": 11.5,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 1.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4.3,
+          "method": "Calibrated last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C031",
+      "name": "Greyline AI",
+      "sector": "AI / ML Infra",
+      "stage": "Growth",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 10.8,
+      "invested": 3.2,
+      "fmv": 10.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Egan",
+      "hq": "Toronto, ON",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.9,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 58.6,
+          "burn": 0.14,
+          "cash": 26.8,
+          "runwayMo": 99
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 69,
+      "fteAtEntry": 11,
+      "fteNB": 29,
+      "womenCSuite": 3,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2021-04-15",
+          "label": "Growth",
+          "instrument": "Common Equity",
+          "invested": 3.2,
+          "roundTotal": 10.2,
+          "postMoney": 30,
+          "ownershipAfter": 10.8,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 2.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 10.7,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C032",
+      "name": "Larkspur Mobility",
+      "sector": "Logistics",
+      "stage": "Series B",
+      "vintage": 2023,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 5.2,
+      "invested": 7.8,
+      "fmv": 10.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "E. Grant",
+      "hq": "Fredericton, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 1.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-09-20"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 16.6,
+          "burn": 1.16,
+          "cash": 17.5,
+          "runwayMo": 15
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 21,
+      "fteAtEntry": 22,
+      "fteNB": 15,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2023-08-15",
+          "label": "Series B",
+          "instrument": "Debt-to-Note",
+          "invested": 7.8,
+          "roundTotal": 21.2,
+          "postMoney": 150,
+          "ownershipAfter": 5.2,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 5.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 10.8,
+          "method": "Calibrated last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C033",
+      "name": "Cloverfield Health",
+      "sector": "Logistics",
+      "stage": "Series A",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 7.9,
+      "invested": 6.7,
+      "fmv": 16.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "L. Duran",
+      "hq": "Fredericton, NB",
+      "source": "Outbound thesis work",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 2.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-10-27"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 6.8,
+          "burn": 1.7,
+          "cash": 17.4,
+          "runwayMo": 10
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 31,
+      "fteAtEntry": 21,
+      "fteNB": 28,
+      "womenCSuite": 2,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2020-11-15",
+          "label": "Series A",
+          "instrument": "Common Equity",
+          "invested": 6.7,
+          "roundTotal": 13.7,
+          "postMoney": 85,
+          "ownershipAfter": 7.9,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 1
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 16.7,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C034",
+      "name": "Thistle Data",
+      "sector": "Climate & Energy",
+      "stage": "Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 10.4,
+      "invested": 2.1,
+      "fmv": 2.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "C. Iqbal",
+      "hq": "Fredericton, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.2,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-11-15"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.1,
+          "burn": 0.98,
+          "cash": 29.7,
+          "runwayMo": 30
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 12,
+      "fteAtEntry": 13,
+      "fteNB": 8,
+      "womenCSuite": 3,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2022-06-15",
+          "label": "Seed",
+          "instrument": "Convertible Note",
+          "invested": 2.1,
+          "roundTotal": 5.8,
+          "postMoney": null,
+          "ownershipAfter": 10.4,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 0.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2.2,
+          "method": "Calibrated last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C035",
+      "name": "Granite Sensing",
+      "sector": "Cybersecurity",
+      "stage": "Pre-Seed",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 15.6,
+      "invested": 2.4,
+      "fmv": 5.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "A. Huang",
+      "hq": "Fredericton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.7,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-12-22"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.5,
+          "burn": 1.53,
+          "cash": 10.3,
+          "runwayMo": 7
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 8,
+      "fteAtEntry": 6,
+      "fteNB": 6,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2021-10-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 2.4,
+          "roundTotal": 10.6,
+          "postMoney": null,
+          "ownershipAfter": 15.6,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 3.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 5.7,
+          "method": "Last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C036",
+      "name": "Glasswing Platforms",
+      "sector": "Logistics",
+      "stage": "Pre-Seed",
+      "vintage": 2020,
+      "health": "yellow",
+      "instrument": "Common Equity",
+      "ownershipPct": 11.9,
+      "invested": 2.8,
+      "fmv": 2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "S. Egan",
+      "hq": "Sackville, NB",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.4,
+          "burn": 1.18,
+          "cash": 5.5,
+          "runwayMo": 5
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 19,
+      "fteAtEntry": 30,
+      "fteNB": 13,
+      "womenCSuite": 2,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2020-01-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 2.8,
+          "roundTotal": 11.2,
+          "postMoney": 24,
+          "ownershipAfter": 11.9,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 1.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "EDC facility",
+        "amount": 3,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2,
+          "method": "Scenario-weighted",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C037",
+      "name": "Yarrow Robotics",
+      "sector": "Enterprise SaaS",
+      "stage": "Seed",
+      "vintage": 2021,
+      "health": "red",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 5.9,
+      "invested": 1.9,
+      "fmv": 4.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Duran",
+      "hq": "Moncton, NB",
+      "source": "Angel network",
+      "desc": "",
+      "riskFlags": [
+        "Pipeline slippage"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.7,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-09-11"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.8,
+          "burn": 1.26,
+          "cash": 25.7,
+          "runwayMo": 20
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 11,
+      "fteAtEntry": 23,
+      "fteNB": 9,
+      "womenCSuite": 0,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2021-08-15",
+          "label": "Seed",
+          "instrument": "Preferred Equity",
+          "invested": 1.9,
+          "roundTotal": 6.7,
+          "postMoney": 32,
+          "ownershipAfter": 5.9,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 1.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "DOE grant",
+        "amount": 6.3,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4.4,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C038",
+      "name": "Quorum Dynamics",
+      "sector": "Cybersecurity",
+      "stage": "Growth",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 7.5,
+      "invested": 11.1,
+      "fmv": 22.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Bishop",
+      "hq": "Toronto, ON",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 2.3,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 16.4,
+          "burn": 0.94,
+          "cash": 32.3,
+          "runwayMo": 34
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 84,
+      "fteAtEntry": 13,
+      "fteNB": 45,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2020-01-15",
+          "label": "Growth",
+          "instrument": "Debt-to-Note",
+          "invested": 11.1,
+          "roundTotal": 41.2,
+          "postMoney": 148,
+          "ownershipAfter": 7.5,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 13.4
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 22.7,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C039",
+      "name": "Birchmont Health",
+      "sector": "Defense & Space",
+      "stage": "Series B",
+      "vintage": 2023,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 7.8,
+      "invested": 6,
+      "fmv": 11.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "D. Iqbal",
+      "hq": "Saint John, NB",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 1.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 18.5,
+          "burn": 1.23,
+          "cash": 20.3,
+          "runwayMo": 17
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 27,
+      "fteAtEntry": 20,
+      "fteNB": 20,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2023-12-15",
+          "label": "Series B",
+          "instrument": "Convertible Note",
+          "invested": 6,
+          "roundTotal": 24.9,
+          "postMoney": null,
+          "ownershipAfter": 7.8,
+          "lead": "Granite Capital",
+          "note": "",
+          "nbOther": 5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 11.2,
+          "method": "Calibrated last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C040",
+      "name": "Eastvale Bio",
+      "sector": "Enterprise SaaS",
+      "stage": "Series B",
+      "vintage": 2019,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 14.2,
+      "invested": 6.7,
+      "fmv": 7.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Huang",
+      "hq": "Moncton, NB",
+      "source": "University spinout",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 3.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 24.2,
+          "burn": 0.92,
+          "cash": 29.2,
+          "runwayMo": 32
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 107,
+      "fteAtEntry": 16,
+      "fteNB": 71,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2019-08-15",
+          "label": "Series B",
+          "instrument": "SAFE",
+          "invested": 6.7,
+          "roundTotal": 17,
+          "postMoney": null,
+          "ownershipAfter": 14.2,
+          "lead": "Helix Partners",
+          "note": "",
+          "nbOther": 4.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 7.8,
+          "method": "Calibrated last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C041",
+      "name": "Glasswing Mobility",
+      "sector": "Logistics",
+      "stage": "Growth",
+      "vintage": 2021,
+      "health": "yellow",
+      "instrument": "SAFE",
+      "ownershipPct": 8.3,
+      "invested": 10.6,
+      "fmv": 14.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "A. Fischer",
+      "hq": "Toronto, ON",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 3.9,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-07-25"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 50.4,
+          "burn": 0.77,
+          "cash": 23.5,
+          "runwayMo": 31
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 89,
+      "fteAtEntry": 11,
+      "fteNB": 27,
+      "womenCSuite": 3,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2021-04-15",
+          "label": "Growth",
+          "instrument": "SAFE",
+          "invested": 10.6,
+          "roundTotal": 27.8,
+          "postMoney": null,
+          "ownershipAfter": 8.3,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 5.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 14.4,
+          "method": "Last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C042",
+      "name": "Nightingale Logistics",
+      "sector": "Fintech",
+      "stage": "Series C+",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 11.9,
+      "invested": 5.8,
+      "fmv": 11.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "B. Grant",
+      "hq": "Moncton, NB",
+      "source": "Outbound thesis work",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 2.2,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 22.1,
+          "burn": 1.22,
+          "cash": 10.3,
+          "runwayMo": 8
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 168,
+      "fteAtEntry": 11,
+      "fteNB": 149,
+      "womenCSuite": 0,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2021-02-15",
+          "label": "Series C+",
+          "instrument": "Debt-to-Note",
+          "invested": 5.8,
+          "roundTotal": 22.8,
+          "postMoney": 49,
+          "ownershipAfter": 11.9,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 4.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 11.7,
+          "method": "Calibrated last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C043",
+      "name": "Glasswing Sensing",
+      "sector": "Enterprise SaaS",
+      "stage": "Pre-Seed",
+      "vintage": 2025,
+      "health": "yellow",
+      "instrument": "Common Equity",
+      "ownershipPct": 12.5,
+      "invested": 2.5,
+      "fmv": 2.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "K. Rossi",
+      "hq": "Charlottetown, PE",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months",
+        "Customer concentration"
+      ],
+      "proRata": false,
+      "reservesAllocated": 0.6,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.7,
+          "burn": 0.89,
+          "cash": 7,
+          "runwayMo": 8
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 8,
+      "fteAtEntry": 5,
+      "fteNB": 5,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2025-04-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 2.5,
+          "roundTotal": 11,
+          "postMoney": 20,
+          "ownershipAfter": 12.5,
+          "lead": "Helix Partners",
+          "note": "",
+          "nbOther": 2.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2.8,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C044",
+      "name": "Birchmont Systems",
+      "sector": "Industrial Tech",
+      "stage": "Series B",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 7.9,
+      "invested": 7,
+      "fmv": 23.7,
+      "realized": 0,
+      "exited": false,
+      "ceo": "E. Egan",
+      "hq": "Miramichi, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 1.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 21.5,
+          "burn": 1.12,
+          "cash": 36.4,
+          "runwayMo": 32
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 95,
+      "fteAtEntry": 11,
+      "fteNB": 67,
+      "womenCSuite": 0,
+      "cSuiteSize": 3,
+      "rounds": [
+        {
+          "date": "2021-03-15",
+          "label": "Series B",
+          "instrument": "Common Equity",
+          "invested": 7,
+          "roundTotal": 30.4,
+          "postMoney": 89,
+          "ownershipAfter": 7.9,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 8.8
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "DOE grant",
+        "amount": 7.2,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 23.7,
+          "method": "Calibrated last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C045",
+      "name": "Sable Security",
+      "sector": "Consumer",
+      "stage": "Growth",
+      "vintage": 2022,
+      "health": "yellow",
+      "instrument": "Common Equity",
+      "ownershipPct": 13.7,
+      "invested": 10.1,
+      "fmv": 10.8,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Osei",
+      "hq": "Moncton, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [
+        "Customer concentration"
+      ],
+      "proRata": true,
+      "reservesAllocated": 6.3,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-11-03"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 24.8,
+          "burn": 0.49,
+          "cash": 38.5,
+          "runwayMo": 79
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 17,
+      "fteAtEntry": 20,
+      "fteNB": 14,
+      "womenCSuite": 1,
+      "cSuiteSize": 3,
+      "rounds": [
+        {
+          "date": "2022-08-15",
+          "label": "Growth",
+          "instrument": "Common Equity",
+          "invested": 10.1,
+          "roundTotal": 42,
+          "postMoney": 74,
+          "ownershipAfter": 13.7,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 2.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 10.8,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C046",
+      "name": "Lattice Grid",
+      "sector": "Climate & Energy",
+      "stage": "Series A",
+      "vintage": 2025,
+      "health": "green",
+      "instrument": "Debt-to-Note",
+      "ownershipPct": 10,
+      "invested": 2.7,
+      "fmv": 3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "K. Nakamura",
+      "hq": "Fredericton, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 1.8,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-08-07"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 4.4,
+          "burn": 0.92,
+          "cash": 39,
+          "runwayMo": 42
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 29,
+      "fteAtEntry": 14,
+      "fteNB": 20,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2025-06-15",
+          "label": "Series A",
+          "instrument": "Debt-to-Note",
+          "invested": 2.7,
+          "roundTotal": 5.4,
+          "postMoney": 27,
+          "ownershipAfter": 10,
+          "lead": "Helix Partners",
+          "note": "",
+          "nbOther": 0.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C047",
+      "name": "Quarry Grid",
+      "sector": "Logistics",
+      "stage": "Growth",
+      "vintage": 2022,
+      "health": "yellow",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 7.5,
+      "invested": 5.3,
+      "fmv": 11,
+      "realized": 0,
+      "exited": false,
+      "ceo": "D. Jensen",
+      "hq": "Moncton, NB",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 41.9,
+          "burn": 1.5,
+          "cash": 21.6,
+          "runwayMo": 14
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 151,
+      "fteAtEntry": 12,
+      "fteNB": 107,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2022-05-15",
+          "label": "Growth",
+          "instrument": "Preferred Equity",
+          "invested": 5.3,
+          "roundTotal": 13,
+          "postMoney": 71,
+          "ownershipAfter": 7.5,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 1.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 11,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C048",
+      "name": "Quorum Materials",
+      "sector": "Fintech",
+      "stage": "Series B",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 11.1,
+      "invested": 7.5,
+      "fmv": 13.5,
+      "realized": 0,
+      "exited": false,
+      "ceo": "M. Singh",
+      "hq": "Toronto, ON",
+      "source": "Outbound thesis work",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 3.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-08-04"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 14.4,
+          "burn": 0.94,
+          "cash": 33.3,
+          "runwayMo": 35
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 110,
+      "fteAtEntry": 22,
+      "fteNB": 49,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2020-04-15",
+          "label": "Series B",
+          "instrument": "SAFE",
+          "invested": 7.5,
+          "roundTotal": 25.8,
+          "postMoney": null,
+          "ownershipAfter": 11.1,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 5.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 13.5,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C049",
+      "name": "Foxglove Labs",
+      "sector": "Cybersecurity",
+      "stage": "Series B",
+      "vintage": 2019,
+      "health": "red",
+      "instrument": "Convertible Note",
+      "ownershipPct": 0,
+      "invested": 1.4,
+      "fmv": 0,
+      "realized": 0,
+      "exited": true,
+      "exitDate": "2022-06-15",
+      "exitType": "Shutdown / write-off",
+      "ceo": "-",
+      "hq": "Moncton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "K. Patel",
+        "nextMeeting": null
+      },
+      "kpis": [],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 0,
+      "fteAtEntry": 0,
+      "fteNB": 0,
+      "womenCSuite": 0,
+      "cSuiteSize": 0,
+      "rounds": [
+        {
+          "date": "2019-10-15",
+          "label": "Series B",
+          "instrument": "Convertible Note",
+          "invested": 1.4,
+          "roundTotal": 3.7,
+          "postMoney": null,
+          "ownershipAfter": 6.803981044795364,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 0,
+          "method": "Write-off",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C050",
+      "name": "Marrow Energy",
+      "sector": "Cybersecurity",
+      "stage": "Series B",
+      "vintage": 2022,
+      "health": "red",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 9.4,
+      "invested": 6.8,
+      "fmv": 5.3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "N. Tanaka",
+      "hq": "Saint John, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [
+        "Key-person risk"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "R. Osei",
+        "nextMeeting": "2026-10-03"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 19.4,
+          "burn": 0.21,
+          "cash": 3.7,
+          "runwayMo": 18
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 24,
+      "fteAtEntry": 5,
+      "fteNB": 18,
+      "womenCSuite": 0,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2022-09-15",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 6.8,
+          "roundTotal": 25.4,
+          "postMoney": 72,
+          "ownershipAfter": 9.4,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "SBIR Phase II",
+        "amount": 3.5,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 5.3,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C051",
+      "name": "Juniper Materials",
+      "sector": "Enterprise SaaS",
+      "stage": "Seed",
+      "vintage": 2025,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 11.7,
+      "invested": 2.9,
+      "fmv": 4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Moreau",
+      "hq": "Saint John, NB",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-10-26"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.9,
+          "burn": 0.27,
+          "cash": 32.3,
+          "runwayMo": 99
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 11,
+      "fteAtEntry": 28,
+      "fteNB": 8,
+      "womenCSuite": 1,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2025-05-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 2.9,
+          "roundTotal": 8.3,
+          "postMoney": null,
+          "ownershipAfter": 11.7,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 2.1
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C052",
+      "name": "Millstone Energy",
+      "sector": "Fintech",
+      "stage": "Pre-Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 12.5,
+      "invested": 2.5,
+      "fmv": 4.6,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Iqbal",
+      "hq": "Sackville, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.5,
+          "burn": 0.9,
+          "cash": 26.8,
+          "runwayMo": 30
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 8,
+      "fteAtEntry": 15,
+      "fteNB": 6,
+      "womenCSuite": 0,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2022-12-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 2.5,
+          "roundTotal": 8.3,
+          "postMoney": null,
+          "ownershipAfter": 12.5,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4.6,
+          "method": "Last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C053",
+      "name": "Ivyrock Health",
+      "sector": "Fintech",
+      "stage": "Series B",
+      "vintage": 2020,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 4.4,
+      "invested": 8.7,
+      "fmv": 17,
+      "realized": 0,
+      "exited": false,
+      "ceo": "K. Bishop",
+      "hq": "Moncton, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 3.3,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 6.4,
+          "burn": 0.58,
+          "cash": 13.2,
+          "runwayMo": 23
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 81,
+      "fteAtEntry": 28,
+      "fteNB": 72,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2020-07-15",
+          "label": "Series B",
+          "instrument": "Common Equity",
+          "invested": 8.7,
+          "roundTotal": 26.1,
+          "postMoney": 198,
+          "ownershipAfter": 4.4,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 7.1
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 17,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C054",
+      "name": "Indigo Energy",
+      "sector": "Healthtech",
+      "stage": "Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 10,
+      "invested": 1.9,
+      "fmv": 4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Tanaka",
+      "hq": "Halifax, NS",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-08-28"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.3,
+          "burn": 0.68,
+          "cash": 35.2,
+          "runwayMo": 52
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 6,
+      "fteAtEntry": 13,
+      "fteNB": 3,
+      "womenCSuite": 0,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2024-03-15",
+          "label": "Seed",
+          "instrument": "Convertible Note",
+          "invested": 1.9,
+          "roundTotal": 4.6,
+          "postMoney": null,
+          "ownershipAfter": 10,
+          "lead": "Latitude Ventures",
+          "note": "",
+          "nbOther": 0.8
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "DOE grant",
+        "amount": 6,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4,
+          "method": "Last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C055",
+      "name": "Hollowell AI",
+      "sector": "AI / ML Infra",
+      "stage": "Growth",
+      "vintage": 2020,
+      "health": "red",
+      "instrument": "SAFE",
+      "ownershipPct": 5.2,
+      "invested": 9.6,
+      "fmv": 8.9,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Grant",
+      "hq": "Moncton, NB",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 2.3,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-10-17"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 59.7,
+          "burn": 1.28,
+          "cash": 16.1,
+          "runwayMo": 13
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 215,
+      "fteAtEntry": 22,
+      "fteNB": 153,
+      "womenCSuite": 0,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2020-06-15",
+          "label": "Growth",
+          "instrument": "SAFE",
+          "invested": 9.6,
+          "roundTotal": 35.2,
+          "postMoney": null,
+          "ownershipAfter": 5.2,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 7.3
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "EDC facility",
+        "amount": 5,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 8.9,
+          "method": "Scenario-weighted",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C056",
+      "name": "Hollowell Compute",
+      "sector": "Consumer",
+      "stage": "Pre-Seed",
+      "vintage": 2020,
+      "health": "yellow",
+      "instrument": "SAFE",
+      "ownershipPct": 8.4,
+      "invested": 3,
+      "fmv": 2.1,
+      "realized": 0,
+      "exited": false,
+      "ceo": "J. Grant",
+      "hq": "Moncton, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": false,
+      "reservesAllocated": 0.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "R. Osei",
+        "nextMeeting": "2026-09-09"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.7,
+          "burn": 0.45,
+          "cash": 4.8,
+          "runwayMo": 11
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 16,
+      "fteAtEntry": 28,
+      "fteNB": 11,
+      "womenCSuite": 2,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2020-03-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 3,
+          "roundTotal": 12.2,
+          "postMoney": null,
+          "ownershipAfter": 8.4,
+          "lead": "Helix Partners",
+          "note": "",
+          "nbOther": 1.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2.1,
+          "method": "Last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C057",
+      "name": "Greyline Data",
+      "sector": "Enterprise SaaS",
+      "stage": "Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 0,
+      "invested": 2.9,
+      "fmv": 0,
+      "realized": 8.1,
+      "exited": true,
+      "exitDate": "2025-02-15",
+      "exitType": "Acquisition",
+      "ceo": "-",
+      "hq": "Fredericton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "J. Chen",
+        "nextMeeting": null
+      },
+      "kpis": [],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 0,
+      "fteAtEntry": 0,
+      "fteNB": 0,
+      "womenCSuite": 0,
+      "cSuiteSize": 0,
+      "rounds": [
+        {
+          "date": "2022-10-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 2.9,
+          "roundTotal": 6.1,
+          "postMoney": 36,
+          "ownershipAfter": 11.385152391158044,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 1.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 0,
+          "method": "Realized",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C058",
+      "name": "Indigo Systems",
+      "sector": "Healthtech",
+      "stage": "Pre-Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 4,
+      "invested": 1.9,
+      "fmv": 3.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "C. Alvarez",
+      "hq": "Toronto, ON",
+      "source": "Outbound thesis work",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.9,
+          "burn": 1.15,
+          "cash": 19.8,
+          "runwayMo": 17
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 13,
+      "fteAtEntry": 21,
+      "fteNB": 5,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2024-02-15",
+          "label": "Seed",
+          "instrument": "Convertible Note",
+          "invested": 1.9,
+          "roundTotal": 7.7,
+          "postMoney": null,
+          "ownershipAfter": 4,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 1.7
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.2,
+          "method": "Scenario-weighted",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C059",
+      "name": "Riverbend Labs",
+      "sector": "Enterprise SaaS",
+      "stage": "Series A",
+      "vintage": 2023,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 13.6,
+      "invested": 5.8,
+      "fmv": 10.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "S. Lombardi",
+      "hq": "Fredericton, NB",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 3.7,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.7,
+          "burn": 1.62,
+          "cash": 21.1,
+          "runwayMo": 13
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 18,
+      "fteAtEntry": 18,
+      "fteNB": 15,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2023-02-15",
+          "label": "Series A",
+          "instrument": "Convertible Note",
+          "invested": 5.8,
+          "roundTotal": 14.8,
+          "postMoney": null,
+          "ownershipAfter": 13.6,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 3.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 10.4,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C060",
+      "name": "Deepwell Robotics",
+      "sector": "Defense & Space",
+      "stage": "Series C+",
+      "vintage": 2020,
+      "health": "yellow",
+      "instrument": "Convertible Note",
+      "ownershipPct": 3.6,
+      "invested": 1.2,
+      "fmv": 3.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "L. Grant",
+      "hq": "Fredericton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.6,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-12-17"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 27.7,
+          "burn": 1.47,
+          "cash": 7.1,
+          "runwayMo": 5
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 176,
+      "fteAtEntry": 18,
+      "fteNB": 151,
+      "womenCSuite": 3,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2020-03-15",
+          "label": "Series C+",
+          "instrument": "Convertible Note",
+          "invested": 1.2,
+          "roundTotal": 5,
+          "postMoney": null,
+          "ownershipAfter": 3.6,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 0.2
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.2,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C061",
+      "name": "Bluepine Aero",
+      "sector": "AI / ML Infra",
+      "stage": "Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Convertible Note",
+      "ownershipPct": 11.8,
+      "invested": 2.7,
+      "fmv": 5.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "J. Egan",
+      "hq": "Saint John, NB",
+      "source": "Founder referral",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": false,
+      "reservesAllocated": 1.5,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.5,
+          "burn": 1.31,
+          "cash": 14.4,
+          "runwayMo": 11
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 12,
+      "fteAtEntry": 27,
+      "fteNB": 11,
+      "womenCSuite": 1,
+      "cSuiteSize": 3,
+      "rounds": [
+        {
+          "date": "2022-07-15",
+          "label": "Seed",
+          "instrument": "Convertible Note",
+          "invested": 2.7,
+          "roundTotal": 11.4,
+          "postMoney": null,
+          "ownershipAfter": 11.8,
+          "lead": "Helix Partners",
+          "note": "",
+          "nbOther": 3.5
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 5.2,
+          "method": "Scenario-weighted",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C062",
+      "name": "Stonebridge Therapeutics",
+      "sector": "Logistics",
+      "stage": "Seed",
+      "vintage": 2021,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 8.2,
+      "invested": 1.5,
+      "fmv": 4.1,
+      "realized": 0,
+      "exited": false,
+      "ceo": "T. Fischer",
+      "hq": "Halifax, NS",
+      "source": "University spinout",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": false,
+      "reservesAllocated": 0.8,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-07-27"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.9,
+          "burn": 0.94,
+          "cash": 6.4,
+          "runwayMo": 7
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 8,
+      "fteAtEntry": 5,
+      "fteNB": 4,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2021-12-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 1.5,
+          "roundTotal": 6.2,
+          "postMoney": null,
+          "ownershipAfter": 8.2,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 1.8
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 4.1,
+          "method": "Last round",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C063",
+      "name": "Nightingale Labs",
+      "sector": "Climate & Energy",
+      "stage": "Series A",
+      "vintage": 2024,
+      "health": "red",
+      "instrument": "Common Equity",
+      "ownershipPct": 8.3,
+      "invested": 6.7,
+      "fmv": 12.6,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Nakamura",
+      "hq": "Miramichi, NB",
+      "source": "Angel network",
+      "desc": "",
+      "riskFlags": [
+        "Key-person risk"
+      ],
+      "proRata": true,
+      "reservesAllocated": 2.6,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-07-07"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 5.1,
+          "burn": 1.04,
+          "cash": 13.6,
+          "runwayMo": 13
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 11,
+      "fteAtEntry": 12,
+      "fteNB": 9,
+      "womenCSuite": 1,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2024-02-15",
+          "label": "Series A",
+          "instrument": "Common Equity",
+          "invested": 6.7,
+          "roundTotal": 28.3,
+          "postMoney": 81,
+          "ownershipAfter": 8.3,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 5.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 12.6,
+          "method": "Calibrated last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C064",
+      "name": "Driftway Sensing",
+      "sector": "Cybersecurity",
+      "stage": "Pre-Seed",
+      "vintage": 2024,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 11.7,
+      "invested": 2.6,
+      "fmv": 3.1,
+      "realized": 0,
+      "exited": false,
+      "ceo": "B. Bishop",
+      "hq": "Moncton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 1.8,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-08-17"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.4,
+          "burn": 0.97,
+          "cash": 12.5,
+          "runwayMo": 13
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 6,
+      "fteAtEntry": 21,
+      "fteNB": 5,
+      "womenCSuite": 0,
+      "cSuiteSize": 3,
+      "rounds": [
+        {
+          "date": "2024-04-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 2.6,
+          "roundTotal": 9.7,
+          "postMoney": 22,
+          "ownershipAfter": 11.7,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 0.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.1,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C065",
+      "name": "Fernhill Robotics",
+      "sector": "Fintech",
+      "stage": "Pre-Seed",
+      "vintage": 2024,
+      "health": "yellow",
+      "instrument": "SAFE",
+      "ownershipPct": 7.8,
+      "invested": 1.2,
+      "fmv": 2.1,
+      "realized": 0,
+      "exited": false,
+      "ceo": "C. Petrov",
+      "hq": "Moncton, NB",
+      "source": "Banker outreach",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "R. Osei",
+        "nextMeeting": "2026-10-18"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.6,
+          "burn": 0.67,
+          "cash": 12.3,
+          "runwayMo": 18
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 11,
+      "fteAtEntry": 27,
+      "fteNB": 10,
+      "womenCSuite": 0,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2024-08-15",
+          "label": "Seed",
+          "instrument": "SAFE",
+          "invested": 1.2,
+          "roundTotal": 4.4,
+          "postMoney": null,
+          "ownershipAfter": 7.8,
+          "lead": "Foundry Industrial",
+          "note": "",
+          "nbOther": 0.7
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 2.1,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C066",
+      "name": "Millstone Networks",
+      "sector": "Enterprise SaaS",
+      "stage": "Seed",
+      "vintage": 2021,
+      "health": "yellow",
+      "instrument": "Common Equity",
+      "ownershipPct": 14.4,
+      "invested": 1.7,
+      "fmv": 3.3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "J. Duran",
+      "hq": "Fredericton, NB",
+      "source": "Fund referral",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": true,
+      "reservesAllocated": 0.7,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "K. Patel",
+        "nextMeeting": "2026-07-19"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.7,
+          "burn": 1.13,
+          "cash": 9,
+          "runwayMo": 8
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 10,
+      "fteAtEntry": 6,
+      "fteNB": 9,
+      "womenCSuite": 3,
+      "cSuiteSize": 3,
+      "rounds": [
+        {
+          "date": "2021-04-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 1.7,
+          "roundTotal": 3.7,
+          "postMoney": 12,
+          "ownershipAfter": 14.4,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.8
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.3,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C067",
+      "name": "Palisade Compute",
+      "sector": "Healthtech",
+      "stage": "Seed",
+      "vintage": 2025,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 11.2,
+      "invested": 1.1,
+      "fmv": 1.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "M. Cole",
+      "hq": "Sackville, NB",
+      "source": "University spinout",
+      "desc": "",
+      "riskFlags": [
+        "Runway below 12 months"
+      ],
+      "proRata": false,
+      "reservesAllocated": 0.4,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Director",
+        "holder": "J. Chen",
+        "nextMeeting": "2026-12-27"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 1.5,
+          "burn": 1.73,
+          "cash": 3.8,
+          "runwayMo": 2
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 16,
+      "fteAtEntry": 18,
+      "fteNB": 14,
+      "womenCSuite": 1,
+      "cSuiteSize": 6,
+      "rounds": [
+        {
+          "date": "2025-10-15",
+          "label": "Seed",
+          "instrument": "Preferred Equity",
+          "invested": 1.1,
+          "roundTotal": 3.2,
+          "postMoney": 10,
+          "ownershipAfter": 11.2,
+          "lead": "Granite Capital",
+          "note": "",
+          "nbOther": 0.9
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": {
+        "program": "DOE grant",
+        "amount": 2.5,
+        "conditions": "Milestone reporting",
+        "status": "active"
+      },
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1.2,
+          "method": "Revenue multiple",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C068",
+      "name": "Millstone Therapeutics",
+      "sector": "Enterprise SaaS",
+      "stage": "Series C+",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "SAFE",
+      "ownershipPct": 3.2,
+      "invested": 0.8,
+      "fmv": 1.2,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Jensen",
+      "hq": "Fredericton, NB",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": true,
+      "reservesAllocated": 0.1,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "Observer",
+        "holder": "Daniel Armali",
+        "nextMeeting": "2026-11-15"
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 17.4,
+          "burn": 0.49,
+          "cash": 31.4,
+          "runwayMo": 64
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 154,
+      "fteAtEntry": 30,
+      "fteNB": 103,
+      "womenCSuite": 1,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2022-01-15",
+          "label": "Series C+",
+          "instrument": "SAFE",
+          "invested": 0.8,
+          "roundTotal": 3.1,
+          "postMoney": null,
+          "ownershipAfter": 3.2,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 1.2,
+          "method": "Scenario-weighted",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C069",
+      "name": "Ironvale Energy",
+      "sector": "Logistics",
+      "stage": "Seed",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Common Equity",
+      "ownershipPct": 4,
+      "invested": 2,
+      "fmv": 3.3,
+      "realized": 0,
+      "exited": false,
+      "ceo": "A. Egan",
+      "hq": "Halifax, NS",
+      "source": "Accelerator",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 1.2,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 0.5,
+          "burn": 0.9,
+          "cash": 14,
+          "runwayMo": 16
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 11,
+      "fteAtEntry": 10,
+      "fteNB": 4,
+      "womenCSuite": 3,
+      "cSuiteSize": 4,
+      "rounds": [
+        {
+          "date": "2022-12-15",
+          "label": "Seed",
+          "instrument": "Common Equity",
+          "invested": 2,
+          "roundTotal": 3.8,
+          "postMoney": 50,
+          "ownershipAfter": 4,
+          "lead": "Us",
+          "note": "",
+          "nbOther": 0.7
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 3.3,
+          "method": "Last round",
+          "by": "K. Patel",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "C070",
+      "name": "Cinder Mobility",
+      "sector": "Climate & Energy",
+      "stage": "Series B",
+      "vintage": 2022,
+      "health": "green",
+      "instrument": "Preferred Equity",
+      "ownershipPct": 12.3,
+      "invested": 5.1,
+      "fmv": 8.4,
+      "realized": 0,
+      "exited": false,
+      "ceo": "R. Kim",
+      "hq": "Charlottetown, PE",
+      "source": "Inbound",
+      "desc": "",
+      "riskFlags": [],
+      "proRata": false,
+      "reservesAllocated": 0.2,
+      "reservesDeployed": 0,
+      "board": {
+        "seat": "None",
+        "holder": "-",
+        "nextMeeting": null
+      },
+      "kpis": [
+        {
+          "period": "2026-Q1",
+          "revenue": 10.1,
+          "burn": 0.22,
+          "cash": 20.4,
+          "runwayMo": 93
+        }
+      ],
+      "thresholds": {
+        "minRunwayMo": 12,
+        "maxBurnMult": 1.5
+      },
+      "fte": 34,
+      "fteAtEntry": 21,
+      "fteNB": 18,
+      "womenCSuite": 2,
+      "cSuiteSize": 5,
+      "rounds": [
+        {
+          "date": "2022-06-15",
+          "label": "Series B",
+          "instrument": "Preferred Equity",
+          "invested": 5.1,
+          "roundTotal": 21,
+          "postMoney": 41,
+          "ownershipAfter": 12.3,
+          "lead": "Meridian Growth",
+          "note": "",
+          "nbOther": 2.6
+        }
+      ],
+      "milestones": [],
+      "covenants": [],
+      "govFunding": null,
+      "marks": [
+        {
+          "date": "2026-03-31",
+          "fmv": 8.4,
+          "method": "Revenue multiple",
+          "by": "D. Armali",
+          "rationale": "Quarterly mark per valuation policy."
+        }
+      ],
+      "tasks": []
+    }
+  ],
+  "pipeline": [
+    {
+      "id": "P001",
+      "name": "Argent Motion",
+      "sector": "Industrial Tech",
+      "funnel": "Term Sheet",
+      "source": "Founder referral (Northline CEO)",
+      "checkSize": 7,
+      "valuation": 52,
+      "owner": "Daniel Armali",
+      "nextStep": "Legal DD close-out; target sign 2026-07-21",
+      "added": "2026-04-02",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "passed"
+        },
+        {
+          "name": "Market & competition",
+          "status": "passed"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "passed"
+        },
+        {
+          "name": "Financial model review",
+          "status": "passed"
+        },
+        {
+          "name": "Customer references",
+          "status": "passed"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "in-progress"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "in-progress"
+        },
+        {
+          "name": "IC approval",
+          "status": "passed"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": {
+        "security": "Series A Preferred",
+        "preMoney": 45,
+        "postMoney": 52,
+        "investment": 7,
+        "ownership": 13.5,
+        "liquidation": "1x non-participating",
+        "antiDilution": "Broad-based weighted average",
+        "board": "1 director (us), 1 founder, 1 independent",
+        "proRata": "Yes, major investor rights",
+        "dividends": "6% non-cumulative",
+        "optionPool": "12% post",
+        "founderVesting": "4yr / 1yr cliff, 25% credit"
+      }
+    },
+    {
+      "id": "P002",
+      "name": "Meridian Volt",
+      "sector": "Climate & Energy",
+      "funnel": "IC Review",
+      "source": "Outbound thesis work",
+      "checkSize": 6,
+      "valuation": 40,
+      "owner": "K. Patel",
+      "nextStep": "IC memo circulated; committee 2026-07-14",
+      "added": "2026-05-11",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "passed"
+        },
+        {
+          "name": "Market & competition",
+          "status": "passed"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "in-progress"
+        },
+        {
+          "name": "Financial model review",
+          "status": "passed"
+        },
+        {
+          "name": "Customer references",
+          "status": "in-progress"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "passed"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P003",
+      "name": "Hexadyne Bio",
+      "sector": "Healthtech",
+      "funnel": "Diligence",
+      "source": "Helix Partners co-invest",
+      "checkSize": 5,
+      "valuation": 38,
+      "owner": "Daniel Armali",
+      "nextStep": "Customer/KOL calls week of 07-13",
+      "added": "2026-06-01",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "passed"
+        },
+        {
+          "name": "Market & competition",
+          "status": "in-progress"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "in-progress"
+        },
+        {
+          "name": "Financial model review",
+          "status": "pending"
+        },
+        {
+          "name": "Customer references",
+          "status": "pending"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "pending"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P004",
+      "name": "Cassiar Compute",
+      "sector": "AI / ML Infra",
+      "funnel": "Diligence",
+      "source": "Conference (Compute Summit)",
+      "checkSize": 8,
+      "valuation": 65,
+      "owner": "J. Chen",
+      "nextStep": "Tech DD with external advisor",
+      "added": "2026-05-20",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "passed"
+        },
+        {
+          "name": "Market & competition",
+          "status": "passed"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "pending"
+        },
+        {
+          "name": "Financial model review",
+          "status": "in-progress"
+        },
+        {
+          "name": "Customer references",
+          "status": "pending"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "in-progress"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P005",
+      "name": "Bellrock Marine",
+      "sector": "Logistics",
+      "funnel": "Screening",
+      "source": "Banker outreach",
+      "checkSize": 4,
+      "valuation": 25,
+      "owner": "K. Patel",
+      "nextStep": "Screen call scheduled 07-09",
+      "added": "2026-06-18",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "in-progress"
+        },
+        {
+          "name": "Market & competition",
+          "status": "pending"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "pending"
+        },
+        {
+          "name": "Financial model review",
+          "status": "pending"
+        },
+        {
+          "name": "Customer references",
+          "status": "pending"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "pending"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P006",
+      "name": "Oxbow Materials",
+      "sector": "Industrial Tech",
+      "funnel": "Screening",
+      "source": "Portfolio CEO referral",
+      "checkSize": 3.5,
+      "valuation": 22,
+      "owner": "Daniel Armali",
+      "nextStep": "Deck review; decide by 07-10",
+      "added": "2026-06-25",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "in-progress"
+        },
+        {
+          "name": "Market & competition",
+          "status": "pending"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "pending"
+        },
+        {
+          "name": "Financial model review",
+          "status": "pending"
+        },
+        {
+          "name": "Customer references",
+          "status": "pending"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "pending"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P007",
+      "name": "Talusworks",
+      "sector": "Defense & Space",
+      "funnel": "Sourced",
+      "source": "Inbound",
+      "checkSize": 5,
+      "valuation": null,
+      "owner": "-",
+      "nextStep": "Assign owner",
+      "added": "2026-07-01",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "pending"
+        },
+        {
+          "name": "Market & competition",
+          "status": "pending"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "pending"
+        },
+        {
+          "name": "Financial model review",
+          "status": "pending"
+        },
+        {
+          "name": "Customer references",
+          "status": "pending"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "pending"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P008",
+      "name": "Finchbrook",
+      "sector": "Fintech",
+      "funnel": "Sourced",
+      "source": "LP referral",
+      "checkSize": 6,
+      "valuation": null,
+      "owner": "-",
+      "nextStep": "Initial review",
+      "added": "2026-07-03",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "pending"
+        },
+        {
+          "name": "Market & competition",
+          "status": "pending"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "pending"
+        },
+        {
+          "name": "Financial model review",
+          "status": "pending"
+        },
+        {
+          "name": "Customer references",
+          "status": "pending"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "pending"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "pending"
+        },
+        {
+          "name": "IC approval",
+          "status": "pending"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "pending"
+        }
+      ],
+      "termSheet": null
+    },
+    {
+      "id": "P009",
+      "name": "Verdant Row",
+      "sector": "Climate & Energy",
+      "funnel": "Closed",
+      "source": "Outbound thesis work",
+      "checkSize": 5.5,
+      "valuation": 42,
+      "owner": "Daniel Armali",
+      "nextStep": "Closed 2026-03-20 - now C013 in portfolio",
+      "added": "2025-11-10",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "passed"
+        },
+        {
+          "name": "Market & competition",
+          "status": "passed"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "passed"
+        },
+        {
+          "name": "Financial model review",
+          "status": "passed"
+        },
+        {
+          "name": "Customer references",
+          "status": "passed"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "passed"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "passed"
+        },
+        {
+          "name": "IC approval",
+          "status": "passed"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "passed"
+        }
+      ],
+      "termSheet": null,
+      "closedDate": "2026-03-20"
+    },
+    {
+      "id": "P010",
+      "name": "Signal Forge",
+      "sector": "Cybersecurity",
+      "funnel": "Closed",
+      "source": "Founder referral",
+      "checkSize": 4.5,
+      "valuation": 30,
+      "owner": "J. Chen",
+      "nextStep": "Closed 2026-05-15",
+      "added": "2026-01-08",
+      "gates": [
+        {
+          "name": "Initial screen",
+          "status": "passed"
+        },
+        {
+          "name": "Market & competition",
+          "status": "passed"
+        },
+        {
+          "name": "Team topgrading",
+          "status": "passed"
+        },
+        {
+          "name": "Financial model review",
+          "status": "passed"
+        },
+        {
+          "name": "Customer references",
+          "status": "passed"
+        },
+        {
+          "name": "Technical / product DD",
+          "status": "passed"
+        },
+        {
+          "name": "Legal & cap table",
+          "status": "passed"
+        },
+        {
+          "name": "IC approval",
+          "status": "passed"
+        },
+        {
+          "name": "Term sheet executed",
+          "status": "passed"
+        }
+      ],
+      "termSheet": null,
+      "closedDate": "2026-05-15"
+    },
+    {
+      "id": "P011",
+      "name": "Copperfield AI (passed)",
+      "sector": "AI / ML Infra",
+      "funnel": "Passed",
+      "source": "Inbound",
+      "checkSize": 6,
+      "valuation": 80,
+      "owner": "Daniel Armali",
+      "nextStep": "Passed: valuation + thin moat",
+      "added": "2026-02-14",
+      "gates": [],
+      "termSheet": null
+    }
+  ],
+  "fundInvestments": [
+    {
+      "id": "F001",
+      "name": "Meridian Growth Fund III",
+      "manager": "Meridian Growth Partners",
+      "strategy": "Growth equity",
+      "vintage": 2021,
+      "committed": 15,
+      "called": 11,
+      "distributions": 1.5,
+      "nav": 13.8,
+      "coInvestRights": true,
+      "coInvestsDone": 2,
+      "referrals": 3,
+      "capitalToDirect": 6.5,
+      "womenSeniorGP": true,
+      "nextCallEst": "2026-09-30",
+      "agm": "2026-10-15",
+      "contact": "S. Whitmore (IR)",
+      "rationale": "Co-invest access to growth rounds in fintech and SaaS; led Vantara Series B alongside us.",
+      "cashflows": [
+        {
+          "date": "2021-06-30",
+          "amount": -3
+        },
+        {
+          "date": "2022-03-31",
+          "amount": -3.5
+        },
+        {
+          "date": "2023-05-31",
+          "amount": -2.5
+        },
+        {
+          "date": "2024-09-30",
+          "amount": -2
+        },
+        {
+          "date": "2025-11-30",
+          "amount": 1.5
+        }
+      ]
+    },
+    {
+      "id": "F002",
+      "name": "Helix Partners Fund II",
+      "manager": "Helix Partners",
+      "strategy": "Early-stage healthtech",
+      "vintage": 2020,
+      "committed": 10,
+      "called": 9,
+      "distributions": 3.2,
+      "nav": 11.5,
+      "coInvestRights": true,
+      "coInvestsDone": 1,
+      "referrals": 4,
+      "capitalToDirect": 3,
+      "womenSeniorGP": true,
+      "nextCallEst": "2026-11-30",
+      "agm": "2026-09-22",
+      "contact": "Dr. M. Osei (GP)",
+      "rationale": "Healthtech deal flow and scientific diligence support; co-led Quillon Bio Series A with us.",
+      "cashflows": [
+        {
+          "date": "2020-04-30",
+          "amount": -2.5
+        },
+        {
+          "date": "2021-02-28",
+          "amount": -2.5
+        },
+        {
+          "date": "2022-06-30",
+          "amount": -2
+        },
+        {
+          "date": "2023-08-31",
+          "amount": -2
+        },
+        {
+          "date": "2024-12-31",
+          "amount": 1.8
+        },
+        {
+          "date": "2025-10-31",
+          "amount": 1.4
+        }
+      ]
+    },
+    {
+      "id": "F003",
+      "name": "Foundry Industrial Fund I",
+      "manager": "Foundry Industrial",
+      "strategy": "Industrial tech seed",
+      "vintage": 2022,
+      "committed": 8,
+      "called": 5.2,
+      "distributions": 0,
+      "nav": 6.1,
+      "coInvestRights": true,
+      "coInvestsDone": 0,
+      "referrals": 2,
+      "capitalToDirect": 0.8,
+      "womenSeniorGP": false,
+      "nextCallEst": "2026-08-31",
+      "agm": "2027-01-20",
+      "contact": "J. Ramos (IR)",
+      "rationale": "Seed-stage pipeline in robotics and advanced manufacturing ahead of our Series A entry point.",
+      "cashflows": [
+        {
+          "date": "2022-09-30",
+          "amount": -1.6
+        },
+        {
+          "date": "2023-06-30",
+          "amount": -1.6
+        },
+        {
+          "date": "2024-10-31",
+          "amount": -1.2
+        },
+        {
+          "date": "2025-12-31",
+          "amount": -0.8
+        }
+      ]
+    },
+    {
+      "id": "F004",
+      "name": "Vanguard Defense Tech I",
+      "manager": "Vanguard Defense Partners",
+      "strategy": "Defense & space",
+      "vintage": 2023,
+      "committed": 12,
+      "called": 6,
+      "distributions": 0,
+      "nav": 6.8,
+      "coInvestRights": true,
+      "coInvestsDone": 1,
+      "referrals": 2,
+      "capitalToDirect": 4,
+      "womenSeniorGP": false,
+      "nextCallEst": "2026-10-31",
+      "agm": "2026-11-05",
+      "contact": "Col. D. Hayes (ret.)",
+      "rationale": "Programmatic access to dual-use deal flow and STRATFI/primes network; co-invested in Skyward Series B.",
+      "cashflows": [
+        {
+          "date": "2023-05-31",
+          "amount": -2
+        },
+        {
+          "date": "2024-04-30",
+          "amount": -2
+        },
+        {
+          "date": "2025-06-30",
+          "amount": -2
+        }
+      ]
+    },
+    {
+      "id": "F005",
+      "name": "Latitude Ventures IV",
+      "manager": "Latitude Ventures",
+      "strategy": "Generalist seed",
+      "vintage": 2019,
+      "committed": 10,
+      "called": 10,
+      "distributions": 6.5,
+      "nav": 8.9,
+      "coInvestRights": false,
+      "coInvestsDone": 0,
+      "referrals": 5,
+      "capitalToDirect": 2.2,
+      "womenSeniorGP": true,
+      "nextCallEst": null,
+      "agm": "2026-09-30",
+      "contact": "P. Nguyen (IR)",
+      "rationale": "Broad top-of-funnel coverage; five qualified referrals into our pipeline since 2021. Fully called.",
+      "cashflows": [
+        {
+          "date": "2019-08-31",
+          "amount": -3
+        },
+        {
+          "date": "2020-06-30",
+          "amount": -3
+        },
+        {
+          "date": "2021-04-30",
+          "amount": -2.5
+        },
+        {
+          "date": "2022-02-28",
+          "amount": -1.5
+        },
+        {
+          "date": "2023-11-30",
+          "amount": 2
+        },
+        {
+          "date": "2024-10-31",
+          "amount": 2.5
+        },
+        {
+          "date": "2025-09-30",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "F006",
+      "name": "Northbridge Climate I",
+      "manager": "Northbridge Capital",
+      "strategy": "Climate & energy",
+      "vintage": 2025,
+      "committed": 12,
+      "called": 2.4,
+      "distributions": 0,
+      "nav": 2.3,
+      "coInvestRights": true,
+      "coInvestsDone": 0,
+      "referrals": 1,
+      "capitalToDirect": 0,
+      "womenSeniorGP": true,
+      "nextCallEst": "2026-08-15",
+      "agm": "2027-03-10",
+      "contact": "A. Beaumont (GP)",
+      "rationale": "Early J-curve position; thesis coverage in industrial decarb where we lack sourcing depth.",
+      "cashflows": [
+        {
+          "date": "2025-07-31",
+          "amount": -1.2
+        },
+        {
+          "date": "2026-02-28",
+          "amount": -1.2
+        }
+      ]
+    }
+  ],
+  "memos": {},
+  "meta": {
+    "schemaVersion": 1,
+    "savedAt": null,
+    "demo": true
+  }
 }

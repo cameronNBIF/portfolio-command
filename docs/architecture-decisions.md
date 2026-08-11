@@ -367,6 +367,86 @@ Four conditions attach to this decision, and it is not sound without them.
 
 ---
 
+## ADR-021 — The metrics package's input contract and unit boundary.
+
+---
+
+## ADR-022 — Golden-master methodology.
+
+---
+
+## ADR-023 — Views aggregate facts; the metrics package computes ratios
+
+**Status:** Accepted
+
+**Context.** ADR-002 settled that derived values are never *stored*. It did not
+settle where they are *computed*, and the schema has quietly answered that
+question twice. `v_lp_position_current` computes `tvpi` and `dpi` in SQL;
+`fiMetrics` computes the same two figures in JavaScript. `v_round_leverage`
+carries `capital_attracted`, `nb_capital` and `outside_capital`, and applies the
+round-exclusion predicate that ADR-013 freezes as part of the leverage
+definition; `fundMetrics` applies its own. These are independent implementations
+of the same board numbers — the exact failure mode ADR-002 was written to
+prevent, relocated from two columns to two languages.
+
+The golden-master tests built in A1 guard the TypeScript implementations only. A
+SQL implementation that no test covers, serving values the frontend renders, is
+strictly worse than no second implementation at all: it fails silently, and the
+build stays green.
+
+**Decision.** A view may **aggregate facts**. It may sum, count, filter to live
+rows, pick the latest row by date, and join. It may produce `invested`,
+`realized`, `called`, `distributions`, `nav`, `round_total`, `our_invested`,
+`fte`, and any other quantity that is a sum of stored rows.
+
+A view may **not compute a metric**. MOIC, TVPI, DPI, RVPI, IRR, leverage,
+FMV growth, same-store revenue growth, ownership-weighted figures, suggested
+reserve and every scenario output belong to `packages/metrics` and nowhere else.
+
+The practical test is a ratio: **if the expression divides one aggregate by
+another, or compares one period to another, it belongs in TypeScript.**
+
+Two carve-outs, both narrow:
+
+1. **Operational and diagnostic views** that never feed the ADR-001 contract are
+   exempt. `v_mandate_completeness` reports coverage for internal monitoring, not
+   a board figure, and may stay as it is.
+2. **Period-labelling functions** (fiscal and calendar quarter derivation per
+   ADR-006) are formatting, not metrics, and stay in SQL where the dates live.
+
+**Consequences.**
+
+- **`v_lp_position_current.tvpi` and `.dpi` become convenience-only.** They are
+  never serialised into the contract and never read by the API. A SQL comment on
+  each states this explicitly. They are candidates for removal, but are retained
+  for now because Finance's ad-hoc reconciliation queries are the one legitimate
+  consumer. Note that `create or replace view` cannot drop a column: removal
+  requires `drop view ... cascade` and a recreate in a forward migration.
+- **`v_round_leverage` is convenience-only for the same reason**, and carries a
+  subtler cost. Its `where r.round_total >= ours.our_invested` predicate *is* the
+  leverage definition, frozen under ADR-013. Since the metrics package must apply
+  that predicate itself to reproduce the prototype exactly, the contract has to
+  deliver rounds **unfiltered**, with `roundTotal` and `invested` per round, and
+  let TypeScript do the excluding. The prototype's rule — a round with a missing
+  or invalid total is dropped, never imputed (ADR-012) — is therefore expressed
+  once, in one language, under test.
+- **A3's read path is: views assemble aggregates → the API layer converts dollars
+  to $M and assembles contract objects → the metrics package computes.** Nothing
+  is computed in a React component (ADR-003) and nothing is computed twice.
+- **The cost is arithmetic moving from Postgres to Node.** At roughly 70
+  companies and a few thousand transactions this is irrelevant. If it ever stops
+  being irrelevant, the answer is caching the contract payload, not pushing
+  definitions back into SQL.
+- **Review heuristic, deliberately crude:** a `/` operator in a view definition is
+  a smell. Not every instance is a violation, but every instance deserves a look
+  before the migration merges.
+- **The residual risk is external consumers.** Anyone pointing Power BI or a
+  spreadsheet at `v_lp_position_current.dpi` gets a figure the platform itself
+  does not use. The SQL comments are the mitigation; the real fix is deleting the
+  columns once Finance's reconciliation queries have moved to the API.
+
+---
+
 ## Resolved open items
 
 | Ref | Item | Resolution |
