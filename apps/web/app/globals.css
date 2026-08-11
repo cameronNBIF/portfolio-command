@@ -1,0 +1,186 @@
+/*
+ * Ported VERBATIM from the <style> block of docs/reference/vc-toolkit.html
+ * (ADR-014). "Looks identical to the prototype" is the phase-1 acceptance
+ * criterion, and this stylesheet is what delivers it -- every class name,
+ * colour, size and selector is the prototype's.
+ *
+ * Do not restyle, rename or "modernise" anything here. A change to this file
+ * is a change to what Daniel sees, and phase 1 has exactly two sanctioned
+ * content exceptions (D-2 revenue labelling, D-5 diversity coverage), neither
+ * of which is visual.
+ *
+ * Two additions at the end, both marked, both structural rather than cosmetic:
+ * the Recharts tooltip needs the prototype's Chart.js tooltip styling, and
+ * React needs a class for the drawer scroll-lock the prototype did without.
+ */
+
+:root {
+  color-scheme: light;
+  --navy: #16263f; --navy-2: #1f3355; --ink: #1c2430; --slate: #5b6878; --muted: #8a95a5;
+  --line: #dde3ea; --line-soft: #eaeef3; --bg: #f4f6f9; --card: #ffffff;
+  --accent: #2563eb; --accent-soft: #eaf1fe;
+  --green: #15803d; --green-bg: #e8f5ec; --amber: #b45309; --amber-bg: #fdf3e3; --red: #b91c1c; --red-bg: #fdeaea;
+  --teal: #0e7490; --purple: #7c3aed;
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(22,38,63,.06), 0 1px 6px rgba(22,38,63,.05);
+  --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 13px; }
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ---------- Top bar ---------- */
+header { background: var(--navy); color: #fff; display: flex; align-items: center; gap: 18px; padding: 0 18px; height: 52px; flex-shrink: 0; }
+header .logo { font-weight: 700; font-size: 14.5px; letter-spacing: .3px; white-space: nowrap; }
+header .logo span { color: #7fb0ff; }
+nav { display: flex; gap: 2px; height: 100%; }
+nav button { background: none; border: none; color: #b8c4d6; font: 600 12.5px var(--font); padding: 0 14px; cursor: pointer; border-bottom: 2.5px solid transparent; height: 100%; }
+nav button:hover { color: #fff; }
+nav button.active { color: #fff; border-bottom-color: #7fb0ff; }
+header .spacer { flex: 1; }
+header .fundtag { font-size: 11.5px; color: #b8c4d6; text-align: right; line-height: 1.3; }
+header .fundtag b { color: #fff; }
+
+main { flex: 1; overflow-y: auto; padding: 18px 22px 40px; }
+.view { display: none; max-width: 1400px; margin: 0 auto; }
+.view.active { display: block; }
+
+/* ---------- Generic ---------- */
+h2.vtitle { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+.vsub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.card .chead { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font-weight: 700; font-size: 12.5px; display: flex; align-items: center; justify-content: space-between; }
+.card .cbody { padding: 12px 14px; }
+.grid { display: grid; gap: 14px; }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.up { color: var(--green); } .down { color: var(--red); } .flat { color: var(--muted); }
+.small { font-size: 11.5px; color: var(--slate); }
+.hint { font-size: 11px; color: var(--muted); }
+a.link { color: var(--accent); cursor: pointer; text-decoration: none; }
+a.link:hover { text-decoration: underline; }
+
+.btn { background: var(--navy); color: #fff; border: none; border-radius: 6px; padding: 7px 13px; font: 600 12px var(--font); cursor: pointer; }
+.btn:hover { background: var(--navy-2); }
+.btn.ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); }
+.btn.ghost:hover { background: var(--bg); }
+.btn.sm { padding: 4px 9px; font-size: 11.5px; }
+.btn.danger { background: var(--red); }
+
+.pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
+.pill.green { background: var(--green-bg); color: var(--green); }
+.pill.yellow { background: var(--amber-bg); color: var(--amber); }
+.pill.red { background: var(--red-bg); color: var(--red); }
+.pill.gray { background: #eef1f5; color: var(--slate); }
+.pill.blue { background: var(--accent-soft); color: var(--accent); }
+.pill.purple { background: #f1eafd; color: var(--purple); }
+.pill.teal { background: #e0f2f7; color: var(--teal); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+.dot.green { background: #22a052; } .dot.yellow { background: #e09a1a; } .dot.red { background: #d93030; } .dot.gray { background: #9aa5b3; }
+
+/* ---------- KPI tiles ---------- */
+.kpirow { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 13px; box-shadow: var(--shadow); }
+.kpi .k { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.kpi .v { font-size: 20px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 11px; color: var(--slate); margin-top: 2px; }
+
+/* ---------- Tables ---------- */
+table.dt { width: 100%; border-collapse: collapse; font-size: 12.3px; }
+table.dt th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--card); z-index: 1; }
+table.dt th.num { text-align: right; }
+table.dt th .arrow { font-size: 9px; color: var(--accent); }
+table.dt td { padding: 7px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+table.dt tbody tr:hover { background: #f6f9fd; }
+table.dt tbody tr.click { cursor: pointer; }
+.tblwrap { overflow: auto; max-height: 640px; }
+
+/* ---------- Filters ---------- */
+.fbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.fbar input[type=text], .fbar select, .field input, .field select, .field textarea {
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: 12.3px var(--font); background: #fff; color: var(--ink);
+}
+.fbar input[type=text]:focus, .fbar select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.fbar .count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+/* ---------- Charts ---------- */
+.chartbox { position: relative; height: 240px; }
+.chartbox.tall { height: 300px; }
+
+/* ---------- Detail drawer ---------- */
+#drawer { position: fixed; top: 0; right: -900px; width: min(880px, 96vw); height: 100vh; background: #fff; border-left: 1px solid var(--line); box-shadow: -8px 0 30px rgba(22,38,63,.18); z-index: 50; transition: right .22s ease; display: flex; flex-direction: column; }
+#drawer.open { right: 0; }
+#drawer .dhead { padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 12px; }
+#drawer .dbody { flex: 1; overflow-y: auto; padding: 16px 20px 40px; }
+#overlay { position: fixed; inset: 0; background: rgba(15,23,42,.35); z-index: 40; display: none; }
+#overlay.open { display: block; }
+.dsec { margin-bottom: 18px; }
+.dsec h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 7px; padding-bottom: 4px; border-bottom: 1px solid var(--line-soft); }
+.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; }
+.kv .item .l { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.kv .item .d { font-size: 12.5px; font-weight: 600; margin-top: 1px; }
+
+/* ---------- Pipeline ---------- */
+.kanban { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: start; }
+.kcol { background: #edf0f4; border-radius: var(--radius); padding: 8px; min-height: 120px; }
+.kcol h5 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--slate); padding: 2px 4px 8px; display: flex; justify-content: space-between; }
+.kcard { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--shadow); }
+.kcard:hover { border-color: var(--accent); }
+.kcard .n { font-weight: 700; font-size: 12.3px; }
+.kcard .m { font-size: 11px; color: var(--slate); margin-top: 2px; }
+
+/* ---------- Memo ---------- */
+.memolayout { display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+.memosec { margin-bottom: 14px; }
+.memosec label { font-size: 11px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: 4px; }
+.memosec textarea { width: 100%; min-height: 84px; resize: vertical; font: 12.5px/1.5 var(--font); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.gate { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+.gate select { font-size: 11px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 5px; }
+
+/* ---------- Data view ---------- */
+pre.schema { background: #0f172a; color: #cfe0f4; font: 11px/1.55 var(--mono); padding: 14px 16px; border-radius: var(--radius); overflow-x: auto; }
+.droptarget { border: 2px dashed var(--line); border-radius: var(--radius); padding: 18px; text-align: center; color: var(--muted); }
+
+/* ---------- Report / print ---------- */
+.reporthead { display: none; }
+@media print {
+  header, .fbar, .btn, nav, .noprint { display: none !important; }
+  main { padding: 0; overflow: visible; }
+  body { background: #fff; }
+  .view { display: none; } .view.active { display: block; }
+  .reporthead { display: block; margin-bottom: 12px; }
+  .card { box-shadow: none; break-inside: avoid; }
+}
+.badgebar { display: flex; gap: 6px; flex-wrap: wrap; }
+.progress { height: 7px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--accent); border-radius: 99px; }
+.alertrow { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 12.3px; }
+.tabs2 { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs2 button { background: none; border: none; padding: 7px 12px; font: 600 12px var(--font); color: var(--slate); cursor: pointer; border-bottom: 2px solid transparent; }
+.tabs2 button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 12.5px; z-index: 99; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* ---------- Additions for the React port (not in the prototype) ---------- */
+
+/* Chart.js drew its own tooltip on canvas; Recharts renders DOM. These rules
+   reproduce the Chart.js default tooltip so charts stay visually identical. */
+.recharts-default-tooltip {
+  background: rgba(0,0,0,.8) !important;
+  border: none !important;
+  border-radius: 6px;
+  padding: 6px 9px !important;
+  font-size: 11px;
+  color: #fff;
+}
+.recharts-tooltip-label { color: #fff; font-weight: 700; margin-bottom: 2px !important; }
+.recharts-tooltip-item { color: #fff !important; padding: 1px 0 !important; }
+.recharts-cartesian-axis-tick text { fill: #5b6878; font-size: 11px; }
+.recharts-legend-item-text { color: #5b6878 !important; font-size: 11px; }
+.recharts-surface { overflow: visible; }
+
+/* The prototype left the body scrollable behind the drawer. Locking it is a
+   fix for a real annoyance, not a restyle -- nothing visible moves. */
+body.drawer-open { overflow: hidden; }

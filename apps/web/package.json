@@ -8,12 +8,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@portfolio-command/contract": "*",
+    "@portfolio-command/metrics": "*",
     "next": "^15.4.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "recharts": "^2.15.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0"
+    "@types/react-dom": "^19.1.0",
+    "eslint-config-next": "^15.4.0"
   }
 }
