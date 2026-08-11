@@ -18,15 +18,7 @@ v2.0 inverts it. Affinity and Visible are live today, so company identity, pipel
 
 ## How to read this
 
-No dates, because dates from a solo part-time build are fiction. There is **effort** in weeks of focused work, and **exit criteria**, which are what actually tell you a phase is finished.
-
-Total build effort is roughly **32 to 45 focused weeks**. Elapsed time depends on what fraction of your week this gets:
-
-| Time on this | Elapsed to cutover-ready |
-|---|---|
-| Full time | 9–11 months |
-| Half time | 16–20 months |
-| A day a week | Not a viable plan |
+No dates, because dates from a solo part-time build are fiction. There is **exit criteria** which is what actually tells you a phase is finished.
 
 The lever remains scope, not speed — see *Minimum launchable product*.
 
@@ -72,7 +64,7 @@ Runs on Finance's clock. Nothing in Track A waits on it except A13.
 
 ### Stage 1 — Shell and presentation
 
-#### A0 · Foundations · 2–3 weeks
+#### A0 · Foundations
 Repository, Azure resources, authentication, deployment. No features.
 
 - Monorepo: `apps/web`, `packages/metrics`, `packages/db`, `functions/`
@@ -83,7 +75,7 @@ Repository, Azure resources, authentication, deployment. No features.
 
 **Exit:** empty authenticated shell deployed to Azure, schema applied, CI green.
 
-#### A1 · Metrics package and golden-master tests · 2–3 weeks
+#### A1 · Metrics package and golden-master tests
 **Still first, still non-negotiable.** It protects every board number in the rebuild, and it is far harder to retrofit than to front-load.
 
 - Port `moic`, `fundMetrics`, `xirr`, `fiMetrics`, `healthAlerts`, `suggestedReserve`, `runScenario`, plus leverage, FMV growth and same-store revenue into `packages/metrics` as pure functions
@@ -93,7 +85,7 @@ Repository, Azure resources, authentication, deployment. No features.
 
 **Exit:** the metrics package reproduces every prototype number exactly, and drift fails the build.
 
-#### A2 · Frontend port against seed fixture · 5–7 weeks
+#### A2 · Frontend port against seed fixture
 The big presentation-layer port. **No backend required.**
 
 This works because ADR-001 makes the export contract and the API response the same shape — so Daniel's exported `demo.json` served as a static fixture *is* the contract the API will later satisfy. Nothing built here gets reworked when the API arrives.
@@ -107,7 +99,7 @@ This works because ADR-001 makes the export contract and the API response the sa
 
 ### Stage 2 — Real backend and real external data
 
-#### A3 · API and persistence · 3–4 weeks
+#### A3 · API and persistence
 - Contract endpoints serving the ADR-001 shape from Postgres, replacing the fixture
 - Derived views wired in — nothing computed in a component
 - Role-based authorisation enforced server-side
@@ -115,21 +107,21 @@ This works because ADR-001 makes the export contract and the API response the sa
 
 **Exit:** the frontend runs unchanged against the API instead of the fixture, and the contract snapshot test still passes.
 
-#### A4 · Affinity integration · 2–3 weeks
+#### A4 · Affinity integration
 - Affinity API v2 client, nightly sync Function
 - `affinity_status_map` seeded and editable
 - Pipeline tab on real data; company identity, sector, sourcing channel, CEO and HQ real
 
 **Exit:** real pipeline visible and refreshing nightly. Company roster is real.
 
-#### A5 · Visible.vc integration · 1–2 weeks
+#### A5 · Visible.vc integration
 - Quarterly KPI sync into `company_kpi` with calendar quarter labels
 - `request_version` stamping
 - Revenue, burn, cash, FTE, NB FTE real; diversity fields nullable until the request lands
 
 **Exit:** real quarterly KPI history flowing, with per-field coverage visible.
 
-#### A6 · Synthetic financial dataset · 1–2 weeks
+#### A6 · Synthetic financial dataset
 Generated transactions, rounds, marks, ownership and LP activity, attached to the **real** company ids from A4.
 
 - Deterministic, seeded, regenerable — the prototype's `mulberry32` generator is the precedent
@@ -143,38 +135,38 @@ Generated transactions, rounds, marks, ownership and LP activity, attached to th
 
 ### Stage 3 — Production workflows, all testable on synthetic data
 
-#### A7 · Finance entry interfaces · 3–4 weeks
+#### A7 · Finance entry interfaces
 **Walk the workflow through with the Director of Finance before building it** (ADR-020, condition 4).
 
 - Transaction entry, table view with filters, **Reverse and Correct rather than Edit** (ADR-018)
 - Valuation mark entry, Finance role only, entry as sign-off (ADR-007)
 - LP cashflow and NAV entry; running totals net of reversals
 
-#### A8 · Deal-close capture and mandate completeness · 1–2 weeks
+#### A8 · Deal-close capture and mandate completeness
 - Capture form: round total, co-investors with NB flag and amount, ownership, pro-rata, post-money
 - `v_mandate_completeness` surfaced on the dashboard
 
-#### A9 · Alerts, health and watchlist · 1–2 weeks
+#### A9 · Alerts, health and watchlist
 - Alert feed from runway thresholds, risk flags, covenant status, government funding conditions
 - Health rating workflow with audit
 - Deliberately exercised against the synthetic edge cases from A6
 
-#### A10 · Memo builder · 2–3 weeks
+#### A10 · Memo builder
 - Auto-prefill from company or deal data, versioning, structured decision field, Markdown and PDF export
 
-#### A11 · Reports and board PDF · 2–3 weeks
+#### A11 · Reports and board PDF
 - Reports tab on real infrastructure: fund summary, highlights, watchlist, top and bottom positions, NAV bridge
 - Fiscal labels throughout per D‑6
 - Playwright PDF replacing the print stylesheet; NAV snapshot freezing on issue
 - **Sole board-facing artefact under ADR-005, so it has to be genuinely good**
 
-#### A12 · Modeling · 3–4 weeks
+#### A12 · Modeling
 - Reserves tool on dry-powder basis, editable allocations, suggested-reserve policy
 - Exit waterfall with ADR-016 simplifications and their on-screen caveats
 
 ### Stage 4 — Cutover
 
-#### A13 · Real data migration and go-live · 3–4 weeks
+#### A13 · Real data migration and go-live
 The riskiest phase, and the reason it gets its own budget rather than being treated as a switch.
 
 - Load real history through the B3 pipeline, batch by batch, reconciled to control totals
@@ -194,8 +186,6 @@ If the full sequence runs too long, this is the smaller thing worth launching.
 
 **In:** A0–A9, A11, A13 — Pipeline, Portfolio, Funds, Dashboard, Reports, Finance entry, alerts.
 **Deferred past launch:** A10 Memo builder and A12 Modeling. Daniel keeps using the prototype for both; neither has an upstream data dependency, so nothing decays while they wait.
-
-**Effort:** roughly 27–35 focused weeks rather than 32–45.
 
 ---
 
@@ -221,7 +211,7 @@ If the full sequence runs too long, this is the smaller thing worth launching.
 
 ---
 
-## The first two weeks
+## The initial development steps
 
 1. Confirm Affinity v2 and Visible API access on your current plan tiers.
 2. Add the two diversity fields to the Visible quarterly request.
