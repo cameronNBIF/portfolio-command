@@ -15,7 +15,7 @@ Maintained by one developer, who is also the organisation's internal IT. Emergen
 These are settled architecture decisions. Do not work around them; if one seems wrong, stop and raise it rather than routing past it.
 
 1. **The JSON export contract is frozen** (ADR-001). `GET /api/v1/export` emits the shape documented in the prototype's Data tab, field for field. A snapshot test guards it. Money is `$M` in the contract and **dollars in the database** — the API layer converts in exactly one place.
-2. **Derived values are never stored** (ADR-002). `invested`, `fmv`, `realized`, `exited`, `vintage`, `called`, `distributions`, `capitalToDirect`, `runwayMo` and eleven others are computed from transactions, rounds and marks. If you find yourself adding a column that duplicates a sum, stop.
+2. **Derived values are never stored** (ADR-002, as amended by ADR-027). `invested`, `fmv`, `realized`, `exited`, `vintage`, `called`, `distributions` and seven others are computed from transactions, rounds and marks. If you find yourself adding a column that duplicates a sum, stop. **Four fields left that list at A3** — `reservesDeployed`, `runwayMo`, `fteAtEntry` and `company.instrument` — because measurement showed they are independent facts with no derivation, not sums. That is the only sanctioned exit, and it took evidence.
 3. **Metric definitions are frozen at the prototype's implementations** (ADR-013). Golden-master fixtures in `packages/metrics` assert this. A failing golden-master test means you changed a board number — fix the code, never the fixture, unless a decision in `docs/architecture-decisions.md` says otherwise.
 4. **The frontend ports one-to-one** (ADR-014). Same layout, terminology, colour conventions, drawer behaviour, eight tabs. "Looks identical to the prototype" is the acceptance criterion. Two sanctioned exceptions: revenue is labelled quarterly rather than run-rate, and the diversity tile shows coverage instead of treating unreported as zero.
 5. **Financial rows are append-only** (ADR-018). Transactions, valuation marks and LP cashflows are corrected by reversal or supersession, never edited in place. The UI offers **Correct** and **Reverse**, not Edit. Judgement fields — health, flags, milestones, memos, gates — are freely editable with an audit trail.
@@ -35,8 +35,10 @@ These are settled architecture decisions. Do not work around them; if one seems 
 | `docs/reference/vc-toolkit.html` | The prototype. Source of truth for UI and metric behaviour. |
 | `docs/reference/demo.json` | Exported seed fixture — the frontend builds against this before the API exists |
 | `BUILD-LOG.md` | What was built, in what order, and what changed. **Update it every session.** |
-| `apps/web/` | Next.js + TypeScript + Recharts |
+| `apps/web/` | Next.js + TypeScript + Recharts. Route handlers under `app/api/v1/`. |
+| `packages/contract/` | The ADR-001 export contract as TypeScript types. No runtime code, no dependencies. |
 | `packages/metrics/` | Pure metric functions and golden-master fixtures. No React, no database, no I/O. |
+| `packages/api/` | The read path, the write path, auth, and the `$M`/dollars boundary. Knows nothing about HTTP. |
 | `packages/db/` | SQL migrations, seed scripts, generated types |
 | `functions/` | Azure Functions for the Affinity and Visible syncs |
 

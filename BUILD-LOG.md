@@ -28,6 +28,42 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-11 · A3 · API and persistence — the frontend now runs on Postgres
+
+**Built**
+- **`packages/api`** — a fifth workspace package holding the read path, the write path, authorisation and the unit boundary. It knows nothing about HTTP, so the logic worth testing is testable without a server; the Next route handlers are thin wrappers.
+- **`src/units.ts`** — the ADR-001 `$M`/dollars conversion, in both directions, in **one** place. The literal `1e6` appears nowhere else in the repository.
+- **The ADR-001 document importer** (`src/import/`) — the real D-1 import path, not a dev seed. Derived fields advisory, reconciliation warnings named, every row `is_synthetic` and `batch_id`-tagged so a load reverses wholesale. `npm run import:fixture`.
+- **The adapter** (`src/read/export.ts`) — database rows to the frozen contract. Rounds delivered unfiltered so the leverage predicate stays in `packages/metrics` (ADR-021, ADR-023).
+- **Authorisation** — the four ADR-005 roles, an Entra seam with a working dev provider, and full JWKS bearer validation for when the registration is configured.
+- **`audit_log` on every write**, capturing before and after against a real `app_user`.
+- **`GET /api/v1/export`** and **`POST /api/v1/judgement`**.
+- **The ADR-020 synthetic-data banner**, which did not exist. A2 had a fixture so the flag was never real; it now reads from `v_synthetic_data_status` through `meta.demo`, appears above the header on every screen, has no dismiss control, and carries into the print stylesheet.
+
+**Verified** — the round trip is **exact**. `demo.json` → Postgres → contract reproduces the document field for field, all 70 companies, 11 deals, 6 LP positions and the fund. Every A1 golden-master metric reproduces over the **database-built** document, which is what closes the residual risk ADR-021 names. 267 tests pass (17 new). In the browser: the dashboard renders from Postgres at $300.8M invested, $577.8M FMV, TVPI 2.08x, DPI 0.16x, gross IRR 19.0%, leverage 2.6:1, 39 alerts of which 13 critical, 64 active / 6 exited — every figure identical to A2. Role enforcement exercised live: `leadership` reads the export at 200 and is refused a gate edit at 403. A financial-table edit through the judgement endpoint is rejected by construction.
+
+**Decided**
+- **ADR-025 · `fund.distributions[]` stays a stored series and the ADR-002 correction is deferred.** The fixture's fund-level distributions ($47.5M) and per-company realizations ($53.0M) disagree by exactly $5.5M, and the decomposition is now known: three exits itemised per company against two "Generated exits" aggregate rows covering the same events. Deriving one from the other moves **five board numbers visibly** — TVPI 2.08x→2.10x, DPI 0.16x→0.18x, gross IRR 19.0%→19.1%, net IRR 16.7%→16.8%, dry powder $146.7M→$152.2M. Keeping them frozen is what makes A3's round trip a real test: any number that moved during the storage swap is an adapter bug, not an intended change. Approved this session.
+- **ADR-026 · The importer preserves contract strings verbatim and resolves reference keys on exact match only.** Six vocabulary collisions surfaced at once — the fixture's sectors are generic-VC (`AI / ML Infra`, `Enterprise SaaS`) against Affinity's real provincial taxonomy (`ICT`, `Agritech`, `Oceans`), overlapping on `Cybersecurity` alone. Coercing to a nearest neighbour would break the round trip; inserting fixture values into `ref_sector` would pollute the taxonomy ADR-009 makes Affinity the system of record for. Both stored instead, and 61 of 70 companies correctly carry a null `sector_id`. **Directly informed by the steer this session that A4/A5 should bring as much real data as possible** — it makes A4 a clean overwrite rather than a cleanup job.
+- **ADR-027 · Four fields in ADR-002's derived inventory are independent facts and are stored.** Established by measurement, not inspection: `reservesDeployed` disagrees with any round sum on 4 of 70 companies; `runwayMo` equals `cash/burn` on **10 of 71** KPI rows; `fteAtEntry` predates the KPI series by up to a decade; `company.instrument` is neither the first nor the last round's on C009. Each also has a reason to stay independent once real data arrives — runway is company-reported through Visible and the platform is not the system of submission (ADR-017). Three LP fields (`coInvestsDone`, `referrals`, `capitalToDirect`) are **carried rather than reclassified**: they have a working derivation from `round_coinvestor`, waiting on the A8 capture form.
+- **The as-of parameter reaches exactly one column.** `v_company_current`'s `current_date` TODO is resolved as `company_current_asof(p_as_of date)`. Only `fmv` takes the date. `invested`, `realized` and `exited` deliberately do not: two exits in the fixture are dated **after** the pinned as-of (Nimbus Grid 2029, Quorum 2027), so filtering realizations by date would erase $13.4M and move company MOIC.
+- **`ownership_after_pct` widened to `numeric(19,16)`.** The contract carries a computed float (`10.521185332909226`) and `numeric(7,4)` truncated it on four rows. Scale is contract fidelity, not a claim about cap-table accuracy.
+- **Roles come from `app_user.role`, never from an Entra app-role claim.** Entra proves identity; the platform decides permission. The app registration needs only sign-in configured, changing someone's role is a database update rather than a tenant change, and the row that granted the permission is the row `audit_log` attributes the write to.
+- **`0001_init.sql` amended in place again**, per the A1 precedent and its stated expiry: nothing is deployed, the runner aborts loudly on a checksum mismatch, and the `schema.sql ≡ 0001` invariant is worth more than an empty forward migration. **This stops being available the moment anything reaches Azure.**
+- **`page.tsx` calls the API layer directly rather than fetching its own endpoint.** Both paths run the same authorisation and the same adapter; a server component fetching its own origin adds a hop and a token it already has the identity for. `GET /api/v1/export` exists for the export contract and external consumers.
+- **`PipelineDeal.valuation` corrected to `number | null`** in the contract types. Two deals in the fixture are genuinely unpriced; the type said `number` and was already inaccurate. The JSON shape is unchanged, so this is not a contract change.
+
+**Outstanding**
+- **The Entra app registration is created but otherwise unconfigured.** `AUTH_MODE=entra` is implemented and validates properly, but nothing can obtain a token until the registration has a redirect URI, an exposed API scope and the frontend MSAL flow. Running on `AUTH_MODE=dev` locally. **No MSAL sign-in UI exists yet** — that is the honest gap in A3's auth exit criterion; the authorisation half is complete and enforced.
+- **Memos are untested against real content.** `demo.json` carries an empty `memos` object, so the memo import and export paths round-trip nothing. The write path was exercised directly.
+- **`v_lp_position_current.tvpi`/`.dpi` and `v_round_leverage` are still present and still convenience-only** (ADR-023). Now that the API exists, removing them is finally cheap.
+- **`fund.currency` is `USD` in the fixture while transactions store CAD**, because the contract carries no per-transaction currency. Flagged as an import warning rather than resolved silently; harmless on demo data, needs a real answer before any non-CAD position exists.
+- **`pipeline_deal.funnel_stage_id` is nullable at A3 only.** Restore `NOT NULL` at A4 when every stage resolves against Affinity's real vocabulary.
+- **`docs/reference/demo.json` remains the only dataset.** A6's generator and the real Affinity roster replace it; the importer is written to take either.
+- Carried: `eslint-config-next` not wired into the flat config; `npm audit` transitive dev-tooling findings; `ref_funnel_stage` seeding from Affinity metadata; branch protection not configured; deploy not wired.
+
+---
+
 ## 2026-08-11 · A2 · Frontend ported against the seed fixture — all eight tabs
 
 **Built**
