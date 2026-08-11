@@ -28,6 +28,39 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-11 · A2 · Frontend ported against the seed fixture — all eight tabs
+
+**Built**
+- `apps/web/app/globals.css` — the prototype's `<style>` block **verbatim**. That stylesheet is what delivers "looks identical to the prototype", so it is extracted rather than rewritten. Two marked additions at the end, both structural: Chart.js drew tooltips on canvas where Recharts renders DOM, and a body scroll-lock class behind the open drawer.
+- **Shell** (`components/AppShell.tsx`) — header, eight-tab nav, scrolling main, drawer, overlay, toast, plus Escape-to-close and overlay-click-to-close.
+- **Eight tabs**: Dashboard, Portfolio, Funds, Pipeline, Modeling (two sub-tools), Memo Builder, Reports, Data.
+- **Three drawers**: company, LP position, pipeline deal.
+- **Twelve charts** ported from Chart.js to Recharts at visual parity.
+- `packages/contract` consumed end to end — every component reads the ADR-001 shape and nothing else.
+- Root `npm run dev`.
+
+**Verified** — in a browser, tab by tab, against the golden-master fixture. Dashboard invested $300.8M / TVPI 2.08x / gross IRR 19.0% / leverage 2.6:1 / 39 alerts of which 13 critical; Portfolio 64 active with Cobalt Harbor top at 5.24x and G/L +50.9, sort flips on a second click, exited filter shows six with ownership "-"; all six LP positions match their frozen TVPI, DPI and IRR; Pipeline 2/5 closed and $15.8M probability-weighted; Reserves policy-suggested $128.9M matching the frozen rounded-sum total; the waterfall pays pari passu below the pref stack and the greater of pref or as-converted above it; memo prefill for Vantara shows 2.91x; Reports reads FY2025-26 Q4. Gate and reserve edits write through and survive a drawer close and reopen.
+
+**Decided**
+- **`asOf` is derived from the latest valuation mark, not the clock.** This is the one place A2 looks different in a side-by-side: gross IRR reads 19.0% against whatever the prototype renders today, which drifts about a point per quarter. Same definition, stated date — and it makes the IRR consistent with the marks it is built on, which ADR-007 wants stamped on board-facing views anyway.
+- **The J-curve stayed out of `packages/metrics`.** It is a modelled interpolation, not a metric, so it ports with the chart code. It now takes `asOf` rather than reading the clock, and reads inception from `fund.vintage` rather than a hardcoded 2019 — which *is* 2019 here, so nothing moves.
+- **The hardcoded `"2026"` in the pipeline closed-YTD filter now reads the year from `asOf`.** Identical output on this data; it simply stops being wrong on 1 January.
+- **`lib/editable.tsx` draws the ADR-018 line explicitly.** Gates, reserves and memos are judgement records and are freely editable; nothing in that provider can reach a transaction, a mark or an LP cashflow. State is lifted above both tab and drawer so an edit made in the drawer survives closing it. A3 replaces it with API writes into `audit_log` and the shape above does not change.
+- **The Data tab's schema block and CSV specs are extracted from the prototype at build time**, not transcribed, so 55 lines of contract documentation cannot drift by typo.
+- **Import is shown as unavailable rather than faked.** There is nothing to import into a read-only fixture. The D-1 advisory-fields rule is stated on screen for when it arrives at A3.
+- **`next.config.ts` gains an `extensionAlias`** so webpack resolves the metrics package's NodeNext `.js` specifiers. The bundler bends rather than the library, which would otherwise fail its own typecheck and vitest run.
+
+**Both sanctioned content exceptions are live and marked in place.** D-2: revenue is labelled quarterly-as-reported on the dashboard tile, the Portfolio column note, the memo prefill and the Reports highlight; the arithmetic is untouched. D-5: the diversity tile excludes non-reporters from the denominator and states coverage, the drawer shows "Not reported" rather than "0 of 0", and the Reports impact line names the reporting count. Every quarterly view states its convention per D-6 — calendar on the Portfolio KPI history, fiscal on Reports.
+
+**Outstanding**
+- **Side-by-side sign-off against the prototype is the exit criterion and has not formally happened.** The Dashboard was reviewed and accepted; the other seven tabs have been verified against the fixture by value, not by eye against the prototype.
+- **One inherited disagreement is now visible on screen**: the NB Co-Investment tile and the Capital Attracted chart do not quite reconcile, because the tile neither caps nor excludes and the chart does both (`INHERITED-COERCIONS.md §2`). Present in the prototype too, reproduced deliberately.
+- The Reports print path is the browser's. A11 replaces it with Playwright, which is when it becomes the board-facing artefact ADR-005 requires.
+- `eslint-config-next` is installed but not wired into the flat config; Next warns on each build. Harmless, worth doing when A2's review settles.
+- Carried: `v_company_current.fmv` still reads `current_date`; `npm audit` transitive dev-tooling findings; `ref_funnel_stage` seeding from Affinity metadata.
+
+---
+
 ## 2026-08-11 · A0 (deferred item) · CI on GitHub Actions; capture made platform-independent
 
 **Built**
