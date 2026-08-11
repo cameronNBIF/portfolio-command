@@ -1,0 +1,139 @@
+# Continuous integration.
+#
+# What this is actually protecting: `packages/metrics` reproduces the v1
+# prototype's board numbers exactly (ADR-013), and the export contract does not
+# drift (ADR-001). Both are guarded by tests that only help if something runs
+# them. Before this workflow existed, `npm test` was 250 assertions nobody ran
+# automatically.
+#
+# Two jobs, split by whether they need a database. `verify` is the fast one and
+# covers everything a normal change touches; `database` only earns its slot
+# because the schema and the generated types can silently disagree.
+#
+# Deploy is deliberately NOT here yet. It arrives with the Azure resources at
+# A0, and a deploy step wired to nothing is worse than no deploy step.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # package.json engines requires >=22. Pinning the major here rather than
+  # tracking `latest` keeps a Node release from turning into a mystery failure.
+  NODE_VERSION: '22'
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The golden-master fixtures are only trustworthy if they still describe
+      # what the prototype actually produces. Re-running the capture and
+      # diffing catches three separate things:
+      #
+      #   - someone edited docs/reference/vc-toolkit.html (it is a reference
+      #     document, not a build input, and should not be edited at all);
+      #   - someone re-exported docs/reference/demo.json, which invalidates
+      #     every fixture at once (ADR-022);
+      #   - someone hand-edited a fixture to make a failing test pass, which is
+      #     the one thing ADR-013 exists to prevent.
+      #
+      # The capture is deterministic: the clock is pinned to AS_OF, the locale
+      # is pinned, and digests are computed over line-ending-normalised content
+      # so a Linux runner and a Windows laptop agree.
+      - name: Golden-master fixtures still reproduce
+        run: |
+          npm run capture:fixtures -w @portfolio-command/metrics
+          git diff --exit-code -- packages/metrics/test/fixtures/golden-master.json
+
+      - name: Build web
+        run: npm run build -w @portfolio-command/web
+
+  database:
+    name: Schema applies and types are current
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Matches docker-compose.yml. Pin the exact minor to the provisioned
+        # Azure Flexible Server at the A0 Azure step.
+        image: postgres:17
+        env:
+          POSTGRES_USER: portfolio
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: portfolio_command
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U portfolio -d portfolio_command"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      # Ephemeral throwaway database inside the runner. Not a secret, and
+      # nothing real is ever reachable from here (CLAUDE.md: no secrets in code).
+      DATABASE_URL: postgres://portfolio:postgres@localhost:5432/portfolio_command
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Apply migrations to an empty database
+        run: npm run db:migrate
+
+      # Forward-only migrations mean a re-run must be a no-op, and the seed is
+      # written to be idempotent. Both are asserted here rather than assumed,
+      # because a migration that is not safe to re-run is only discovered at
+      # the worst possible moment.
+      - name: Migrations and seed are idempotent
+        run: |
+          npm run db:seed
+          npm run db:migrate
+          npm run db:seed
+
+      # packages/db/src/generated/db.ts is committed so typecheck never needs a
+      # running database. That convenience has a cost: the file can fall out of
+      # step with the schema and nothing would notice. Regenerating and diffing
+      # is what makes the committed types trustworthy.
+      - name: Generated types match the live schema
+        run: |
+          npm run db:types
+          git diff --exit-code -- packages/db/src/generated/db.ts
