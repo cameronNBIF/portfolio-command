@@ -1,0 +1,7034 @@
+{
+  "$comment": [
+    "GOLDEN MASTER -- generated, do not hand-edit.",
+    "Captured by packages/metrics/test/harness/capture.ts from the committed",
+    "prototype and the committed demo.json (ADR-013, ADR-022).",
+    "",
+    "A failing golden-master test means the CODE is wrong, never the fixture.",
+    "This freezes fidelity to the prototype, NOT correctness: it reproduces the",
+    "prototype's coercions and quirks deliberately. Those are inventoried in",
+    "INHERITED-COERCIONS.md, which is where a correctness review starts."
+  ],
+  "capturedFrom": {
+    "prototype": "docs/reference/vc-toolkit.html",
+    "prototypeSha256": "d2cf311f2088073fddab7a6cef0d1679c660ddb266dd028a80474a259d12a75d",
+    "inlineScriptBytes": 142262,
+    "demoJson": "docs/reference/demo.json",
+    "demoJsonSha256": "acf721ffd0df37fdd2e0b06e96ca9d0edc623257d40d252ccdf6ab5a6127bb6c",
+    "demoMatchesPrototypeBootState": true,
+    "asOf": "2026-03-31",
+    "asOfNote": "fundMetrics/fiMetrics/fiIrr date their terminal NAV with new Date(). Pinned to AS_OF so the IRR figures are reproducible (ADR-021). Arithmetic unchanged.",
+    "resolvedLocale": "en-CA",
+    "localeNote": "fte / fteAtEntry / fteNB display strings come from Number.toLocaleString() with no explicit locale. They are locale-sensitive; a CI mismatch here is a locale difference, not a metric change. The TypeScript port must pin a locale."
+  },
+  "coverageGaps": [
+    "LEVERAGE EXCLUSION NEVER EXERCISED: all 78 rounds have roundTotal > 0 and roundTotal >= invested. The exclusion predicate frozen by ADR-012/ADR-013 has zero negative cases here. Cover it with constructed unit tests.",
+    "DIVERSITY NULLS NEVER EXERCISED: all 70 companies carry numeric womenCSuite and cSuiteSize. The (c.womenCSuite||0) coercion -- and the D-5 departure that will replace it -- produce identical output on this fixture.",
+    "SAME-STORE REVENUE runs over 7 companies of 64; 57 carry one KPI period and 6 none.",
+    "OUTSIDE-CAPITAL CLAMP NEVER ENGAGED at aggregate level: Math.max(0, ...) in fundMetrics is never the binding constraint here, though one round does carry nbOther greater than its own third-party capital.",
+    "ALL SIX EXITED COMPANIES carry fmv=0, fte=0 and ownershipPct=0, which masks three scope asymmetries in fundMetrics (jobs over all companies vs diversity over active; unrealizedGL mixing both). See INHERITED-COERCIONS.md."
+  ],
+  "counts": {
+    "companies": 70,
+    "active": 64,
+    "exited": 6,
+    "rounds": 78,
+    "fundInvestments": 6,
+    "healthAlerts": 39,
+    "scenarios": 70
+  },
+  "fundMetrics": {
+    "invested": {
+      "value": 300.8,
+      "display": "$300.8M"
+    },
+    "fmv": {
+      "value": 577.8000000000002,
+      "display": "$577.8M"
+    },
+    "realized": {
+      "value": 53,
+      "display": "$53.0M"
+    },
+    "distributions": {
+      "value": 47.5,
+      "display": "$47.5M"
+    },
+    "tvpi": {
+      "value": 2.0787898936170217,
+      "display": "2.08x"
+    },
+    "dpi": {
+      "value": 0.1579122340425532,
+      "display": "0.16x"
+    },
+    "rvpi": {
+      "value": 1.9208776595744685,
+      "display": "1.92x"
+    },
+    "grossIRR": {
+      "value": 18.980224394194856,
+      "display": "19.0%"
+    },
+    "netIRR": {
+      "value": 16.680224394194855,
+      "display": "16.7%"
+    },
+    "netDeployed": {
+      "value": 253.3,
+      "display": "$253.3M"
+    },
+    "dryPowder": {
+      "value": 146.7,
+      "display": "$146.7M"
+    },
+    "leverage": {
+      "value": 2.6306515957446814,
+      "display": "2.6 : 1"
+    },
+    "capitalAttracted": {
+      "value": 791.3000000000002,
+      "display": "$791.3M"
+    },
+    "roundsTotal": {
+      "value": 1092.1000000000001,
+      "display": "$1.09B"
+    },
+    "nbCapital": {
+      "value": 166.69999999999996,
+      "display": "$166.7M"
+    },
+    "outsideCapital": {
+      "value": 624.6000000000003,
+      "display": "$624.6M"
+    },
+    "fmvQoQ": {
+      "value": 5.83864118895967,
+      "display": "+5.8%"
+    },
+    "fmvYoY": {
+      "value": 20.120481927710856,
+      "display": "+20.1%"
+    },
+    "organicYoY": {
+      "value": 62.5,
+      "display": "$62.5M"
+    },
+    "fte": {
+      "value": 3658,
+      "display": "3,658"
+    },
+    "fteAtEntry": {
+      "value": 1202,
+      "display": "1,202"
+    },
+    "fteNB": {
+      "value": 2447,
+      "display": "2,447"
+    },
+    "womenCos": {
+      "value": 54,
+      "display": "54"
+    },
+    "womenCosPct": {
+      "value": 84.375,
+      "display": "84%"
+    },
+    "womenExecs": {
+      "value": 90,
+      "display": "90"
+    },
+    "cSuiteTotal": {
+      "value": 301,
+      "display": "301"
+    },
+    "revenue": {
+      "value": 685.4000000000001,
+      "display": "$685.4M"
+    },
+    "revQoQ": {
+      "value": 9.731876861966239,
+      "display": "+9.7%"
+    },
+    "nActive": {
+      "value": 64,
+      "display": "64"
+    },
+    "nExited": {
+      "value": 6,
+      "display": "6"
+    },
+    "unrealizedGL": {
+      "value": 293.3000000000002,
+      "display": "$293.3M"
+    }
+  },
+  "fiMetrics": {
+    "n": {
+      "value": 6,
+      "display": "6"
+    },
+    "committed": {
+      "value": 67,
+      "display": "$67.0M"
+    },
+    "called": {
+      "value": 43.6,
+      "display": "$43.6M"
+    },
+    "unfunded": {
+      "value": 23.4,
+      "display": "$23.4M"
+    },
+    "distributions": {
+      "value": 11.2,
+      "display": "$11.2M"
+    },
+    "nav": {
+      "value": 49.39999999999999,
+      "display": "$49.4M"
+    },
+    "tvpi": {
+      "value": 1.3899082568807337,
+      "display": "1.39x"
+    },
+    "dpi": {
+      "value": 0.2568807339449541,
+      "display": "0.26x"
+    },
+    "rvpi": {
+      "value": 1.1330275229357796,
+      "display": "1.13x"
+    },
+    "irr": {
+      "value": 9.719581575709768,
+      "display": "9.7%"
+    },
+    "coInvests": {
+      "value": 4,
+      "display": "4"
+    },
+    "referrals": {
+      "value": 17,
+      "display": "17"
+    },
+    "toDirect": {
+      "value": 16.5,
+      "display": "$16.5M"
+    },
+    "womenGPs": {
+      "value": 4,
+      "display": "4"
+    }
+  },
+  "fundInvestments": [
+    {
+      "id": "F001",
+      "tvpi": {
+        "value": 1.3909090909090909,
+        "display": "1.39x"
+      },
+      "dpi": {
+        "value": 0.13636363636363635,
+        "display": "0.14x"
+      },
+      "irr": {
+        "value": 9.847853342427982,
+        "display": "9.8%"
+      }
+    },
+    {
+      "id": "F002",
+      "tvpi": {
+        "value": 1.6333333333333333,
+        "display": "1.63x"
+      },
+      "dpi": {
+        "value": 0.35555555555555557,
+        "display": "0.36x"
+      },
+      "irr": {
+        "value": 11.940692843549938,
+        "display": "11.9%"
+      }
+    },
+    {
+      "id": "F003",
+      "tvpi": {
+        "value": 1.173076923076923,
+        "display": "1.17x"
+      },
+      "dpi": {
+        "value": 0,
+        "display": "0.00x"
+      },
+      "irr": {
+        "value": 7.0844659838903095,
+        "display": "7.1%"
+      }
+    },
+    {
+      "id": "F004",
+      "tvpi": {
+        "value": 1.1333333333333333,
+        "display": "1.13x"
+      },
+      "dpi": {
+        "value": 0,
+        "display": "0.00x"
+      },
+      "irr": {
+        "value": 6.969082000395021,
+        "display": "7.0%"
+      }
+    },
+    {
+      "id": "F005",
+      "tvpi": {
+        "value": 1.54,
+        "display": "1.54x"
+      },
+      "dpi": {
+        "value": 0.65,
+        "display": "0.65x"
+      },
+      "irr": {
+        "value": 9.123483558343926,
+        "display": "9.1%"
+      }
+    },
+    {
+      "id": "F006",
+      "tvpi": {
+        "value": 0.9583333333333333,
+        "display": "0.96x"
+      },
+      "dpi": {
+        "value": 0,
+        "display": "0.00x"
+      },
+      "irr": {
+        "value": -10.858896347197305,
+        "display": "-10.9%"
+      }
+    }
+  ],
+  "xirr": {
+    "fundCashflowSeries": {
+      "flowCount": 83,
+      "value": 18.980224394194856,
+      "display": "19.0%"
+    }
+  },
+  "companies": [
+    {
+      "id": "C001",
+      "name": "Vantara Systems",
+      "exited": false,
+      "moic": {
+        "value": 2.9058823529411764,
+        "display": "2.91x"
+      },
+      "suggestedReserve": {
+        "value": 4,
+        "display": "4.0"
+      },
+      "investedDisplay": "8.5",
+      "fmvDisplay": "24.7",
+      "gainLossDisplay": "+16.2"
+    },
+    {
+      "id": "C002",
+      "name": "Heliograph Energy",
+      "exited": false,
+      "moic": {
+        "value": 1.55,
+        "display": "1.55x"
+      },
+      "suggestedReserve": {
+        "value": 3,
+        "display": "3.0"
+      },
+      "investedDisplay": "6.0",
+      "fmvDisplay": "9.3",
+      "gainLossDisplay": "+3.3"
+    },
+    {
+      "id": "C003",
+      "name": "Northline Robotics",
+      "exited": false,
+      "moic": {
+        "value": 3.488888888888889,
+        "display": "3.49x"
+      },
+      "suggestedReserve": {
+        "value": 3.2,
+        "display": "3.2"
+      },
+      "investedDisplay": "9.0",
+      "fmvDisplay": "31.4",
+      "gainLossDisplay": "+22.4"
+    },
+    {
+      "id": "C004",
+      "name": "Cobalt Harbor",
+      "exited": false,
+      "moic": {
+        "value": 5.241666666666666,
+        "display": "5.24x"
+      },
+      "suggestedReserve": {
+        "value": 3.2,
+        "display": "3.2"
+      },
+      "investedDisplay": "12.0",
+      "fmvDisplay": "58.9",
+      "gainLossDisplay": "+50.9"
+    },
+    {
+      "id": "C005",
+      "name": "Ferrous Gate",
+      "exited": false,
+      "moic": {
+        "value": 1.75,
+        "display": "1.75x"
+      },
+      "suggestedReserve": {
+        "value": 1.6,
+        "display": "1.6"
+      },
+      "investedDisplay": "2.0",
+      "fmvDisplay": "3.5",
+      "gainLossDisplay": "+1.5"
+    },
+    {
+      "id": "C006",
+      "name": "Arbor Health",
+      "exited": false,
+      "moic": {
+        "value": 0.3090909090909091,
+        "display": "0.31x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "5.5",
+      "fmvDisplay": "1.7",
+      "gainLossDisplay": "-3.8"
+    },
+    {
+      "id": "C007",
+      "name": "Skyward Dynamics",
+      "exited": false,
+      "moic": {
+        "value": 3.4200000000000004,
+        "display": "3.42x"
+      },
+      "suggestedReserve": {
+        "value": 4.8,
+        "display": "4.8"
+      },
+      "investedDisplay": "10.0",
+      "fmvDisplay": "34.2",
+      "gainLossDisplay": "+24.2"
+    },
+    {
+      "id": "C008",
+      "name": "Loomwright",
+      "exited": false,
+      "moic": {
+        "value": 3,
+        "display": "3.00x"
+      },
+      "suggestedReserve": {
+        "value": 5.6,
+        "display": "5.6"
+      },
+      "investedDisplay": "7.0",
+      "fmvDisplay": "21.0",
+      "gainLossDisplay": "+14.0"
+    },
+    {
+      "id": "C009",
+      "name": "Tidemark Logistics",
+      "exited": false,
+      "moic": {
+        "value": 1.1,
+        "display": "1.10x"
+      },
+      "suggestedReserve": {
+        "value": 1.5,
+        "display": "1.5"
+      },
+      "investedDisplay": "8.0",
+      "fmvDisplay": "8.8",
+      "gainLossDisplay": "+0.8"
+    },
+    {
+      "id": "C010",
+      "name": "Quillon Bio",
+      "exited": false,
+      "moic": {
+        "value": 2,
+        "display": "2.00x"
+      },
+      "suggestedReserve": {
+        "value": 5.2,
+        "display": "5.2"
+      },
+      "investedDisplay": "6.5",
+      "fmvDisplay": "13.0",
+      "gainLossDisplay": "+6.5"
+    },
+    {
+      "id": "C011",
+      "name": "Solvine (exited)",
+      "exited": true,
+      "moic": {
+        "value": 4.583333333333333,
+        "display": "4.58x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "6.0",
+      "fmvDisplay": "0.0",
+      "gainLossDisplay": "+21.5"
+    },
+    {
+      "id": "C012",
+      "name": "Praxa Labs (written off)",
+      "exited": true,
+      "moic": {
+        "value": 0,
+        "display": "0.00x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "1.5",
+      "fmvDisplay": "0.0",
+      "gainLossDisplay": "-1.5"
+    },
+    {
+      "id": "C013",
+      "name": "Northgate Materials",
+      "exited": false,
+      "moic": {
+        "value": 1.3913043478260871,
+        "display": "1.39x"
+      },
+      "suggestedReserve": {
+        "value": 1.1,
+        "display": "1.1"
+      },
+      "investedDisplay": "2.3",
+      "fmvDisplay": "3.2",
+      "gainLossDisplay": "+0.9"
+    },
+    {
+      "id": "C014",
+      "name": "Cinder Aero",
+      "exited": false,
+      "moic": {
+        "value": 1.4615384615384615,
+        "display": "1.46x"
+      },
+      "suggestedReserve": {
+        "value": 0.7,
+        "display": "0.7"
+      },
+      "investedDisplay": "1.3",
+      "fmvDisplay": "1.9",
+      "gainLossDisplay": "+0.6"
+    },
+    {
+      "id": "C015",
+      "name": "Kestrel Data",
+      "exited": false,
+      "moic": {
+        "value": 1.2142857142857144,
+        "display": "1.21x"
+      },
+      "suggestedReserve": {
+        "value": 2.2,
+        "display": "2.2"
+      },
+      "investedDisplay": "2.8",
+      "fmvDisplay": "3.4",
+      "gainLossDisplay": "+0.6"
+    },
+    {
+      "id": "C016",
+      "name": "Thistle AI",
+      "exited": false,
+      "moic": {
+        "value": 3.111111111111111,
+        "display": "3.11x"
+      },
+      "suggestedReserve": {
+        "value": 2.2,
+        "display": "2.2"
+      },
+      "investedDisplay": "2.7",
+      "fmvDisplay": "8.4",
+      "gainLossDisplay": "+5.7"
+    },
+    {
+      "id": "C017",
+      "name": "Juniper Aero",
+      "exited": false,
+      "moic": {
+        "value": 3.12,
+        "display": "3.12x"
+      },
+      "suggestedReserve": {
+        "value": 4,
+        "display": "4.0"
+      },
+      "investedDisplay": "5.0",
+      "fmvDisplay": "15.6",
+      "gainLossDisplay": "+10.6"
+    },
+    {
+      "id": "C018",
+      "name": "Foxglove Data",
+      "exited": false,
+      "moic": {
+        "value": 1.2888888888888888,
+        "display": "1.29x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "4.5",
+      "fmvDisplay": "5.8",
+      "gainLossDisplay": "+1.3"
+    },
+    {
+      "id": "C019",
+      "name": "Sable Sensing",
+      "exited": false,
+      "moic": {
+        "value": 3.085106382978723,
+        "display": "3.09x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "4.7",
+      "fmvDisplay": "14.5",
+      "gainLossDisplay": "+9.8"
+    },
+    {
+      "id": "C020",
+      "name": "Palisade Materials",
+      "exited": false,
+      "moic": {
+        "value": 2,
+        "display": "2.00x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "0.7",
+      "fmvDisplay": "1.4",
+      "gainLossDisplay": "+0.7"
+    },
+    {
+      "id": "C021",
+      "name": "Quarry Platforms",
+      "exited": false,
+      "moic": {
+        "value": 2.0833333333333335,
+        "display": "2.08x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "1.2",
+      "fmvDisplay": "2.5",
+      "gainLossDisplay": "+1.3"
+    },
+    {
+      "id": "C022",
+      "name": "Trellis Data",
+      "exited": false,
+      "moic": {
+        "value": 1.4444444444444444,
+        "display": "1.44x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "0.9",
+      "fmvDisplay": "1.3",
+      "gainLossDisplay": "+0.4"
+    },
+    {
+      "id": "C023",
+      "name": "Vector Platforms",
+      "exited": false,
+      "moic": {
+        "value": 2,
+        "display": "2.00x"
+      },
+      "suggestedReserve": {
+        "value": 1.8,
+        "display": "1.8"
+      },
+      "investedDisplay": "2.3",
+      "fmvDisplay": "4.6",
+      "gainLossDisplay": "+2.3"
+    },
+    {
+      "id": "C024",
+      "name": "Nimbus Grid",
+      "exited": true,
+      "moic": {
+        "value": 3.2857142857142856,
+        "display": "3.29x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.1",
+      "fmvDisplay": "0.0",
+      "gainLossDisplay": "+4.8"
+    },
+    {
+      "id": "C025",
+      "name": "Quorum Capital OS",
+      "exited": true,
+      "moic": {
+        "value": 2.7083333333333335,
+        "display": "2.71x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.4",
+      "fmvDisplay": "0.0",
+      "gainLossDisplay": "+4.1"
+    },
+    {
+      "id": "C026",
+      "name": "Marrow Therapeutics",
+      "exited": false,
+      "moic": {
+        "value": 1.2222222222222223,
+        "display": "1.22x"
+      },
+      "suggestedReserve": {
+        "value": 0.9,
+        "display": "0.9"
+      },
+      "investedDisplay": "1.8",
+      "fmvDisplay": "2.2",
+      "gainLossDisplay": "+0.4"
+    },
+    {
+      "id": "C027",
+      "name": "Thistle Analytics",
+      "exited": false,
+      "moic": {
+        "value": 2.0714285714285716,
+        "display": "2.07x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.8",
+      "fmvDisplay": "5.8",
+      "gainLossDisplay": "+3.0"
+    },
+    {
+      "id": "C028",
+      "name": "Cloverfield Compute",
+      "exited": false,
+      "moic": {
+        "value": 1.6666666666666667,
+        "display": "1.67x"
+      },
+      "suggestedReserve": {
+        "value": 0.5,
+        "display": "0.5"
+      },
+      "investedDisplay": "0.6",
+      "fmvDisplay": "1.0",
+      "gainLossDisplay": "+0.4"
+    },
+    {
+      "id": "C029",
+      "name": "Oakline Capital OS",
+      "exited": false,
+      "moic": {
+        "value": 1.4761904761904763,
+        "display": "1.48x"
+      },
+      "suggestedReserve": {
+        "value": 1.7,
+        "display": "1.7"
+      },
+      "investedDisplay": "2.1",
+      "fmvDisplay": "3.1",
+      "gainLossDisplay": "+1.0"
+    },
+    {
+      "id": "C030",
+      "name": "Fathom Mobility",
+      "exited": false,
+      "moic": {
+        "value": 1.7916666666666667,
+        "display": "1.79x"
+      },
+      "suggestedReserve": {
+        "value": 1.9,
+        "display": "1.9"
+      },
+      "investedDisplay": "2.4",
+      "fmvDisplay": "4.3",
+      "gainLossDisplay": "+1.9"
+    },
+    {
+      "id": "C031",
+      "name": "Greyline AI",
+      "exited": false,
+      "moic": {
+        "value": 3.3437499999999996,
+        "display": "3.34x"
+      },
+      "suggestedReserve": {
+        "value": 2.6,
+        "display": "2.6"
+      },
+      "investedDisplay": "3.2",
+      "fmvDisplay": "10.7",
+      "gainLossDisplay": "+7.5"
+    },
+    {
+      "id": "C032",
+      "name": "Larkspur Mobility",
+      "exited": false,
+      "moic": {
+        "value": 1.3846153846153848,
+        "display": "1.38x"
+      },
+      "suggestedReserve": {
+        "value": 6.2,
+        "display": "6.2"
+      },
+      "investedDisplay": "7.8",
+      "fmvDisplay": "10.8",
+      "gainLossDisplay": "+3.0"
+    },
+    {
+      "id": "C033",
+      "name": "Cloverfield Health",
+      "exited": false,
+      "moic": {
+        "value": 2.4925373134328357,
+        "display": "2.49x"
+      },
+      "suggestedReserve": {
+        "value": 5.4,
+        "display": "5.4"
+      },
+      "investedDisplay": "6.7",
+      "fmvDisplay": "16.7",
+      "gainLossDisplay": "+10.0"
+    },
+    {
+      "id": "C034",
+      "name": "Thistle Data",
+      "exited": false,
+      "moic": {
+        "value": 1.0476190476190477,
+        "display": "1.05x"
+      },
+      "suggestedReserve": {
+        "value": 1.7,
+        "display": "1.7"
+      },
+      "investedDisplay": "2.1",
+      "fmvDisplay": "2.2",
+      "gainLossDisplay": "+0.1"
+    },
+    {
+      "id": "C035",
+      "name": "Granite Sensing",
+      "exited": false,
+      "moic": {
+        "value": 2.375,
+        "display": "2.38x"
+      },
+      "suggestedReserve": {
+        "value": 1.9,
+        "display": "1.9"
+      },
+      "investedDisplay": "2.4",
+      "fmvDisplay": "5.7",
+      "gainLossDisplay": "+3.3"
+    },
+    {
+      "id": "C036",
+      "name": "Glasswing Platforms",
+      "exited": false,
+      "moic": {
+        "value": 0.7142857142857143,
+        "display": "0.71x"
+      },
+      "suggestedReserve": {
+        "value": 1.4,
+        "display": "1.4"
+      },
+      "investedDisplay": "2.8",
+      "fmvDisplay": "2.0",
+      "gainLossDisplay": "-0.8"
+    },
+    {
+      "id": "C037",
+      "name": "Yarrow Robotics",
+      "exited": false,
+      "moic": {
+        "value": 2.3157894736842106,
+        "display": "2.32x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "1.9",
+      "fmvDisplay": "4.4",
+      "gainLossDisplay": "+2.5"
+    },
+    {
+      "id": "C038",
+      "name": "Quorum Dynamics",
+      "exited": false,
+      "moic": {
+        "value": 2.045045045045045,
+        "display": "2.05x"
+      },
+      "suggestedReserve": {
+        "value": 8.9,
+        "display": "8.9"
+      },
+      "investedDisplay": "11.1",
+      "fmvDisplay": "22.7",
+      "gainLossDisplay": "+11.6"
+    },
+    {
+      "id": "C039",
+      "name": "Birchmont Health",
+      "exited": false,
+      "moic": {
+        "value": 1.8666666666666665,
+        "display": "1.87x"
+      },
+      "suggestedReserve": {
+        "value": 4.8,
+        "display": "4.8"
+      },
+      "investedDisplay": "6.0",
+      "fmvDisplay": "11.2",
+      "gainLossDisplay": "+5.2"
+    },
+    {
+      "id": "C040",
+      "name": "Eastvale Bio",
+      "exited": false,
+      "moic": {
+        "value": 1.164179104477612,
+        "display": "1.16x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "6.7",
+      "fmvDisplay": "7.8",
+      "gainLossDisplay": "+1.1"
+    },
+    {
+      "id": "C041",
+      "name": "Glasswing Mobility",
+      "exited": false,
+      "moic": {
+        "value": 1.358490566037736,
+        "display": "1.36x"
+      },
+      "suggestedReserve": {
+        "value": 5.3,
+        "display": "5.3"
+      },
+      "investedDisplay": "10.6",
+      "fmvDisplay": "14.4",
+      "gainLossDisplay": "+3.8"
+    },
+    {
+      "id": "C042",
+      "name": "Nightingale Logistics",
+      "exited": false,
+      "moic": {
+        "value": 2.0172413793103448,
+        "display": "2.02x"
+      },
+      "suggestedReserve": {
+        "value": 4.6,
+        "display": "4.6"
+      },
+      "investedDisplay": "5.8",
+      "fmvDisplay": "11.7",
+      "gainLossDisplay": "+5.9"
+    },
+    {
+      "id": "C043",
+      "name": "Glasswing Sensing",
+      "exited": false,
+      "moic": {
+        "value": 1.1199999999999999,
+        "display": "1.12x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.5",
+      "fmvDisplay": "2.8",
+      "gainLossDisplay": "+0.3"
+    },
+    {
+      "id": "C044",
+      "name": "Birchmont Systems",
+      "exited": false,
+      "moic": {
+        "value": 3.3857142857142857,
+        "display": "3.39x"
+      },
+      "suggestedReserve": {
+        "value": 5.6,
+        "display": "5.6"
+      },
+      "investedDisplay": "7.0",
+      "fmvDisplay": "23.7",
+      "gainLossDisplay": "+16.7"
+    },
+    {
+      "id": "C045",
+      "name": "Sable Security",
+      "exited": false,
+      "moic": {
+        "value": 1.0693069306930694,
+        "display": "1.07x"
+      },
+      "suggestedReserve": {
+        "value": 5,
+        "display": "5.0"
+      },
+      "investedDisplay": "10.1",
+      "fmvDisplay": "10.8",
+      "gainLossDisplay": "+0.7"
+    },
+    {
+      "id": "C046",
+      "name": "Lattice Grid",
+      "exited": false,
+      "moic": {
+        "value": 1.111111111111111,
+        "display": "1.11x"
+      },
+      "suggestedReserve": {
+        "value": 2.2,
+        "display": "2.2"
+      },
+      "investedDisplay": "2.7",
+      "fmvDisplay": "3.0",
+      "gainLossDisplay": "+0.3"
+    },
+    {
+      "id": "C047",
+      "name": "Quarry Grid",
+      "exited": false,
+      "moic": {
+        "value": 2.0754716981132075,
+        "display": "2.08x"
+      },
+      "suggestedReserve": {
+        "value": 2.6,
+        "display": "2.6"
+      },
+      "investedDisplay": "5.3",
+      "fmvDisplay": "11.0",
+      "gainLossDisplay": "+5.7"
+    },
+    {
+      "id": "C048",
+      "name": "Quorum Materials",
+      "exited": false,
+      "moic": {
+        "value": 1.8,
+        "display": "1.80x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "7.5",
+      "fmvDisplay": "13.5",
+      "gainLossDisplay": "+6.0"
+    },
+    {
+      "id": "C049",
+      "name": "Foxglove Labs",
+      "exited": true,
+      "moic": {
+        "value": 0,
+        "display": "0.00x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "1.4",
+      "fmvDisplay": "0.0",
+      "gainLossDisplay": "-1.4"
+    },
+    {
+      "id": "C050",
+      "name": "Marrow Energy",
+      "exited": false,
+      "moic": {
+        "value": 0.7794117647058824,
+        "display": "0.78x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "6.8",
+      "fmvDisplay": "5.3",
+      "gainLossDisplay": "-1.5"
+    },
+    {
+      "id": "C051",
+      "name": "Juniper Materials",
+      "exited": false,
+      "moic": {
+        "value": 1.3793103448275863,
+        "display": "1.38x"
+      },
+      "suggestedReserve": {
+        "value": 2.3,
+        "display": "2.3"
+      },
+      "investedDisplay": "2.9",
+      "fmvDisplay": "4.0",
+      "gainLossDisplay": "+1.1"
+    },
+    {
+      "id": "C052",
+      "name": "Millstone Energy",
+      "exited": false,
+      "moic": {
+        "value": 1.8399999999999999,
+        "display": "1.84x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.5",
+      "fmvDisplay": "4.6",
+      "gainLossDisplay": "+2.1"
+    },
+    {
+      "id": "C053",
+      "name": "Ivyrock Health",
+      "exited": false,
+      "moic": {
+        "value": 1.9540229885057472,
+        "display": "1.95x"
+      },
+      "suggestedReserve": {
+        "value": 7,
+        "display": "7.0"
+      },
+      "investedDisplay": "8.7",
+      "fmvDisplay": "17.0",
+      "gainLossDisplay": "+8.3"
+    },
+    {
+      "id": "C054",
+      "name": "Indigo Energy",
+      "exited": false,
+      "moic": {
+        "value": 2.1052631578947367,
+        "display": "2.11x"
+      },
+      "suggestedReserve": {
+        "value": 1.5,
+        "display": "1.5"
+      },
+      "investedDisplay": "1.9",
+      "fmvDisplay": "4.0",
+      "gainLossDisplay": "+2.1"
+    },
+    {
+      "id": "C055",
+      "name": "Hollowell AI",
+      "exited": false,
+      "moic": {
+        "value": 0.9270833333333334,
+        "display": "0.93x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "9.6",
+      "fmvDisplay": "8.9",
+      "gainLossDisplay": "-0.7"
+    },
+    {
+      "id": "C056",
+      "name": "Hollowell Compute",
+      "exited": false,
+      "moic": {
+        "value": 0.7000000000000001,
+        "display": "0.70x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "3.0",
+      "fmvDisplay": "2.1",
+      "gainLossDisplay": "-0.9"
+    },
+    {
+      "id": "C057",
+      "name": "Greyline Data",
+      "exited": true,
+      "moic": {
+        "value": 2.793103448275862,
+        "display": "2.79x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.9",
+      "fmvDisplay": "0.0",
+      "gainLossDisplay": "+5.2"
+    },
+    {
+      "id": "C058",
+      "name": "Indigo Systems",
+      "exited": false,
+      "moic": {
+        "value": 1.6842105263157896,
+        "display": "1.68x"
+      },
+      "suggestedReserve": {
+        "value": 1.5,
+        "display": "1.5"
+      },
+      "investedDisplay": "1.9",
+      "fmvDisplay": "3.2",
+      "gainLossDisplay": "+1.3"
+    },
+    {
+      "id": "C059",
+      "name": "Riverbend Labs",
+      "exited": false,
+      "moic": {
+        "value": 1.793103448275862,
+        "display": "1.79x"
+      },
+      "suggestedReserve": {
+        "value": 4.6,
+        "display": "4.6"
+      },
+      "investedDisplay": "5.8",
+      "fmvDisplay": "10.4",
+      "gainLossDisplay": "+4.6"
+    },
+    {
+      "id": "C060",
+      "name": "Deepwell Robotics",
+      "exited": false,
+      "moic": {
+        "value": 2.666666666666667,
+        "display": "2.67x"
+      },
+      "suggestedReserve": {
+        "value": 0.6,
+        "display": "0.6"
+      },
+      "investedDisplay": "1.2",
+      "fmvDisplay": "3.2",
+      "gainLossDisplay": "+2.0"
+    },
+    {
+      "id": "C061",
+      "name": "Bluepine Aero",
+      "exited": false,
+      "moic": {
+        "value": 1.9259259259259258,
+        "display": "1.93x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.7",
+      "fmvDisplay": "5.2",
+      "gainLossDisplay": "+2.5"
+    },
+    {
+      "id": "C062",
+      "name": "Stonebridge Therapeutics",
+      "exited": false,
+      "moic": {
+        "value": 2.733333333333333,
+        "display": "2.73x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "1.5",
+      "fmvDisplay": "4.1",
+      "gainLossDisplay": "+2.6"
+    },
+    {
+      "id": "C063",
+      "name": "Nightingale Labs",
+      "exited": false,
+      "moic": {
+        "value": 1.880597014925373,
+        "display": "1.88x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "6.7",
+      "fmvDisplay": "12.6",
+      "gainLossDisplay": "+5.9"
+    },
+    {
+      "id": "C064",
+      "name": "Driftway Sensing",
+      "exited": false,
+      "moic": {
+        "value": 1.1923076923076923,
+        "display": "1.19x"
+      },
+      "suggestedReserve": {
+        "value": 2.1,
+        "display": "2.1"
+      },
+      "investedDisplay": "2.6",
+      "fmvDisplay": "3.1",
+      "gainLossDisplay": "+0.5"
+    },
+    {
+      "id": "C065",
+      "name": "Fernhill Robotics",
+      "exited": false,
+      "moic": {
+        "value": 1.7500000000000002,
+        "display": "1.75x"
+      },
+      "suggestedReserve": {
+        "value": 0.6,
+        "display": "0.6"
+      },
+      "investedDisplay": "1.2",
+      "fmvDisplay": "2.1",
+      "gainLossDisplay": "+0.9"
+    },
+    {
+      "id": "C066",
+      "name": "Millstone Networks",
+      "exited": false,
+      "moic": {
+        "value": 1.9411764705882353,
+        "display": "1.94x"
+      },
+      "suggestedReserve": {
+        "value": 0.8,
+        "display": "0.8"
+      },
+      "investedDisplay": "1.7",
+      "fmvDisplay": "3.3",
+      "gainLossDisplay": "+1.6"
+    },
+    {
+      "id": "C067",
+      "name": "Palisade Compute",
+      "exited": false,
+      "moic": {
+        "value": 1.0909090909090908,
+        "display": "1.09x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "1.1",
+      "fmvDisplay": "1.2",
+      "gainLossDisplay": "+0.1"
+    },
+    {
+      "id": "C068",
+      "name": "Millstone Therapeutics",
+      "exited": false,
+      "moic": {
+        "value": 1.4999999999999998,
+        "display": "1.50x"
+      },
+      "suggestedReserve": {
+        "value": 0.6,
+        "display": "0.6"
+      },
+      "investedDisplay": "0.8",
+      "fmvDisplay": "1.2",
+      "gainLossDisplay": "+0.4"
+    },
+    {
+      "id": "C069",
+      "name": "Ironvale Energy",
+      "exited": false,
+      "moic": {
+        "value": 1.65,
+        "display": "1.65x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "2.0",
+      "fmvDisplay": "3.3",
+      "gainLossDisplay": "+1.3"
+    },
+    {
+      "id": "C070",
+      "name": "Cinder Mobility",
+      "exited": false,
+      "moic": {
+        "value": 1.647058823529412,
+        "display": "1.65x"
+      },
+      "suggestedReserve": {
+        "value": 0,
+        "display": "0.0"
+      },
+      "investedDisplay": "5.1",
+      "fmvDisplay": "8.4",
+      "gainLossDisplay": "+3.3"
+    }
+  ],
+  "healthAlerts": [
+    {
+      "companyId": "C006",
+      "sev": "red",
+      "text": "Runway 5 mo (threshold 12)"
+    },
+    {
+      "companyId": "C006",
+      "sev": "red",
+      "text": "CEO departure"
+    },
+    {
+      "companyId": "C006",
+      "sev": "red",
+      "text": "Covenant breach"
+    },
+    {
+      "companyId": "C006",
+      "sev": "red",
+      "text": "Down-round likely"
+    },
+    {
+      "companyId": "C006",
+      "sev": "red",
+      "text": "Covenant: Minimum cash $6M (bridge note) (breached - waiver signed 2026-05)"
+    },
+    {
+      "companyId": "C020",
+      "sev": "red",
+      "text": "Covenant watch"
+    },
+    {
+      "companyId": "C029",
+      "sev": "red",
+      "text": "Runway 4 mo (threshold 12)"
+    },
+    {
+      "companyId": "C036",
+      "sev": "red",
+      "text": "Runway 5 mo (threshold 12)"
+    },
+    {
+      "companyId": "C037",
+      "sev": "red",
+      "text": "Pipeline slippage"
+    },
+    {
+      "companyId": "C050",
+      "sev": "red",
+      "text": "Key-person risk"
+    },
+    {
+      "companyId": "C060",
+      "sev": "red",
+      "text": "Runway 5 mo (threshold 12)"
+    },
+    {
+      "companyId": "C063",
+      "sev": "red",
+      "text": "Key-person risk"
+    },
+    {
+      "companyId": "C067",
+      "sev": "red",
+      "text": "Runway 2 mo (threshold 12)"
+    },
+    {
+      "companyId": "C002",
+      "sev": "yellow",
+      "text": "Runway 10 mo (threshold 12)"
+    },
+    {
+      "companyId": "C002",
+      "sev": "yellow",
+      "text": "DOE milestone at risk"
+    },
+    {
+      "companyId": "C002",
+      "sev": "yellow",
+      "text": "Gov funding: DOE LPO conditional commitment - conditions pending"
+    },
+    {
+      "companyId": "C007",
+      "sev": "yellow",
+      "text": "Customer concentration (DoD 85%)"
+    },
+    {
+      "companyId": "C008",
+      "sev": "yellow",
+      "text": "Competitive intensity"
+    },
+    {
+      "companyId": "C009",
+      "sev": "yellow",
+      "text": "Gross margin compression"
+    },
+    {
+      "companyId": "C009",
+      "sev": "yellow",
+      "text": "Burn above plan"
+    },
+    {
+      "companyId": "C009",
+      "sev": "yellow",
+      "text": "Covenant: Quarterly covenant: burn multiple < 2.0x (watch - 1.9x in Q1)"
+    },
+    {
+      "companyId": "C010",
+      "sev": "yellow",
+      "text": "Binary clinical risk"
+    },
+    {
+      "companyId": "C013",
+      "sev": "yellow",
+      "text": "Runway 10 mo (threshold 12)"
+    },
+    {
+      "companyId": "C013",
+      "sev": "yellow",
+      "text": "Customer concentration"
+    },
+    {
+      "companyId": "C014",
+      "sev": "yellow",
+      "text": "Runway 8 mo (threshold 12)"
+    },
+    {
+      "companyId": "C015",
+      "sev": "yellow",
+      "text": "Runway 10 mo (threshold 12)"
+    },
+    {
+      "companyId": "C016",
+      "sev": "yellow",
+      "text": "Runway 9 mo (threshold 12)"
+    },
+    {
+      "companyId": "C021",
+      "sev": "yellow",
+      "text": "Runway 9 mo (threshold 12)"
+    },
+    {
+      "companyId": "C023",
+      "sev": "yellow",
+      "text": "Runway 9 mo (threshold 12)"
+    },
+    {
+      "companyId": "C033",
+      "sev": "yellow",
+      "text": "Runway 10 mo (threshold 12)"
+    },
+    {
+      "companyId": "C035",
+      "sev": "yellow",
+      "text": "Runway 7 mo (threshold 12)"
+    },
+    {
+      "companyId": "C042",
+      "sev": "yellow",
+      "text": "Runway 8 mo (threshold 12)"
+    },
+    {
+      "companyId": "C043",
+      "sev": "yellow",
+      "text": "Runway 8 mo (threshold 12)"
+    },
+    {
+      "companyId": "C043",
+      "sev": "yellow",
+      "text": "Customer concentration"
+    },
+    {
+      "companyId": "C045",
+      "sev": "yellow",
+      "text": "Customer concentration"
+    },
+    {
+      "companyId": "C056",
+      "sev": "yellow",
+      "text": "Runway 11 mo (threshold 12)"
+    },
+    {
+      "companyId": "C061",
+      "sev": "yellow",
+      "text": "Runway 11 mo (threshold 12)"
+    },
+    {
+      "companyId": "C062",
+      "sev": "yellow",
+      "text": "Runway 7 mo (threshold 12)"
+    },
+    {
+      "companyId": "C066",
+      "sev": "yellow",
+      "text": "Runway 8 mo (threshold 12)"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "C001",
+      "inputs": {
+        "raise": 44,
+        "pre": 265,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 77,
+        "yrs": 4,
+        "bear": 110,
+        "base": 331,
+        "bull": 662
+      },
+      "post": 309,
+      "newInvPct": 14.239482200647249,
+      "dilutionFactor": 0.7576051779935276,
+      "partAmt": 4.93,
+      "ownAfter": 10.080647249190939,
+      "investedTotal": 13.43,
+      "ourPref": 13.43,
+      "totalPref": 121,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 121,
+          "p": 13.43
+        },
+        {
+          "e": 110,
+          "p": 12.209090909090909
+        },
+        {
+          "e": 331,
+          "p": 33.366942394822004
+        },
+        {
+          "e": 662,
+          "p": 66.73388478964401
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 110,
+          "proceeds": 12.209090909090909,
+          "multiple": 0.9090909090909091,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$12.2M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 331,
+          "proceeds": 33.366942394822004,
+          "multiple": 2.4845079966360393,
+          "irr": 25.548087015590838,
+          "proceedsDisplay": "$33.4M",
+          "multipleDisplay": "2.48x",
+          "irrDisplay": "25.5%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 662,
+          "proceeds": 66.73388478964401,
+          "multiple": 4.9690159932720785,
+          "irr": 49.30267835392137,
+          "proceedsDisplay": "$66.7M",
+          "multipleDisplay": "4.97x",
+          "irrDisplay": "49.3%"
+        }
+      ]
+    },
+    {
+      "id": "C002",
+      "inputs": {
+        "raise": 13,
+        "pre": 77,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 22,
+        "yrs": 4,
+        "bear": 32,
+        "base": 96,
+        "bull": 192
+      },
+      "post": 90,
+      "newInvPct": 14.444444444444443,
+      "dilutionFactor": 0.7555555555555556,
+      "partAmt": 1.88,
+      "ownAfter": 13.044444444444446,
+      "investedTotal": 7.88,
+      "ourPref": 7.88,
+      "totalPref": 35,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 35,
+          "p": 7.88
+        },
+        {
+          "e": 32,
+          "p": 7.204571428571429
+        },
+        {
+          "e": 96,
+          "p": 12.52266666666667
+        },
+        {
+          "e": 192,
+          "p": 25.04533333333334
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 32,
+          "proceeds": 7.204571428571429,
+          "multiple": 0.9142857142857143,
+          "irr": -2.215395513019791,
+          "proceedsDisplay": "$7.2M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 96,
+          "proceeds": 12.52266666666667,
+          "multiple": 1.5891708967851104,
+          "irr": 12.27747849025922,
+          "proceedsDisplay": "$12.5M",
+          "multipleDisplay": "1.59x",
+          "irrDisplay": "12.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 192,
+          "proceeds": 25.04533333333334,
+          "multiple": 3.1783417935702207,
+          "irr": 33.521176275181254,
+          "proceedsDisplay": "$25.0M",
+          "multipleDisplay": "3.18x",
+          "irrDisplay": "33.5%"
+        }
+      ]
+    },
+    {
+      "id": "C003",
+      "inputs": {
+        "raise": 64,
+        "pre": 384,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 112,
+        "yrs": 4,
+        "bear": 160,
+        "base": 481,
+        "bull": 961
+      },
+      "post": 448,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 6.27,
+      "ownAfter": 8.819553571428573,
+      "investedTotal": 15.27,
+      "ourPref": 15.27,
+      "totalPref": 176,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 176,
+          "p": 15.27
+        },
+        {
+          "e": 160,
+          "p": 13.881818181818183
+        },
+        {
+          "e": 481,
+          "p": 42.42205267857144
+        },
+        {
+          "e": 961,
+          "p": 84.75590982142859
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 160,
+          "proceeds": 13.881818181818183,
+          "multiple": 0.9090909090909092,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$13.9M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 481,
+          "proceeds": 42.42205267857144,
+          "multiple": 2.778130496304613,
+          "irr": 29.103542897391122,
+          "proceedsDisplay": "$42.4M",
+          "multipleDisplay": "2.78x",
+          "irrDisplay": "29.1%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 961,
+          "proceeds": 84.75590982142859,
+          "multiple": 5.5504852535316695,
+          "irr": 53.49093735309829,
+          "proceedsDisplay": "$84.8M",
+          "multipleDisplay": "5.55x",
+          "irrDisplay": "53.5%"
+        }
+      ]
+    },
+    {
+      "id": "C004",
+      "inputs": {
+        "raise": 193,
+        "pre": 1159,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 338,
+        "yrs": 4,
+        "bear": 483,
+        "base": 1448,
+        "bull": 2897
+      },
+      "post": 1352,
+      "newInvPct": 14.275147928994084,
+      "dilutionFactor": 0.7572485207100592,
+      "partAmt": 11.77,
+      "ownAfter": 5.489778106508876,
+      "investedTotal": 23.77,
+      "ourPref": 23.77,
+      "totalPref": 531,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 531,
+          "p": 23.77
+        },
+        {
+          "e": 483,
+          "p": 21.621299435028245
+        },
+        {
+          "e": 1448,
+          "p": 79.49198698224852
+        },
+        {
+          "e": 2897,
+          "p": 159.03887174556215
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 483,
+          "proceeds": 21.621299435028245,
+          "multiple": 0.9096045197740111,
+          "irr": -2.3408022289513997,
+          "proceedsDisplay": "$21.6M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 1448,
+          "proceeds": 79.49198698224852,
+          "multiple": 3.344214849905281,
+          "irr": 35.23015404542986,
+          "proceedsDisplay": "$79.5M",
+          "multipleDisplay": "3.34x",
+          "irrDisplay": "35.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 2897,
+          "proceeds": 159.03887174556215,
+          "multiple": 6.6907392404527615,
+          "irr": 60.83054221022801,
+          "proceedsDisplay": "$159.0M",
+          "multipleDisplay": "6.69x",
+          "irrDisplay": "60.8%"
+        }
+      ]
+    },
+    {
+      "id": "C005",
+      "inputs": {
+        "raise": 10,
+        "pre": 60,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 17,
+        "yrs": 4,
+        "bear": 25,
+        "base": 75,
+        "bull": 150
+      },
+      "post": 70,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0.7,
+      "ownAfter": 6.300000000000001,
+      "investedTotal": 2.7,
+      "ourPref": 2.7,
+      "totalPref": 27,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 27,
+          "p": 2.7
+        },
+        {
+          "e": 25,
+          "p": 2.5
+        },
+        {
+          "e": 75,
+          "p": 4.725
+        },
+        {
+          "e": 150,
+          "p": 9.45
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 25,
+          "proceeds": 2.5,
+          "multiple": 0.9259259259259258,
+          "irr": -1.905634787242938,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.9%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 75,
+          "proceeds": 4.725,
+          "multiple": 1.7499999999999998,
+          "irr": 15.016331689560293,
+          "proceedsDisplay": "$4.7M",
+          "multipleDisplay": "1.75x",
+          "irrDisplay": "15.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 150,
+          "proceeds": 9.45,
+          "multiple": 3.4999999999999996,
+          "irr": 36.778239986738036,
+          "proceedsDisplay": "$9.4M",
+          "multipleDisplay": "3.50x",
+          "irrDisplay": "36.8%"
+        }
+      ]
+    },
+    {
+      "id": "C006",
+      "inputs": {
+        "raise": 5,
+        "pre": 24,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 7,
+        "yrs": 4,
+        "bear": 10,
+        "base": 30,
+        "bull": 61
+      },
+      "post": 29,
+      "newInvPct": 17.24137931034483,
+      "dilutionFactor": 0.7275862068965517,
+      "partAmt": 0,
+      "ownAfter": 6.111724137931035,
+      "investedTotal": 5.5,
+      "ourPref": 5.5,
+      "totalPref": 12,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 12,
+          "p": 5.5
+        },
+        {
+          "e": 10,
+          "p": 4.583333333333333
+        },
+        {
+          "e": 30,
+          "p": 5.5
+        },
+        {
+          "e": 61,
+          "p": 5.5
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 10,
+          "proceeds": 4.583333333333333,
+          "multiple": 0.8333333333333333,
+          "irr": -4.455720779563322,
+          "proceedsDisplay": "$4.6M",
+          "multipleDisplay": "0.83x",
+          "irrDisplay": "-4.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 30,
+          "proceeds": 5.5,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$5.5M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 61,
+          "proceeds": 5.5,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$5.5M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C007",
+      "inputs": {
+        "raise": 77,
+        "pre": 461,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 134,
+        "yrs": 4,
+        "bear": 192,
+        "base": 576,
+        "bull": 1153
+      },
+      "post": 538,
+      "newInvPct": 14.312267657992564,
+      "dilutionFactor": 0.7568773234200744,
+      "partAmt": 6.85,
+      "ownAfter": 8.009442379182158,
+      "investedTotal": 16.85,
+      "ourPref": 16.85,
+      "totalPref": 211,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 211,
+          "p": 16.85
+        },
+        {
+          "e": 192,
+          "p": 15.332701421800948
+        },
+        {
+          "e": 576,
+          "p": 46.134388104089226
+        },
+        {
+          "e": 1153,
+          "p": 92.34887063197029
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 192,
+          "proceeds": 15.332701421800948,
+          "multiple": 0.909952606635071,
+          "irr": -2.3314605299845192,
+          "proceedsDisplay": "$15.3M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 576,
+          "proceeds": 46.134388104089226,
+          "multiple": 2.7379458815483217,
+          "irr": 28.634130394056932,
+          "proceedsDisplay": "$46.1M",
+          "multipleDisplay": "2.74x",
+          "irrDisplay": "28.6%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 1153,
+          "proceeds": 92.34887063197029,
+          "multiple": 5.480645141363222,
+          "irr": 53.00580947972582,
+          "proceedsDisplay": "$92.3M",
+          "multipleDisplay": "5.48x",
+          "irrDisplay": "53.0%"
+        }
+      ]
+    },
+    {
+      "id": "C008",
+      "inputs": {
+        "raise": 35,
+        "pre": 210,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 61,
+        "yrs": 4,
+        "bear": 88,
+        "base": 263,
+        "bull": 525
+      },
+      "post": 245,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 4.2,
+      "ownAfter": 10.8,
+      "investedTotal": 11.2,
+      "ourPref": 11.2,
+      "totalPref": 96,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 96,
+          "p": 11.2
+        },
+        {
+          "e": 88,
+          "p": 10.266666666666666
+        },
+        {
+          "e": 263,
+          "p": 28.404000000000003
+        },
+        {
+          "e": 525,
+          "p": 56.70000000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 88,
+          "proceeds": 10.266666666666666,
+          "multiple": 0.9166666666666666,
+          "irr": -2.151795736644302,
+          "proceedsDisplay": "$10.3M",
+          "multipleDisplay": "0.92x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 263,
+          "proceeds": 28.404000000000003,
+          "multiple": 2.536071428571429,
+          "irr": 26.194483462447373,
+          "proceedsDisplay": "$28.4M",
+          "multipleDisplay": "2.54x",
+          "irrDisplay": "26.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 525,
+          "proceeds": 56.70000000000001,
+          "multiple": 5.062500000000001,
+          "irr": 50,
+          "proceedsDisplay": "$56.7M",
+          "multipleDisplay": "5.06x",
+          "irrDisplay": "50.0%"
+        }
+      ]
+    },
+    {
+      "id": "C009",
+      "inputs": {
+        "raise": 17,
+        "pre": 101,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 29,
+        "yrs": 4,
+        "bear": 42,
+        "base": 126,
+        "bull": 251
+      },
+      "post": 118,
+      "newInvPct": 14.40677966101695,
+      "dilutionFactor": 0.7559322033898305,
+      "partAmt": 1.78,
+      "ownAfter": 9.445762711864406,
+      "investedTotal": 9.78,
+      "ourPref": 9.78,
+      "totalPref": 46,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 46,
+          "p": 9.78
+        },
+        {
+          "e": 42,
+          "p": 8.929565217391305
+        },
+        {
+          "e": 126,
+          "p": 11.90166101694915
+        },
+        {
+          "e": 251,
+          "p": 23.708864406779657
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 42,
+          "proceeds": 8.929565217391305,
+          "multiple": 0.9130434782608697,
+          "irr": -2.2486273290288183,
+          "proceedsDisplay": "$8.9M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 126,
+          "proceeds": 11.90166101694915,
+          "multiple": 1.2169387542892793,
+          "irr": 5.0309226138313345,
+          "proceedsDisplay": "$11.9M",
+          "multipleDisplay": "1.22x",
+          "irrDisplay": "5.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 251,
+          "proceeds": 23.708864406779657,
+          "multiple": 2.4242192644968976,
+          "irr": 24.77942342378967,
+          "proceedsDisplay": "$23.7M",
+          "multipleDisplay": "2.42x",
+          "irrDisplay": "24.8%"
+        }
+      ]
+    },
+    {
+      "id": "C010",
+      "inputs": {
+        "raise": 20,
+        "pre": 119,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 35,
+        "yrs": 4,
+        "bear": 50,
+        "base": 149,
+        "bull": 298
+      },
+      "post": 139,
+      "newInvPct": 14.388489208633093,
+      "dilutionFactor": 0.7561151079136691,
+      "partAmt": 2.62,
+      "ownAfter": 11.790000000000001,
+      "investedTotal": 9.120000000000001,
+      "ourPref": 9.120000000000001,
+      "totalPref": 55,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 55,
+          "p": 9.120000000000001
+        },
+        {
+          "e": 50,
+          "p": 8.290909090909091
+        },
+        {
+          "e": 149,
+          "p": 17.5671
+        },
+        {
+          "e": 298,
+          "p": 35.1342
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 50,
+          "proceeds": 8.290909090909091,
+          "multiple": 0.909090909090909,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$8.3M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 149,
+          "proceeds": 17.5671,
+          "multiple": 1.9262171052631576,
+          "irr": 17.8084138563235,
+          "proceedsDisplay": "$17.6M",
+          "multipleDisplay": "1.93x",
+          "irrDisplay": "17.8%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 298,
+          "proceeds": 35.1342,
+          "multiple": 3.852434210526315,
+          "irr": 40.09860396512506,
+          "proceedsDisplay": "$35.1M",
+          "multipleDisplay": "3.85x",
+          "irrDisplay": "40.1%"
+        }
+      ]
+    },
+    {
+      "id": "C011",
+      "inputs": {
+        "raise": 8,
+        "pre": 48,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 14,
+        "yrs": 4,
+        "bear": 20,
+        "base": 60,
+        "bull": 120
+      },
+      "post": 56,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 0,
+      "investedTotal": 6,
+      "ourPref": 6,
+      "totalPref": 22,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 22,
+          "p": 6
+        },
+        {
+          "e": 20,
+          "p": 5.454545454545454
+        },
+        {
+          "e": 60,
+          "p": 6
+        },
+        {
+          "e": 120,
+          "p": 6
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 20,
+          "proceeds": 5.454545454545454,
+          "multiple": 0.9090909090909091,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$5.5M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 60,
+          "proceeds": 6,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$6.0M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 120,
+          "proceeds": 6,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$6.0M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C012",
+      "inputs": {
+        "raise": 5,
+        "pre": 18,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 5,
+        "yrs": 4,
+        "bear": 8,
+        "base": 23,
+        "bull": 45
+      },
+      "post": 23,
+      "newInvPct": 21.73913043478261,
+      "dilutionFactor": 0.682608695652174,
+      "partAmt": 0,
+      "ownAfter": 0,
+      "investedTotal": 1.5,
+      "ourPref": 1.5,
+      "totalPref": 10,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 10,
+          "p": 1.5
+        },
+        {
+          "e": 8,
+          "p": 1.2
+        },
+        {
+          "e": 23,
+          "p": 1.5
+        },
+        {
+          "e": 45,
+          "p": 1.5
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 8,
+          "proceeds": 1.2,
+          "multiple": 0.7999999999999999,
+          "irr": -5.425839099682417,
+          "proceedsDisplay": "$1.2M",
+          "multipleDisplay": "0.80x",
+          "irrDisplay": "-5.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 23,
+          "proceeds": 1.5,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$1.5M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 45,
+          "proceeds": 1.5,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$1.5M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C013",
+      "inputs": {
+        "raise": 5,
+        "pre": 32,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 9,
+        "yrs": 4,
+        "bear": 13,
+        "base": 40,
+        "bull": 81
+      },
+      "post": 37,
+      "newInvPct": 13.513513513513514,
+      "dilutionFactor": 0.7648648648648649,
+      "partAmt": 0.6,
+      "ownAfter": 10.723513513513515,
+      "investedTotal": 2.9,
+      "ourPref": 2.9,
+      "totalPref": 14,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 14,
+          "p": 2.9
+        },
+        {
+          "e": 13,
+          "p": 2.6928571428571426
+        },
+        {
+          "e": 40,
+          "p": 4.289405405405406
+        },
+        {
+          "e": 81,
+          "p": 8.686045945945947
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 13,
+          "proceeds": 2.6928571428571426,
+          "multiple": 0.9285714285714285,
+          "irr": -1.8356423308626968,
+          "proceedsDisplay": "$2.7M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 40,
+          "proceeds": 4.289405405405406,
+          "multiple": 1.4791053122087605,
+          "irr": 10.280766049805212,
+          "proceedsDisplay": "$4.3M",
+          "multipleDisplay": "1.48x",
+          "irrDisplay": "10.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 81,
+          "proceeds": 8.686045945945947,
+          "multiple": 2.9951882572227406,
+          "irr": 31.55459777812584,
+          "proceedsDisplay": "$8.7M",
+          "multipleDisplay": "3.00x",
+          "irrDisplay": "31.6%"
+        }
+      ]
+    },
+    {
+      "id": "C014",
+      "inputs": {
+        "raise": 5,
+        "pre": 19,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 6,
+        "yrs": 4,
+        "bear": 8,
+        "base": 24,
+        "bull": 48
+      },
+      "post": 24,
+      "newInvPct": 20.833333333333336,
+      "dilutionFactor": 0.6916666666666667,
+      "partAmt": 0.59,
+      "ownAfter": 10.620000000000001,
+      "investedTotal": 1.8900000000000001,
+      "ourPref": 1.8900000000000001,
+      "totalPref": 11,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 11,
+          "p": 1.8900000000000003
+        },
+        {
+          "e": 8,
+          "p": 1.3745454545454547
+        },
+        {
+          "e": 24,
+          "p": 2.5488000000000004
+        },
+        {
+          "e": 48,
+          "p": 5.097600000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 8,
+          "proceeds": 1.3745454545454547,
+          "multiple": 0.7272727272727273,
+          "irr": -7.652673811179477,
+          "proceedsDisplay": "$1.4M",
+          "multipleDisplay": "0.73x",
+          "irrDisplay": "-7.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 24,
+          "proceeds": 2.5488000000000004,
+          "multiple": 1.3485714285714288,
+          "irr": 7.76270606662075,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "1.35x",
+          "irrDisplay": "7.8%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 48,
+          "proceeds": 5.097600000000001,
+          "multiple": 2.6971428571428575,
+          "irr": 28.152176786372294,
+          "proceedsDisplay": "$5.1M",
+          "multipleDisplay": "2.70x",
+          "irrDisplay": "28.2%"
+        }
+      ]
+    },
+    {
+      "id": "C015",
+      "inputs": {
+        "raise": 8,
+        "pre": 46,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 14,
+        "yrs": 4,
+        "bear": 19,
+        "base": 58,
+        "bull": 116
+      },
+      "post": 54,
+      "newInvPct": 14.814814814814813,
+      "dilutionFactor": 0.7518518518518519,
+      "partAmt": 0.7,
+      "ownAfter": 7.912592592592594,
+      "investedTotal": 3.5,
+      "ourPref": 3.5,
+      "totalPref": 22,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 22,
+          "p": 3.5
+        },
+        {
+          "e": 19,
+          "p": 3.0227272727272725
+        },
+        {
+          "e": 58,
+          "p": 4.589303703703704
+        },
+        {
+          "e": 116,
+          "p": 9.178607407407409
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 19,
+          "proceeds": 3.0227272727272725,
+          "multiple": 0.8636363636363635,
+          "irr": -3.598735626311156,
+          "proceedsDisplay": "$3.0M",
+          "multipleDisplay": "0.86x",
+          "irrDisplay": "-3.6%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 58,
+          "proceeds": 4.589303703703704,
+          "multiple": 1.3112296296296297,
+          "irr": 7.0088479720398,
+          "proceedsDisplay": "$4.6M",
+          "multipleDisplay": "1.31x",
+          "irrDisplay": "7.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 116,
+          "proceeds": 9.178607407407409,
+          "multiple": 2.6224592592592595,
+          "irr": 27.25568337659421,
+          "proceedsDisplay": "$9.2M",
+          "multipleDisplay": "2.62x",
+          "irrDisplay": "27.3%"
+        }
+      ]
+    },
+    {
+      "id": "C016",
+      "inputs": {
+        "raise": 12,
+        "pre": 71,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 21,
+        "yrs": 4,
+        "bear": 30,
+        "base": 89,
+        "bull": 177
+      },
+      "post": 83,
+      "newInvPct": 14.457831325301203,
+      "dilutionFactor": 0.755421686746988,
+      "partAmt": 1.7,
+      "ownAfter": 12.775180722891566,
+      "investedTotal": 4.4,
+      "ourPref": 4.4,
+      "totalPref": 33,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 33,
+          "p": 4.4
+        },
+        {
+          "e": 30,
+          "p": 4
+        },
+        {
+          "e": 89,
+          "p": 11.369910843373493
+        },
+        {
+          "e": 177,
+          "p": 22.61206987951807
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 30,
+          "proceeds": 4,
+          "multiple": 0.9090909090909091,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$4.0M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 89,
+          "proceeds": 11.369910843373493,
+          "multiple": 2.584070646221248,
+          "irr": 26.7873999190408,
+          "proceedsDisplay": "$11.4M",
+          "multipleDisplay": "2.58x",
+          "irrDisplay": "26.8%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 177,
+          "proceeds": 22.61206987951807,
+          "multiple": 5.139106790799561,
+          "irr": 50.56426575876858,
+          "proceedsDisplay": "$22.6M",
+          "multipleDisplay": "5.14x",
+          "irrDisplay": "50.6%"
+        }
+      ]
+    },
+    {
+      "id": "C017",
+      "inputs": {
+        "raise": 29,
+        "pre": 175,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 51,
+        "yrs": 4,
+        "bear": 73,
+        "base": 219,
+        "bull": 437
+      },
+      "post": 204,
+      "newInvPct": 14.215686274509803,
+      "dilutionFactor": 0.757843137254902,
+      "partAmt": 3.1,
+      "ownAfter": 9.628529411764706,
+      "investedTotal": 8.1,
+      "ourPref": 8.1,
+      "totalPref": 80,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 80,
+          "p": 8.1
+        },
+        {
+          "e": 73,
+          "p": 7.391249999999999
+        },
+        {
+          "e": 219,
+          "p": 21.086479411764707
+        },
+        {
+          "e": 437,
+          "p": 42.07667352941177
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 73,
+          "proceeds": 7.391249999999999,
+          "multiple": 0.9125,
+          "irr": -2.2631769123254153,
+          "proceedsDisplay": "$7.4M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 219,
+          "proceeds": 21.086479411764707,
+          "multiple": 2.603269063180828,
+          "irr": 27.022239182063636,
+          "proceedsDisplay": "$21.1M",
+          "multipleDisplay": "2.60x",
+          "irrDisplay": "27.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 437,
+          "proceeds": 42.07667352941177,
+          "multiple": 5.194651053013799,
+          "irr": 50.969457647024164,
+          "proceedsDisplay": "$42.1M",
+          "multipleDisplay": "5.19x",
+          "irrDisplay": "51.0%"
+        }
+      ]
+    },
+    {
+      "id": "C018",
+      "inputs": {
+        "raise": 8,
+        "pre": 50,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 14,
+        "yrs": 4,
+        "bear": 21,
+        "base": 62,
+        "bull": 124
+      },
+      "post": 58,
+      "newInvPct": 13.793103448275861,
+      "dilutionFactor": 0.7620689655172413,
+      "partAmt": 0,
+      "ownAfter": 10.668965517241379,
+      "investedTotal": 4.5,
+      "ourPref": 4.5,
+      "totalPref": 22,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 22,
+          "p": 4.5
+        },
+        {
+          "e": 21,
+          "p": 4.295454545454546
+        },
+        {
+          "e": 62,
+          "p": 6.6147586206896545
+        },
+        {
+          "e": 124,
+          "p": 13.229517241379309
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 21,
+          "proceeds": 4.295454545454546,
+          "multiple": 0.9545454545454546,
+          "irr": -1.1562636825987682,
+          "proceedsDisplay": "$4.3M",
+          "multipleDisplay": "0.95x",
+          "irrDisplay": "-1.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 62,
+          "proceeds": 6.6147586206896545,
+          "multiple": 1.4699463601532565,
+          "irr": 10.109647370085018,
+          "proceedsDisplay": "$6.6M",
+          "multipleDisplay": "1.47x",
+          "irrDisplay": "10.1%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 124,
+          "proceeds": 13.229517241379309,
+          "multiple": 2.939892720306513,
+          "irr": 30.943176082945744,
+          "proceedsDisplay": "$13.2M",
+          "multipleDisplay": "2.94x",
+          "irrDisplay": "30.9%"
+        }
+      ]
+    },
+    {
+      "id": "C019",
+      "inputs": {
+        "raise": 60,
+        "pre": 362,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 106,
+        "yrs": 4,
+        "bear": 151,
+        "base": 453,
+        "bull": 906
+      },
+      "post": 422,
+      "newInvPct": 14.218009478672986,
+      "dilutionFactor": 0.7578199052132701,
+      "partAmt": 0,
+      "ownAfter": 3.6375355450236966,
+      "investedTotal": 4.7,
+      "ourPref": 4.7,
+      "totalPref": 166,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 166,
+          "p": 4.7
+        },
+        {
+          "e": 151,
+          "p": 4.275301204819277
+        },
+        {
+          "e": 453,
+          "p": 16.478036018957344
+        },
+        {
+          "e": 906,
+          "p": 32.95607203791469
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 151,
+          "proceeds": 4.275301204819277,
+          "multiple": 0.9096385542168673,
+          "irr": -2.3398887193772255,
+          "proceedsDisplay": "$4.3M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 453,
+          "proceeds": 16.478036018957344,
+          "multiple": 3.5059651104164558,
+          "irr": 36.836481155770805,
+          "proceedsDisplay": "$16.5M",
+          "multipleDisplay": "3.51x",
+          "irrDisplay": "36.8%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 906,
+          "proceeds": 32.95607203791469,
+          "multiple": 7.0119302208329115,
+          "irr": 62.72691698237842,
+          "proceedsDisplay": "$33.0M",
+          "multipleDisplay": "7.01x",
+          "irrDisplay": "62.7%"
+        }
+      ]
+    },
+    {
+      "id": "C020",
+      "inputs": {
+        "raise": 5,
+        "pre": 16,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 5,
+        "yrs": 4,
+        "bear": 7,
+        "base": 20,
+        "bull": 41
+      },
+      "post": 21,
+      "newInvPct": 23.809523809523807,
+      "dilutionFactor": 0.661904761904762,
+      "partAmt": 0,
+      "ownAfter": 6.817619047619049,
+      "investedTotal": 0.7,
+      "ourPref": 0.7,
+      "totalPref": 10,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 10,
+          "p": 0.7
+        },
+        {
+          "e": 7,
+          "p": 0.48999999999999994
+        },
+        {
+          "e": 20,
+          "p": 1.3635238095238098
+        },
+        {
+          "e": 41,
+          "p": 2.7952238095238098
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 7,
+          "proceeds": 0.48999999999999994,
+          "multiple": 0.7,
+          "irr": -8.530878077130556,
+          "proceedsDisplay": "$0.5M",
+          "multipleDisplay": "0.70x",
+          "irrDisplay": "-8.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 20,
+          "proceeds": 1.3635238095238098,
+          "multiple": 1.9478911564625856,
+          "irr": 18.138423597302,
+          "proceedsDisplay": "$1.4M",
+          "multipleDisplay": "1.95x",
+          "irrDisplay": "18.1%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 41,
+          "proceeds": 2.7952238095238098,
+          "multiple": 3.9931768707482997,
+          "irr": 41.36100910939604,
+          "proceedsDisplay": "$2.8M",
+          "multipleDisplay": "3.99x",
+          "irrDisplay": "41.4%"
+        }
+      ]
+    },
+    {
+      "id": "C021",
+      "inputs": {
+        "raise": 5,
+        "pre": 32,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 9,
+        "yrs": 4,
+        "bear": 13,
+        "base": 40,
+        "bull": 80
+      },
+      "post": 37,
+      "newInvPct": 13.513513513513514,
+      "dilutionFactor": 0.7648648648648649,
+      "partAmt": 0,
+      "ownAfter": 7.189729729729731,
+      "investedTotal": 1.2,
+      "ourPref": 1.2,
+      "totalPref": 14,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 14,
+          "p": 1.2
+        },
+        {
+          "e": 13,
+          "p": 1.1142857142857143
+        },
+        {
+          "e": 40,
+          "p": 2.8758918918918925
+        },
+        {
+          "e": 80,
+          "p": 5.751783783783785
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 13,
+          "proceeds": 1.1142857142857143,
+          "multiple": 0.9285714285714286,
+          "irr": -1.8356423308626968,
+          "proceedsDisplay": "$1.1M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 40,
+          "proceeds": 2.8758918918918925,
+          "multiple": 2.396576576576577,
+          "irr": 24.42218608537592,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "2.40x",
+          "irrDisplay": "24.4%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 80,
+          "proceeds": 5.751783783783785,
+          "multiple": 4.793153153153154,
+          "irr": 47.96374895692159,
+          "proceedsDisplay": "$5.8M",
+          "multipleDisplay": "4.79x",
+          "irrDisplay": "48.0%"
+        }
+      ]
+    },
+    {
+      "id": "C022",
+      "inputs": {
+        "raise": 5,
+        "pre": 29,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 8,
+        "yrs": 4,
+        "bear": 12,
+        "base": 36,
+        "bull": 72
+      },
+      "post": 34,
+      "newInvPct": 14.705882352941178,
+      "dilutionFactor": 0.7529411764705882,
+      "partAmt": 0,
+      "ownAfter": 4.065882352941177,
+      "investedTotal": 0.9,
+      "ourPref": 0.9,
+      "totalPref": 13,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 13,
+          "p": 0.9
+        },
+        {
+          "e": 12,
+          "p": 0.8307692307692308
+        },
+        {
+          "e": 36,
+          "p": 1.4637176470588236
+        },
+        {
+          "e": 72,
+          "p": 2.927435294117647
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 12,
+          "proceeds": 0.8307692307692308,
+          "multiple": 0.9230769230769231,
+          "irr": -1.9811792138610285,
+          "proceedsDisplay": "$0.8M",
+          "multipleDisplay": "0.92x",
+          "irrDisplay": "-2.0%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 36,
+          "proceeds": 1.4637176470588236,
+          "multiple": 1.6263529411764706,
+          "irr": 12.928536481163032,
+          "proceedsDisplay": "$1.5M",
+          "multipleDisplay": "1.63x",
+          "irrDisplay": "12.9%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 72,
+          "proceeds": 2.927435294117647,
+          "multiple": 3.252705882352941,
+          "irr": 34.29541907024345,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "3.25x",
+          "irrDisplay": "34.3%"
+        }
+      ]
+    },
+    {
+      "id": "C023",
+      "inputs": {
+        "raise": 21,
+        "pre": 128,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 37,
+        "yrs": 4,
+        "bear": 53,
+        "base": 160,
+        "bull": 321
+      },
+      "post": 149,
+      "newInvPct": 14.093959731543624,
+      "dilutionFactor": 0.7590604026845638,
+      "partAmt": 0.9,
+      "ownAfter": 3.867986577181208,
+      "investedTotal": 3.1999999999999997,
+      "ourPref": 3.1999999999999997,
+      "totalPref": 58,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 58,
+          "p": 3.1999999999999997
+        },
+        {
+          "e": 53,
+          "p": 2.9241379310344824
+        },
+        {
+          "e": 160,
+          "p": 6.188778523489933
+        },
+        {
+          "e": 321,
+          "p": 12.416236912751678
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 53,
+          "proceeds": 2.9241379310344824,
+          "multiple": 0.9137931034482758,
+          "irr": -2.2285695927376503,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 160,
+          "proceeds": 6.188778523489933,
+          "multiple": 1.9339932885906044,
+          "irr": 17.92713310784,
+          "proceedsDisplay": "$6.2M",
+          "multipleDisplay": "1.93x",
+          "irrDisplay": "17.9%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 321,
+          "proceeds": 12.416236912751678,
+          "multiple": 3.8800740352349,
+          "irr": 40.34921991651874,
+          "proceedsDisplay": "$12.4M",
+          "multipleDisplay": "3.88x",
+          "irrDisplay": "40.3%"
+        }
+      ]
+    },
+    {
+      "id": "C024",
+      "inputs": {
+        "raise": 10,
+        "pre": 60,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 18,
+        "yrs": 4,
+        "bear": 25,
+        "base": 75,
+        "bull": 150
+      },
+      "post": 70,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 0,
+      "investedTotal": 2.1,
+      "ourPref": 2.1,
+      "totalPref": 28,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 28,
+          "p": 2.1
+        },
+        {
+          "e": 25,
+          "p": 1.875
+        },
+        {
+          "e": 75,
+          "p": 2.1
+        },
+        {
+          "e": 150,
+          "p": 2.1
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 25,
+          "proceeds": 1.875,
+          "multiple": 0.8928571428571428,
+          "irr": -2.7934579093017997,
+          "proceedsDisplay": "$1.9M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 75,
+          "proceeds": 2.1,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$2.1M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 150,
+          "proceeds": 2.1,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$2.1M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C025",
+      "inputs": {
+        "raise": 6,
+        "pre": 36,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 11,
+        "yrs": 4,
+        "bear": 15,
+        "base": 45,
+        "bull": 90
+      },
+      "post": 42,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 0,
+      "investedTotal": 2.4,
+      "ourPref": 2.4,
+      "totalPref": 17,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 17,
+          "p": 2.4
+        },
+        {
+          "e": 15,
+          "p": 2.1176470588235294
+        },
+        {
+          "e": 45,
+          "p": 2.4
+        },
+        {
+          "e": 90,
+          "p": 2.4
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 15,
+          "proceeds": 2.1176470588235294,
+          "multiple": 0.8823529411764707,
+          "irr": -3.0806295610766865,
+          "proceedsDisplay": "$2.1M",
+          "multipleDisplay": "0.88x",
+          "irrDisplay": "-3.1%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 45,
+          "proceeds": 2.4,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$2.4M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 90,
+          "proceeds": 2.4,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$2.4M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C026",
+      "inputs": {
+        "raise": 7,
+        "pre": 42,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 12,
+        "yrs": 4,
+        "bear": 17,
+        "base": 52,
+        "bull": 105
+      },
+      "post": 49,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0.44,
+      "ownAfter": 5.66795918367347,
+      "investedTotal": 2.24,
+      "ourPref": 2.24,
+      "totalPref": 19,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 19,
+          "p": 2.24
+        },
+        {
+          "e": 17,
+          "p": 2.0042105263157897
+        },
+        {
+          "e": 52,
+          "p": 2.9473387755102043
+        },
+        {
+          "e": 105,
+          "p": 5.951357142857143
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 17,
+          "proceeds": 2.0042105263157897,
+          "multiple": 0.8947368421052632,
+          "irr": -2.742336912358556,
+          "proceedsDisplay": "$2.0M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 52,
+          "proceeds": 2.9473387755102043,
+          "multiple": 1.3157762390670553,
+          "irr": 7.1014892754731385,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "1.32x",
+          "irrDisplay": "7.1%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 105,
+          "proceeds": 5.951357142857143,
+          "multiple": 2.6568558673469385,
+          "irr": 27.670923170475437,
+          "proceedsDisplay": "$6.0M",
+          "multipleDisplay": "2.66x",
+          "irrDisplay": "27.7%"
+        }
+      ]
+    },
+    {
+      "id": "C027",
+      "inputs": {
+        "raise": 13,
+        "pre": 80,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 23,
+        "yrs": 4,
+        "bear": 33,
+        "base": 100,
+        "bull": 200
+      },
+      "post": 93,
+      "newInvPct": 13.978494623655912,
+      "dilutionFactor": 0.7602150537634409,
+      "partAmt": 0,
+      "ownAfter": 6.613870967741935,
+      "investedTotal": 2.8,
+      "ourPref": 2.8,
+      "totalPref": 36,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 36,
+          "p": 2.8
+        },
+        {
+          "e": 33,
+          "p": 2.566666666666667
+        },
+        {
+          "e": 100,
+          "p": 6.613870967741935
+        },
+        {
+          "e": 200,
+          "p": 13.22774193548387
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 33,
+          "proceeds": 2.566666666666667,
+          "multiple": 0.9166666666666669,
+          "irr": -2.151795736644291,
+          "proceedsDisplay": "$2.6M",
+          "multipleDisplay": "0.92x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 100,
+          "proceeds": 6.613870967741935,
+          "multiple": 2.362096774193548,
+          "irr": 23.972232372088097,
+          "proceedsDisplay": "$6.6M",
+          "multipleDisplay": "2.36x",
+          "irrDisplay": "24.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 200,
+          "proceeds": 13.22774193548387,
+          "multiple": 4.724193548387096,
+          "irr": 47.42866079965782,
+          "proceedsDisplay": "$13.2M",
+          "multipleDisplay": "4.72x",
+          "irrDisplay": "47.4%"
+        }
+      ]
+    },
+    {
+      "id": "C028",
+      "inputs": {
+        "raise": 5,
+        "pre": 8,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 2,
+        "yrs": 4,
+        "bear": 3,
+        "base": 10,
+        "bull": 20
+      },
+      "post": 13,
+      "newInvPct": 38.46153846153847,
+      "dilutionFactor": 0.5153846153846153,
+      "partAmt": 0.75,
+      "ownAfter": 13.5,
+      "investedTotal": 1.35,
+      "ourPref": 1.35,
+      "totalPref": 7,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 7,
+          "p": 1.35
+        },
+        {
+          "e": 3,
+          "p": 0.5785714285714286
+        },
+        {
+          "e": 10,
+          "p": 1.35
+        },
+        {
+          "e": 20,
+          "p": 2.7
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 3,
+          "proceeds": 0.5785714285714286,
+          "multiple": 0.4285714285714286,
+          "irr": -19.08932884297788,
+          "proceedsDisplay": "$0.6M",
+          "multipleDisplay": "0.43x",
+          "irrDisplay": "-19.1%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 10,
+          "proceeds": 1.35,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$1.4M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 20,
+          "proceeds": 2.7,
+          "multiple": 2,
+          "irr": 18.920711500272102,
+          "proceedsDisplay": "$2.7M",
+          "multipleDisplay": "2.00x",
+          "irrDisplay": "18.9%"
+        }
+      ]
+    },
+    {
+      "id": "C029",
+      "inputs": {
+        "raise": 5,
+        "pre": 33,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 10,
+        "yrs": 4,
+        "bear": 14,
+        "base": 41,
+        "bull": 82
+      },
+      "post": 38,
+      "newInvPct": 13.157894736842104,
+      "dilutionFactor": 0.768421052631579,
+      "partAmt": 0.57,
+      "ownAfter": 10.260000000000002,
+      "investedTotal": 2.67,
+      "ourPref": 2.67,
+      "totalPref": 15,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 15,
+          "p": 2.67
+        },
+        {
+          "e": 14,
+          "p": 2.492
+        },
+        {
+          "e": 41,
+          "p": 4.206600000000001
+        },
+        {
+          "e": 82,
+          "p": 8.413200000000002
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 14,
+          "proceeds": 2.492,
+          "multiple": 0.9333333333333333,
+          "irr": -1.7100318913829349,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 41,
+          "proceeds": 4.206600000000001,
+          "multiple": 1.5755056179775284,
+          "irr": 12.03532776140641,
+          "proceedsDisplay": "$4.2M",
+          "multipleDisplay": "1.58x",
+          "irrDisplay": "12.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 82,
+          "proceeds": 8.413200000000002,
+          "multiple": 3.151011235955057,
+          "irr": 33.23320890552639,
+          "proceedsDisplay": "$8.4M",
+          "multipleDisplay": "3.15x",
+          "irrDisplay": "33.2%"
+        }
+      ]
+    },
+    {
+      "id": "C030",
+      "inputs": {
+        "raise": 7,
+        "pre": 45,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 13,
+        "yrs": 4,
+        "bear": 19,
+        "base": 56,
+        "bull": 112
+      },
+      "post": 52,
+      "newInvPct": 13.461538461538462,
+      "dilutionFactor": 0.7653846153846154,
+      "partAmt": 0.81,
+      "ownAfter": 10.359615384615386,
+      "investedTotal": 3.21,
+      "ourPref": 3.21,
+      "totalPref": 20,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 20,
+          "p": 3.21
+        },
+        {
+          "e": 19,
+          "p": 3.0495
+        },
+        {
+          "e": 56,
+          "p": 5.801384615384617
+        },
+        {
+          "e": 112,
+          "p": 11.602769230769233
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 19,
+          "proceeds": 3.0495,
+          "multiple": 0.9500000000000001,
+          "irr": -1.2741455098566168,
+          "proceedsDisplay": "$3.0M",
+          "multipleDisplay": "0.95x",
+          "irrDisplay": "-1.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 56,
+          "proceeds": 5.801384615384617,
+          "multiple": 1.8072849269110955,
+          "irr": 15.946236551814707,
+          "proceedsDisplay": "$5.8M",
+          "multipleDisplay": "1.81x",
+          "irrDisplay": "15.9%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 112,
+          "proceeds": 11.602769230769233,
+          "multiple": 3.614569853822191,
+          "irr": 37.88408946520663,
+          "proceedsDisplay": "$11.6M",
+          "multipleDisplay": "3.61x",
+          "irrDisplay": "37.9%"
+        }
+      ]
+    },
+    {
+      "id": "C031",
+      "inputs": {
+        "raise": 20,
+        "pre": 119,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 35,
+        "yrs": 4,
+        "bear": 50,
+        "base": 149,
+        "bull": 297
+      },
+      "post": 139,
+      "newInvPct": 14.388489208633093,
+      "dilutionFactor": 0.7561151079136691,
+      "partAmt": 2.16,
+      "ownAfter": 9.720000000000002,
+      "investedTotal": 5.36,
+      "ourPref": 5.36,
+      "totalPref": 55,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 55,
+          "p": 5.36
+        },
+        {
+          "e": 50,
+          "p": 4.872727272727273
+        },
+        {
+          "e": 149,
+          "p": 14.482800000000003
+        },
+        {
+          "e": 297,
+          "p": 28.86840000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 50,
+          "proceeds": 4.872727272727273,
+          "multiple": 0.9090909090909091,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$4.9M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 149,
+          "proceeds": 14.482800000000003,
+          "multiple": 2.7020149253731347,
+          "irr": 28.21001054658494,
+          "proceedsDisplay": "$14.5M",
+          "multipleDisplay": "2.70x",
+          "irrDisplay": "28.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 297,
+          "proceeds": 28.86840000000001,
+          "multiple": 5.385895522388061,
+          "irr": 52.34018586931115,
+          "proceedsDisplay": "$28.9M",
+          "multipleDisplay": "5.39x",
+          "irrDisplay": "52.3%"
+        }
+      ]
+    },
+    {
+      "id": "C032",
+      "inputs": {
+        "raise": 42,
+        "pre": 249,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 73,
+        "yrs": 4,
+        "bear": 104,
+        "base": 312,
+        "bull": 623
+      },
+      "post": 291,
+      "newInvPct": 14.432989690721648,
+      "dilutionFactor": 0.7556701030927836,
+      "partAmt": 2.18,
+      "ownAfter": 4.678625429553265,
+      "investedTotal": 9.98,
+      "ourPref": 9.98,
+      "totalPref": 115,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 115,
+          "p": 9.98
+        },
+        {
+          "e": 104,
+          "p": 9.025391304347826
+        },
+        {
+          "e": 312,
+          "p": 14.597311340206188
+        },
+        {
+          "e": 623,
+          "p": 29.147836426116843
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 104,
+          "proceeds": 9.025391304347826,
+          "multiple": 0.9043478260869565,
+          "irr": -2.482204560024448,
+          "proceedsDisplay": "$9.0M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 312,
+          "proceeds": 14.597311340206188,
+          "multiple": 1.4626564469144476,
+          "irr": 9.97287589917011,
+          "proceedsDisplay": "$14.6M",
+          "multipleDisplay": "1.46x",
+          "irrDisplay": "10.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 623,
+          "proceeds": 29.147836426116843,
+          "multiple": 2.9206248923964773,
+          "irr": 30.728098914867164,
+          "proceedsDisplay": "$29.1M",
+          "multipleDisplay": "2.92x",
+          "irrDisplay": "30.7%"
+        }
+      ]
+    },
+    {
+      "id": "C033",
+      "inputs": {
+        "raise": 42,
+        "pre": 254,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 74,
+        "yrs": 4,
+        "bear": 106,
+        "base": 317,
+        "bull": 634
+      },
+      "post": 296,
+      "newInvPct": 14.18918918918919,
+      "dilutionFactor": 0.7581081081081081,
+      "partAmt": 3.32,
+      "ownAfter": 7.110675675675677,
+      "investedTotal": 10.02,
+      "ourPref": 10.02,
+      "totalPref": 116,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 116,
+          "p": 10.02
+        },
+        {
+          "e": 106,
+          "p": 9.156206896551724
+        },
+        {
+          "e": 317,
+          "p": 22.540841891891894
+        },
+        {
+          "e": 634,
+          "p": 45.08168378378379
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 106,
+          "proceeds": 9.156206896551724,
+          "multiple": 0.9137931034482759,
+          "irr": -2.228569592737639,
+          "proceedsDisplay": "$9.2M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 317,
+          "proceeds": 22.540841891891894,
+          "multiple": 2.2495850191508877,
+          "irr": 22.46883957446453,
+          "proceedsDisplay": "$22.5M",
+          "multipleDisplay": "2.25x",
+          "irrDisplay": "22.5%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 634,
+          "proceeds": 45.08168378378379,
+          "multiple": 4.499170038301775,
+          "irr": 45.64081538808003,
+          "proceedsDisplay": "$45.1M",
+          "multipleDisplay": "4.50x",
+          "irrDisplay": "45.6%"
+        }
+      ]
+    },
+    {
+      "id": "C034",
+      "inputs": {
+        "raise": 5,
+        "pre": 25,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 7,
+        "yrs": 4,
+        "bear": 11,
+        "base": 32,
+        "bull": 63
+      },
+      "post": 30,
+      "newInvPct": 16.666666666666664,
+      "dilutionFactor": 0.7333333333333334,
+      "partAmt": 0.52,
+      "ownAfter": 9.360000000000001,
+      "investedTotal": 2.62,
+      "ourPref": 2.62,
+      "totalPref": 12,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 12,
+          "p": 2.62
+        },
+        {
+          "e": 11,
+          "p": 2.401666666666667
+        },
+        {
+          "e": 32,
+          "p": 2.9952000000000005
+        },
+        {
+          "e": 63,
+          "p": 5.896800000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 11,
+          "proceeds": 2.401666666666667,
+          "multiple": 0.9166666666666667,
+          "irr": -2.151795736644291,
+          "proceedsDisplay": "$2.4M",
+          "multipleDisplay": "0.92x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 32,
+          "proceeds": 2.9952000000000005,
+          "multiple": 1.143206106870229,
+          "irr": 3.402522607756242,
+          "proceedsDisplay": "$3.0M",
+          "multipleDisplay": "1.14x",
+          "irrDisplay": "3.4%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 63,
+          "proceeds": 5.896800000000001,
+          "multiple": 2.2506870229007636,
+          "irr": 22.483835266322295,
+          "proceedsDisplay": "$5.9M",
+          "multipleDisplay": "2.25x",
+          "irrDisplay": "22.5%"
+        }
+      ]
+    },
+    {
+      "id": "C035",
+      "inputs": {
+        "raise": 7,
+        "pre": 44,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 13,
+        "yrs": 4,
+        "bear": 18,
+        "base": 55,
+        "bull": 110
+      },
+      "post": 51,
+      "newInvPct": 13.725490196078432,
+      "dilutionFactor": 0.7627450980392158,
+      "partAmt": 1.09,
+      "ownAfter": 14.03607843137255,
+      "investedTotal": 3.49,
+      "ourPref": 3.49,
+      "totalPref": 20,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 20,
+          "p": 3.49
+        },
+        {
+          "e": 18,
+          "p": 3.1410000000000005
+        },
+        {
+          "e": 55,
+          "p": 7.719843137254903
+        },
+        {
+          "e": 110,
+          "p": 15.439686274509805
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 18,
+          "proceeds": 3.1410000000000005,
+          "multiple": 0.9,
+          "irr": -2.5996253574703254,
+          "proceedsDisplay": "$3.1M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.6%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 55,
+          "proceeds": 7.719843137254903,
+          "multiple": 2.2119894376088545,
+          "irr": 21.953919350376736,
+          "proceedsDisplay": "$7.7M",
+          "multipleDisplay": "2.21x",
+          "irrDisplay": "22.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 110,
+          "proceeds": 15.439686274509805,
+          "multiple": 4.423978875217709,
+          "irr": 45.02846859393603,
+          "proceedsDisplay": "$15.4M",
+          "multipleDisplay": "4.42x",
+          "irrDisplay": "45.0%"
+        }
+      ]
+    },
+    {
+      "id": "C036",
+      "inputs": {
+        "raise": 5,
+        "pre": 20,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 6,
+        "yrs": 4,
+        "bear": 8,
+        "base": 25,
+        "bull": 50
+      },
+      "post": 25,
+      "newInvPct": 20,
+      "dilutionFactor": 0.7000000000000001,
+      "partAmt": 0.6,
+      "ownAfter": 10.730000000000002,
+      "investedTotal": 3.4,
+      "ourPref": 3.4,
+      "totalPref": 11,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 11,
+          "p": 3.4
+        },
+        {
+          "e": 8,
+          "p": 2.4727272727272727
+        },
+        {
+          "e": 25,
+          "p": 3.4
+        },
+        {
+          "e": 50,
+          "p": 5.365000000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 8,
+          "proceeds": 2.4727272727272727,
+          "multiple": 0.7272727272727273,
+          "irr": -7.652673811179477,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "0.73x",
+          "irrDisplay": "-7.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 25,
+          "proceeds": 3.4,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$3.4M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 50,
+          "proceeds": 5.365000000000001,
+          "multiple": 1.5779411764705886,
+          "irr": 12.078601258675437,
+          "proceedsDisplay": "$5.4M",
+          "multipleDisplay": "1.58x",
+          "irrDisplay": "12.1%"
+        }
+      ]
+    },
+    {
+      "id": "C037",
+      "inputs": {
+        "raise": 15,
+        "pre": 89,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 26,
+        "yrs": 4,
+        "bear": 37,
+        "base": 112,
+        "bull": 224
+      },
+      "post": 104,
+      "newInvPct": 14.423076923076922,
+      "dilutionFactor": 0.7557692307692309,
+      "partAmt": 0.89,
+      "ownAfter": 5.314807692307693,
+      "investedTotal": 2.79,
+      "ourPref": 2.79,
+      "totalPref": 41,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 41,
+          "p": 2.79
+        },
+        {
+          "e": 37,
+          "p": 2.5178048780487807
+        },
+        {
+          "e": 112,
+          "p": 5.952584615384616
+        },
+        {
+          "e": 224,
+          "p": 11.905169230769232
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 37,
+          "proceeds": 2.5178048780487807,
+          "multiple": 0.9024390243902439,
+          "irr": -2.5337029003497435,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 112,
+          "proceeds": 5.952584615384616,
+          "multiple": 2.1335428728977117,
+          "irr": 20.857983430365824,
+          "proceedsDisplay": "$6.0M",
+          "multipleDisplay": "2.13x",
+          "irrDisplay": "20.9%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 224,
+          "proceeds": 11.905169230769232,
+          "multiple": 4.267085745795423,
+          "irr": 43.72517380027201,
+          "proceedsDisplay": "$11.9M",
+          "multipleDisplay": "4.27x",
+          "irrDisplay": "43.7%"
+        }
+      ]
+    },
+    {
+      "id": "C038",
+      "inputs": {
+        "raise": 61,
+        "pre": 363,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 106,
+        "yrs": 4,
+        "bear": 151,
+        "base": 454,
+        "bull": 908
+      },
+      "post": 424,
+      "newInvPct": 14.38679245283019,
+      "dilutionFactor": 0.7561320754716981,
+      "partAmt": 4.58,
+      "ownAfter": 6.751179245283019,
+      "investedTotal": 15.68,
+      "ourPref": 15.68,
+      "totalPref": 167,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 167,
+          "p": 15.68
+        },
+        {
+          "e": 151,
+          "p": 14.177724550898205
+        },
+        {
+          "e": 454,
+          "p": 30.650353773584907
+        },
+        {
+          "e": 908,
+          "p": 61.300707547169814
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 151,
+          "proceeds": 14.177724550898205,
+          "multiple": 0.9041916167664672,
+          "irr": -2.4864159306222433,
+          "proceedsDisplay": "$14.2M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 454,
+          "proceeds": 30.650353773584907,
+          "multiple": 1.9547419498459762,
+          "irr": 18.242161001015035,
+          "proceedsDisplay": "$30.7M",
+          "multipleDisplay": "1.95x",
+          "irrDisplay": "18.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 908,
+          "proceeds": 61.300707547169814,
+          "multiple": 3.9094838996919523,
+          "irr": 40.61441915570436,
+          "proceedsDisplay": "$61.3M",
+          "multipleDisplay": "3.91x",
+          "irrDisplay": "40.6%"
+        }
+      ]
+    },
+    {
+      "id": "C039",
+      "inputs": {
+        "raise": 29,
+        "pre": 172,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 50,
+        "yrs": 4,
+        "bear": 72,
+        "base": 215,
+        "bull": 431
+      },
+      "post": 201,
+      "newInvPct": 14.427860696517413,
+      "dilutionFactor": 0.7557213930348259,
+      "partAmt": 2.26,
+      "ownAfter": 7.019004975124378,
+      "investedTotal": 8.26,
+      "ourPref": 8.26,
+      "totalPref": 79,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 79,
+          "p": 8.26
+        },
+        {
+          "e": 72,
+          "p": 7.528101265822784
+        },
+        {
+          "e": 215,
+          "p": 15.090860696517412
+        },
+        {
+          "e": 431,
+          "p": 30.25191144278607
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 72,
+          "proceeds": 7.528101265822784,
+          "multiple": 0.911392405063291,
+          "irr": -2.2928487258544683,
+          "proceedsDisplay": "$7.5M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 215,
+          "proceeds": 15.090860696517412,
+          "multiple": 1.8269807138640934,
+          "irr": 16.260849166792557,
+          "proceedsDisplay": "$15.1M",
+          "multipleDisplay": "1.83x",
+          "irrDisplay": "16.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 431,
+          "proceeds": 30.25191144278607,
+          "multiple": 3.6624590124438345,
+          "irr": 38.33854171046418,
+          "proceedsDisplay": "$30.3M",
+          "multipleDisplay": "3.66x",
+          "irrDisplay": "38.3%"
+        }
+      ]
+    },
+    {
+      "id": "C040",
+      "inputs": {
+        "raise": 11,
+        "pre": 66,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 19,
+        "yrs": 4,
+        "bear": 27,
+        "base": 82,
+        "bull": 165
+      },
+      "post": 77,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 10.751428571428573,
+      "investedTotal": 6.7,
+      "ourPref": 6.7,
+      "totalPref": 30,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 30,
+          "p": 6.7
+        },
+        {
+          "e": 27,
+          "p": 6.03
+        },
+        {
+          "e": 82,
+          "p": 8.81617142857143
+        },
+        {
+          "e": 165,
+          "p": 17.739857142857144
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 27,
+          "proceeds": 6.03,
+          "multiple": 0.9,
+          "irr": -2.5996253574703254,
+          "proceedsDisplay": "$6.0M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.6%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 82,
+          "proceeds": 8.81617142857143,
+          "multiple": 1.3158464818763327,
+          "irr": 7.102918652037649,
+          "proceedsDisplay": "$8.8M",
+          "multipleDisplay": "1.32x",
+          "irrDisplay": "7.1%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 165,
+          "proceeds": 17.739857142857144,
+          "multiple": 2.64773987206823,
+          "irr": 27.561268367610193,
+          "proceedsDisplay": "$17.7M",
+          "multipleDisplay": "2.65x",
+          "irrDisplay": "27.6%"
+        }
+      ]
+    },
+    {
+      "id": "C041",
+      "inputs": {
+        "raise": 35,
+        "pre": 208,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 61,
+        "yrs": 4,
+        "bear": 87,
+        "base": 260,
+        "bull": 520
+      },
+      "post": 243,
+      "newInvPct": 14.40329218106996,
+      "dilutionFactor": 0.7559670781893004,
+      "partAmt": 2.91,
+      "ownAfter": 7.472057613168725,
+      "investedTotal": 13.51,
+      "ourPref": 13.51,
+      "totalPref": 96,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 96,
+          "p": 13.509999999999998
+        },
+        {
+          "e": 87,
+          "p": 12.243437499999999
+        },
+        {
+          "e": 260,
+          "p": 19.427349794238687
+        },
+        {
+          "e": 520,
+          "p": 38.854699588477374
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 87,
+          "proceeds": 12.243437499999999,
+          "multiple": 0.9062499999999999,
+          "irr": -2.4309660684811107,
+          "proceedsDisplay": "$12.2M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 260,
+          "proceeds": 19.427349794238687,
+          "multiple": 1.437997764192353,
+          "irr": 9.506412820401057,
+          "proceedsDisplay": "$19.4M",
+          "multipleDisplay": "1.44x",
+          "irrDisplay": "9.5%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 520,
+          "proceeds": 38.854699588477374,
+          "multiple": 2.875995528384706,
+          "irr": 30.225805264446137,
+          "proceedsDisplay": "$38.9M",
+          "multipleDisplay": "2.88x",
+          "irrDisplay": "30.2%"
+        }
+      ]
+    },
+    {
+      "id": "C042",
+      "inputs": {
+        "raise": 20,
+        "pre": 118,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 34,
+        "yrs": 4,
+        "bear": 49,
+        "base": 147,
+        "bull": 295
+      },
+      "post": 138,
+      "newInvPct": 14.492753623188406,
+      "dilutionFactor": 0.755072463768116,
+      "partAmt": 2.38,
+      "ownAfter": 10.71,
+      "investedTotal": 8.18,
+      "ourPref": 8.18,
+      "totalPref": 54,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 54,
+          "p": 8.18
+        },
+        {
+          "e": 49,
+          "p": 7.422592592592592
+        },
+        {
+          "e": 147,
+          "p": 15.743700000000002
+        },
+        {
+          "e": 295,
+          "p": 31.594500000000004
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 49,
+          "proceeds": 7.422592592592592,
+          "multiple": 0.9074074074074073,
+          "irr": -2.3998286673798774,
+          "proceedsDisplay": "$7.4M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 147,
+          "proceeds": 15.743700000000002,
+          "multiple": 1.9246577017114919,
+          "irr": 17.784563136531762,
+          "proceedsDisplay": "$15.7M",
+          "multipleDisplay": "1.92x",
+          "irrDisplay": "17.8%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 295,
+          "proceeds": 31.594500000000004,
+          "multiple": 3.862408312958436,
+          "irr": 40.18919624492503,
+          "proceedsDisplay": "$31.6M",
+          "multipleDisplay": "3.86x",
+          "irrDisplay": "40.2%"
+        }
+      ]
+    },
+    {
+      "id": "C043",
+      "inputs": {
+        "raise": 5,
+        "pre": 27,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 8,
+        "yrs": 4,
+        "bear": 11,
+        "base": 34,
+        "bull": 67
+      },
+      "post": 32,
+      "newInvPct": 15.625,
+      "dilutionFactor": 0.74375,
+      "partAmt": 0,
+      "ownAfter": 9.296875,
+      "investedTotal": 2.5,
+      "ourPref": 2.5,
+      "totalPref": 13,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 13,
+          "p": 2.5
+        },
+        {
+          "e": 11,
+          "p": 2.1153846153846154
+        },
+        {
+          "e": 34,
+          "p": 3.1609375
+        },
+        {
+          "e": 67,
+          "p": 6.2289062500000005
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 11,
+          "proceeds": 2.1153846153846154,
+          "multiple": 0.8461538461538461,
+          "irr": -4.090344020646186,
+          "proceedsDisplay": "$2.1M",
+          "multipleDisplay": "0.85x",
+          "irrDisplay": "-4.1%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 34,
+          "proceeds": 3.1609375,
+          "multiple": 1.264375,
+          "irr": 6.039818332664604,
+          "proceedsDisplay": "$3.2M",
+          "multipleDisplay": "1.26x",
+          "irrDisplay": "6.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 67,
+          "proceeds": 6.2289062500000005,
+          "multiple": 2.4915625,
+          "irr": 25.637112480008728,
+          "proceedsDisplay": "$6.2M",
+          "multipleDisplay": "2.49x",
+          "irrDisplay": "25.6%"
+        }
+      ]
+    },
+    {
+      "id": "C044",
+      "inputs": {
+        "raise": 60,
+        "pre": 360,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 105,
+        "yrs": 4,
+        "bear": 150,
+        "base": 450,
+        "bull": 900
+      },
+      "post": 420,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 4.74,
+      "ownAfter": 7.110000000000001,
+      "investedTotal": 11.74,
+      "ourPref": 11.74,
+      "totalPref": 165,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 165,
+          "p": 11.739999999999998
+        },
+        {
+          "e": 150,
+          "p": 10.672727272727272
+        },
+        {
+          "e": 450,
+          "p": 31.995000000000005
+        },
+        {
+          "e": 900,
+          "p": 63.99000000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 150,
+          "proceeds": 10.672727272727272,
+          "multiple": 0.9090909090909091,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$10.7M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 450,
+          "proceeds": 31.995000000000005,
+          "multiple": 2.7252981260647364,
+          "irr": 28.485318197588594,
+          "proceedsDisplay": "$32.0M",
+          "multipleDisplay": "2.73x",
+          "irrDisplay": "28.5%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 900,
+          "proceeds": 63.99000000000001,
+          "multiple": 5.450596252129473,
+          "irr": 52.79565457396096,
+          "proceedsDisplay": "$64.0M",
+          "multipleDisplay": "5.45x",
+          "irrDisplay": "52.8%"
+        }
+      ]
+    },
+    {
+      "id": "C045",
+      "inputs": {
+        "raise": 16,
+        "pre": 95,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 28,
+        "yrs": 4,
+        "bear": 39,
+        "base": 118,
+        "bull": 236
+      },
+      "post": 111,
+      "newInvPct": 14.414414414414415,
+      "dilutionFactor": 0.7558558558558559,
+      "partAmt": 2.19,
+      "ownAfter": 12.3281981981982,
+      "investedTotal": 12.29,
+      "ourPref": 12.29,
+      "totalPref": 44,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 44,
+          "p": 12.29
+        },
+        {
+          "e": 39,
+          "p": 10.89340909090909
+        },
+        {
+          "e": 118,
+          "p": 14.547273873873875
+        },
+        {
+          "e": 236,
+          "p": 29.09454774774775
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 39,
+          "proceeds": 10.89340909090909,
+          "multiple": 0.8863636363636364,
+          "irr": -2.970681147847287,
+          "proceedsDisplay": "$10.9M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-3.0%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 118,
+          "proceeds": 14.547273873873875,
+          "multiple": 1.1836675243184602,
+          "irr": 4.305553752334235,
+          "proceedsDisplay": "$14.5M",
+          "multipleDisplay": "1.18x",
+          "irrDisplay": "4.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 236,
+          "proceeds": 29.09454774774775,
+          "multiple": 2.3673350486369205,
+          "irr": 24.040906656574634,
+          "proceedsDisplay": "$29.1M",
+          "multipleDisplay": "2.37x",
+          "irrDisplay": "24.0%"
+        }
+      ]
+    },
+    {
+      "id": "C046",
+      "inputs": {
+        "raise": 6,
+        "pre": 36,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 11,
+        "yrs": 4,
+        "bear": 15,
+        "base": 45,
+        "bull": 90
+      },
+      "post": 42,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0.6,
+      "ownAfter": 9,
+      "investedTotal": 3.3000000000000003,
+      "ourPref": 3.3000000000000003,
+      "totalPref": 17,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 17,
+          "p": 3.3000000000000003
+        },
+        {
+          "e": 15,
+          "p": 2.911764705882353
+        },
+        {
+          "e": 45,
+          "p": 4.05
+        },
+        {
+          "e": 90,
+          "p": 8.1
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 15,
+          "proceeds": 2.911764705882353,
+          "multiple": 0.8823529411764705,
+          "irr": -3.0806295610766865,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "0.88x",
+          "irrDisplay": "-3.1%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 45,
+          "proceeds": 4.05,
+          "multiple": 1.227272727272727,
+          "irr": 5.253190869160562,
+          "proceedsDisplay": "$4.0M",
+          "multipleDisplay": "1.23x",
+          "irrDisplay": "5.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 90,
+          "proceeds": 8.1,
+          "multiple": 2.454545454545454,
+          "irr": 25.167843458345175,
+          "proceedsDisplay": "$8.1M",
+          "multipleDisplay": "2.45x",
+          "irrDisplay": "25.2%"
+        }
+      ]
+    },
+    {
+      "id": "C047",
+      "inputs": {
+        "raise": 29,
+        "pre": 176,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 51,
+        "yrs": 4,
+        "bear": 73,
+        "base": 220,
+        "bull": 440
+      },
+      "post": 205,
+      "newInvPct": 14.146341463414632,
+      "dilutionFactor": 0.7585365853658537,
+      "partAmt": 2.17,
+      "ownAfter": 6.7475609756097565,
+      "investedTotal": 7.47,
+      "ourPref": 7.47,
+      "totalPref": 80,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 80,
+          "p": 7.47
+        },
+        {
+          "e": 73,
+          "p": 6.816375
+        },
+        {
+          "e": 220,
+          "p": 14.844634146341464
+        },
+        {
+          "e": 440,
+          "p": 29.68926829268293
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 73,
+          "proceeds": 6.816375,
+          "multiple": 0.9125,
+          "irr": -2.2631769123254153,
+          "proceedsDisplay": "$6.8M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 220,
+          "proceeds": 14.844634146341464,
+          "multiple": 1.9872334867926995,
+          "irr": 18.73048017776897,
+          "proceedsDisplay": "$14.8M",
+          "multipleDisplay": "1.99x",
+          "irrDisplay": "18.7%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 440,
+          "proceeds": 29.68926829268293,
+          "multiple": 3.974466973585399,
+          "irr": 41.1951317950924,
+          "proceedsDisplay": "$29.7M",
+          "multipleDisplay": "3.97x",
+          "irrDisplay": "41.2%"
+        }
+      ]
+    },
+    {
+      "id": "C048",
+      "inputs": {
+        "raise": 24,
+        "pre": 146,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 43,
+        "yrs": 4,
+        "bear": 61,
+        "base": 182,
+        "bull": 365
+      },
+      "post": 170,
+      "newInvPct": 14.117647058823529,
+      "dilutionFactor": 0.7588235294117648,
+      "partAmt": 0,
+      "ownAfter": 8.422941176470589,
+      "investedTotal": 7.5,
+      "ourPref": 7.5,
+      "totalPref": 67,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 67,
+          "p": 7.5
+        },
+        {
+          "e": 61,
+          "p": 6.828358208955224
+        },
+        {
+          "e": 182,
+          "p": 15.329752941176471
+        },
+        {
+          "e": 365,
+          "p": 30.74373529411765
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 61,
+          "proceeds": 6.828358208955224,
+          "multiple": 0.9104477611940299,
+          "irr": -2.318176553182172,
+          "proceedsDisplay": "$6.8M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 182,
+          "proceeds": 15.329752941176471,
+          "multiple": 2.0439670588235295,
+          "irr": 19.568965855575303,
+          "proceedsDisplay": "$15.3M",
+          "multipleDisplay": "2.04x",
+          "irrDisplay": "19.6%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 365,
+          "proceeds": 30.74373529411765,
+          "multiple": 4.0991647058823535,
+          "irr": 42.289824001743014,
+          "proceedsDisplay": "$30.7M",
+          "multipleDisplay": "4.10x",
+          "irrDisplay": "42.3%"
+        }
+      ]
+    },
+    {
+      "id": "C049",
+      "inputs": {
+        "raise": 10,
+        "pre": 60,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 18,
+        "yrs": 4,
+        "bear": 25,
+        "base": 75,
+        "bull": 150
+      },
+      "post": 70,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 0,
+      "investedTotal": 1.4,
+      "ourPref": 1.4,
+      "totalPref": 28,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 28,
+          "p": 1.4
+        },
+        {
+          "e": 25,
+          "p": 1.25
+        },
+        {
+          "e": 75,
+          "p": 1.4
+        },
+        {
+          "e": 150,
+          "p": 1.4
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 25,
+          "proceeds": 1.25,
+          "multiple": 0.8928571428571429,
+          "irr": -2.7934579093017997,
+          "proceedsDisplay": "$1.3M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 75,
+          "proceeds": 1.4,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$1.4M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 150,
+          "proceeds": 1.4,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$1.4M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C050",
+      "inputs": {
+        "raise": 11,
+        "pre": 68,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 20,
+        "yrs": 4,
+        "bear": 28,
+        "base": 85,
+        "bull": 169
+      },
+      "post": 79,
+      "newInvPct": 13.924050632911392,
+      "dilutionFactor": 0.7607594936708861,
+      "partAmt": 1.03,
+      "ownAfter": 8.45493670886076,
+      "investedTotal": 7.83,
+      "ourPref": 7.83,
+      "totalPref": 31,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 31,
+          "p": 7.829999999999999
+        },
+        {
+          "e": 28,
+          "p": 7.072258064516129
+        },
+        {
+          "e": 85,
+          "p": 7.83
+        },
+        {
+          "e": 169,
+          "p": 14.288843037974686
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 28,
+          "proceeds": 7.072258064516129,
+          "multiple": 0.9032258064516129,
+          "irr": -2.512466098327071,
+          "proceedsDisplay": "$7.1M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 85,
+          "proceeds": 7.83,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$7.8M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 169,
+          "proceeds": 14.288843037974686,
+          "multiple": 1.8248841683237147,
+          "irr": 16.22748111800263,
+          "proceedsDisplay": "$14.3M",
+          "multipleDisplay": "1.82x",
+          "irrDisplay": "16.2%"
+        }
+      ]
+    },
+    {
+      "id": "C051",
+      "inputs": {
+        "raise": 7,
+        "pre": 41,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 12,
+        "yrs": 4,
+        "bear": 17,
+        "base": 51,
+        "bull": 103
+      },
+      "post": 48,
+      "newInvPct": 14.583333333333334,
+      "dilutionFactor": 0.7541666666666667,
+      "partAmt": 0.82,
+      "ownAfter": 10.532083333333333,
+      "investedTotal": 3.7199999999999998,
+      "ourPref": 3.7199999999999998,
+      "totalPref": 19,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 19,
+          "p": 3.7199999999999998
+        },
+        {
+          "e": 17,
+          "p": 3.3284210526315787
+        },
+        {
+          "e": 51,
+          "p": 5.371362499999999
+        },
+        {
+          "e": 103,
+          "p": 10.848045833333332
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 17,
+          "proceeds": 3.3284210526315787,
+          "multiple": 0.8947368421052632,
+          "irr": -2.742336912358556,
+          "proceedsDisplay": "$3.3M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 51,
+          "proceeds": 5.371362499999999,
+          "multiple": 1.4439146505376343,
+          "irr": 9.618885113497221,
+          "proceedsDisplay": "$5.4M",
+          "multipleDisplay": "1.44x",
+          "irrDisplay": "9.6%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 103,
+          "proceeds": 10.848045833333332,
+          "multiple": 2.9161413530465947,
+          "irr": 30.677898844996232,
+          "proceedsDisplay": "$10.8M",
+          "multipleDisplay": "2.92x",
+          "irrDisplay": "30.7%"
+        }
+      ]
+    },
+    {
+      "id": "C052",
+      "inputs": {
+        "raise": 7,
+        "pre": 44,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 13,
+        "yrs": 4,
+        "bear": 18,
+        "base": 55,
+        "bull": 110
+      },
+      "post": 51,
+      "newInvPct": 13.725490196078432,
+      "dilutionFactor": 0.7627450980392158,
+      "partAmt": 0,
+      "ownAfter": 9.534313725490197,
+      "investedTotal": 2.5,
+      "ourPref": 2.5,
+      "totalPref": 20,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 20,
+          "p": 2.5
+        },
+        {
+          "e": 18,
+          "p": 2.25
+        },
+        {
+          "e": 55,
+          "p": 5.243872549019608
+        },
+        {
+          "e": 110,
+          "p": 10.487745098039216
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 18,
+          "proceeds": 2.25,
+          "multiple": 0.9,
+          "irr": -2.5996253574703254,
+          "proceedsDisplay": "$2.3M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.6%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 55,
+          "proceeds": 5.243872549019608,
+          "multiple": 2.0975490196078432,
+          "irr": 20.344994044005873,
+          "proceedsDisplay": "$5.2M",
+          "multipleDisplay": "2.10x",
+          "irrDisplay": "20.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 110,
+          "proceeds": 10.487745098039216,
+          "multiple": 4.1950980392156865,
+          "irr": 43.11512317209187,
+          "proceedsDisplay": "$10.5M",
+          "multipleDisplay": "4.20x",
+          "irrDisplay": "43.1%"
+        }
+      ]
+    },
+    {
+      "id": "C053",
+      "inputs": {
+        "raise": 77,
+        "pre": 464,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 135,
+        "yrs": 4,
+        "bear": 193,
+        "base": 580,
+        "bull": 1159
+      },
+      "post": 541,
+      "newInvPct": 14.232902033271719,
+      "dilutionFactor": 0.7576709796672828,
+      "partAmt": 3.39,
+      "ownAfter": 3.9603696857670982,
+      "investedTotal": 12.09,
+      "ourPref": 12.09,
+      "totalPref": 212,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 212,
+          "p": 12.09
+        },
+        {
+          "e": 193,
+          "p": 11.006462264150944
+        },
+        {
+          "e": 580,
+          "p": 22.97014417744917
+        },
+        {
+          "e": 1159,
+          "p": 45.90068465804067
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 193,
+          "proceeds": 11.006462264150944,
+          "multiple": 0.9103773584905661,
+          "irr": -2.3200649821981,
+          "proceedsDisplay": "$11.0M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.3%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 580,
+          "proceeds": 22.97014417744917,
+          "multiple": 1.8999292123613871,
+          "irr": 17.404395045268515,
+          "proceedsDisplay": "$23.0M",
+          "multipleDisplay": "1.90x",
+          "irrDisplay": "17.4%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 1159,
+          "proceeds": 45.90068465804067,
+          "multiple": 3.796582684701461,
+          "irr": 39.58804207132734,
+          "proceedsDisplay": "$45.9M",
+          "multipleDisplay": "3.80x",
+          "irrDisplay": "39.6%"
+        }
+      ]
+    },
+    {
+      "id": "C054",
+      "inputs": {
+        "raise": 8,
+        "pre": 48,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 14,
+        "yrs": 4,
+        "bear": 20,
+        "base": 60,
+        "bull": 120
+      },
+      "post": 56,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0.8,
+      "ownAfter": 9,
+      "investedTotal": 2.7,
+      "ourPref": 2.7,
+      "totalPref": 22,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 22,
+          "p": 2.7
+        },
+        {
+          "e": 20,
+          "p": 2.454545454545455
+        },
+        {
+          "e": 60,
+          "p": 5.3999999999999995
+        },
+        {
+          "e": 120,
+          "p": 10.799999999999999
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 20,
+          "proceeds": 2.454545454545455,
+          "multiple": 0.9090909090909092,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 60,
+          "proceeds": 5.3999999999999995,
+          "multiple": 1.9999999999999998,
+          "irr": 18.920711500272102,
+          "proceedsDisplay": "$5.4M",
+          "multipleDisplay": "2.00x",
+          "irrDisplay": "18.9%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 120,
+          "proceeds": 10.799999999999999,
+          "multiple": 3.9999999999999996,
+          "irr": 41.421356237309496,
+          "proceedsDisplay": "$10.8M",
+          "multipleDisplay": "4.00x",
+          "irrDisplay": "41.4%"
+        }
+      ]
+    },
+    {
+      "id": "C055",
+      "inputs": {
+        "raise": 34,
+        "pre": 205,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 60,
+        "yrs": 4,
+        "bear": 86,
+        "base": 257,
+        "bull": 513
+      },
+      "post": 239,
+      "newInvPct": 14.225941422594143,
+      "dilutionFactor": 0.7577405857740586,
+      "partAmt": 1.77,
+      "ownAfter": 4.680836820083682,
+      "investedTotal": 11.37,
+      "ourPref": 11.37,
+      "totalPref": 94,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 94,
+          "p": 11.37
+        },
+        {
+          "e": 86,
+          "p": 10.402340425531914
+        },
+        {
+          "e": 257,
+          "p": 12.029750627615064
+        },
+        {
+          "e": 513,
+          "p": 24.01269288702929
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 86,
+          "proceeds": 10.402340425531914,
+          "multiple": 0.9148936170212766,
+          "irr": -2.199145474322284,
+          "proceedsDisplay": "$10.4M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 257,
+          "proceeds": 12.029750627615064,
+          "multiple": 1.0580255609160127,
+          "irr": 1.420101300504495,
+          "proceedsDisplay": "$12.0M",
+          "multipleDisplay": "1.06x",
+          "irrDisplay": "1.4%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 513,
+          "proceeds": 24.01269288702929,
+          "multiple": 2.1119342908556984,
+          "irr": 20.550801012790522,
+          "proceedsDisplay": "$24.0M",
+          "multipleDisplay": "2.11x",
+          "irrDisplay": "20.6%"
+        }
+      ]
+    },
+    {
+      "id": "C056",
+      "inputs": {
+        "raise": 5,
+        "pre": 30,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 9,
+        "yrs": 4,
+        "bear": 13,
+        "base": 38,
+        "bull": 75
+      },
+      "post": 35,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 6.360000000000001,
+      "investedTotal": 3,
+      "ourPref": 3,
+      "totalPref": 14,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 14,
+          "p": 3
+        },
+        {
+          "e": 13,
+          "p": 2.7857142857142856
+        },
+        {
+          "e": 38,
+          "p": 3
+        },
+        {
+          "e": 75,
+          "p": 4.770000000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 13,
+          "proceeds": 2.7857142857142856,
+          "multiple": 0.9285714285714285,
+          "irr": -1.8356423308626968,
+          "proceedsDisplay": "$2.8M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 38,
+          "proceeds": 3,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$3.0M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 75,
+          "proceeds": 4.770000000000001,
+          "multiple": 1.5900000000000005,
+          "irr": 12.292119994764072,
+          "proceedsDisplay": "$4.8M",
+          "multipleDisplay": "1.59x",
+          "irrDisplay": "12.3%"
+        }
+      ]
+    },
+    {
+      "id": "C057",
+      "inputs": {
+        "raise": 7,
+        "pre": 43,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 13,
+        "yrs": 4,
+        "bear": 18,
+        "base": 54,
+        "bull": 108
+      },
+      "post": 50,
+      "newInvPct": 14.000000000000002,
+      "dilutionFactor": 0.76,
+      "partAmt": 0,
+      "ownAfter": 0,
+      "investedTotal": 2.9,
+      "ourPref": 2.9,
+      "totalPref": 20,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 20,
+          "p": 2.9
+        },
+        {
+          "e": 18,
+          "p": 2.61
+        },
+        {
+          "e": 54,
+          "p": 2.9
+        },
+        {
+          "e": 108,
+          "p": 2.9
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 18,
+          "proceeds": 2.61,
+          "multiple": 0.9,
+          "irr": -2.5996253574703254,
+          "proceedsDisplay": "$2.6M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.6%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 54,
+          "proceeds": 2.9,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 108,
+          "proceeds": 2.9,
+          "multiple": 1,
+          "irr": 0,
+          "proceedsDisplay": "$2.9M",
+          "multipleDisplay": "1.00x",
+          "irrDisplay": "0.0%"
+        }
+      ]
+    },
+    {
+      "id": "C058",
+      "inputs": {
+        "raise": 16,
+        "pre": 96,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 28,
+        "yrs": 4,
+        "bear": 40,
+        "base": 120,
+        "bull": 240
+      },
+      "post": 112,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0.64,
+      "ownAfter": 3.6000000000000005,
+      "investedTotal": 2.54,
+      "ourPref": 2.54,
+      "totalPref": 44,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 44,
+          "p": 2.54
+        },
+        {
+          "e": 40,
+          "p": 2.309090909090909
+        },
+        {
+          "e": 120,
+          "p": 4.32
+        },
+        {
+          "e": 240,
+          "p": 8.64
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 40,
+          "proceeds": 2.309090909090909,
+          "multiple": 0.9090909090909091,
+          "irr": -2.3545910323689467,
+          "proceedsDisplay": "$2.3M",
+          "multipleDisplay": "0.91x",
+          "irrDisplay": "-2.4%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 120,
+          "proceeds": 4.32,
+          "multiple": 1.7007874015748032,
+          "irr": 14.199054322003612,
+          "proceedsDisplay": "$4.3M",
+          "multipleDisplay": "1.70x",
+          "irrDisplay": "14.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 240,
+          "proceeds": 8.64,
+          "multiple": 3.4015748031496065,
+          "irr": 35.80632792630893,
+          "proceedsDisplay": "$8.6M",
+          "multipleDisplay": "3.40x",
+          "irrDisplay": "35.8%"
+        }
+      ]
+    },
+    {
+      "id": "C059",
+      "inputs": {
+        "raise": 15,
+        "pre": 92,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 27,
+        "yrs": 4,
+        "bear": 38,
+        "base": 115,
+        "bull": 229
+      },
+      "post": 107,
+      "newInvPct": 14.018691588785046,
+      "dilutionFactor": 0.7598130841121495,
+      "partAmt": 2.04,
+      "ownAfter": 12.24,
+      "investedTotal": 7.84,
+      "ourPref": 7.84,
+      "totalPref": 42,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 42,
+          "p": 7.840000000000001
+        },
+        {
+          "e": 38,
+          "p": 7.093333333333334
+        },
+        {
+          "e": 115,
+          "p": 14.076
+        },
+        {
+          "e": 229,
+          "p": 28.029600000000002
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 38,
+          "proceeds": 7.093333333333334,
+          "multiple": 0.9047619047619049,
+          "irr": -2.4710437248843586,
+          "proceedsDisplay": "$7.1M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 115,
+          "proceeds": 14.076,
+          "multiple": 1.7954081632653063,
+          "irr": 15.755277081300711,
+          "proceedsDisplay": "$14.1M",
+          "multipleDisplay": "1.80x",
+          "irrDisplay": "15.8%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 229,
+          "proceeds": 28.029600000000002,
+          "multiple": 3.5752040816326534,
+          "irr": 37.50712735331976,
+          "proceedsDisplay": "$28.0M",
+          "multipleDisplay": "3.58x",
+          "irrDisplay": "37.5%"
+        }
+      ]
+    },
+    {
+      "id": "C060",
+      "inputs": {
+        "raise": 18,
+        "pre": 107,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 31,
+        "yrs": 4,
+        "bear": 44,
+        "base": 133,
+        "bull": 267
+      },
+      "post": 125,
+      "newInvPct": 14.399999999999999,
+      "dilutionFactor": 0.756,
+      "partAmt": 0.65,
+      "ownAfter": 3.2416,
+      "investedTotal": 1.85,
+      "ourPref": 1.85,
+      "totalPref": 49,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 49,
+          "p": 1.85
+        },
+        {
+          "e": 44,
+          "p": 1.6612244897959185
+        },
+        {
+          "e": 133,
+          "p": 4.311328
+        },
+        {
+          "e": 267,
+          "p": 8.655072
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 44,
+          "proceeds": 1.6612244897959185,
+          "multiple": 0.8979591836734694,
+          "irr": -2.654888003624667,
+          "proceedsDisplay": "$1.7M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 133,
+          "proceeds": 4.311328,
+          "multiple": 2.330447567567567,
+          "irr": 23.554860318764813,
+          "proceedsDisplay": "$4.3M",
+          "multipleDisplay": "2.33x",
+          "irrDisplay": "23.6%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 267,
+          "proceeds": 8.655072,
+          "multiple": 4.6784172972972975,
+          "irr": 47.070219013043115,
+          "proceedsDisplay": "$8.7M",
+          "multipleDisplay": "4.68x",
+          "irrDisplay": "47.1%"
+        }
+      ]
+    },
+    {
+      "id": "C061",
+      "inputs": {
+        "raise": 9,
+        "pre": 53,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 15,
+        "yrs": 4,
+        "bear": 22,
+        "base": 66,
+        "bull": 132
+      },
+      "post": 62,
+      "newInvPct": 14.516129032258066,
+      "dilutionFactor": 0.7548387096774194,
+      "partAmt": 0,
+      "ownAfter": 8.90709677419355,
+      "investedTotal": 2.7,
+      "ourPref": 2.7,
+      "totalPref": 24,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 24,
+          "p": 2.7
+        },
+        {
+          "e": 22,
+          "p": 2.475
+        },
+        {
+          "e": 66,
+          "p": 5.878683870967743
+        },
+        {
+          "e": 132,
+          "p": 11.757367741935486
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 22,
+          "proceeds": 2.475,
+          "multiple": 0.9166666666666666,
+          "irr": -2.151795736644302,
+          "proceedsDisplay": "$2.5M",
+          "multipleDisplay": "0.92x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 66,
+          "proceeds": 5.878683870967743,
+          "multiple": 2.1772903225806455,
+          "irr": 21.472812108049943,
+          "proceedsDisplay": "$5.9M",
+          "multipleDisplay": "2.18x",
+          "irrDisplay": "21.5%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 132,
+          "proceeds": 11.757367741935486,
+          "multiple": 4.354580645161291,
+          "irr": 44.45633243828166,
+          "proceedsDisplay": "$11.8M",
+          "multipleDisplay": "4.35x",
+          "irrDisplay": "44.5%"
+        }
+      ]
+    },
+    {
+      "id": "C062",
+      "inputs": {
+        "raise": 10,
+        "pre": 60,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 18,
+        "yrs": 4,
+        "bear": 25,
+        "base": 75,
+        "bull": 150
+      },
+      "post": 70,
+      "newInvPct": 14.285714285714285,
+      "dilutionFactor": 0.7571428571428572,
+      "partAmt": 0,
+      "ownAfter": 6.208571428571429,
+      "investedTotal": 1.5,
+      "ourPref": 1.5,
+      "totalPref": 28,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 28,
+          "p": 1.5
+        },
+        {
+          "e": 25,
+          "p": 1.3392857142857142
+        },
+        {
+          "e": 75,
+          "p": 4.656428571428572
+        },
+        {
+          "e": 150,
+          "p": 9.312857142857144
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 25,
+          "proceeds": 1.3392857142857142,
+          "multiple": 0.8928571428571428,
+          "irr": -2.7934579093017997,
+          "proceedsDisplay": "$1.3M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 75,
+          "proceeds": 4.656428571428572,
+          "multiple": 3.1042857142857145,
+          "irr": 32.73651821886001,
+          "proceedsDisplay": "$4.7M",
+          "multipleDisplay": "3.10x",
+          "irrDisplay": "32.7%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 150,
+          "proceeds": 9.312857142857144,
+          "multiple": 6.208571428571429,
+          "irr": 57.85121188655664,
+          "proceedsDisplay": "$9.3M",
+          "multipleDisplay": "6.21x",
+          "irrDisplay": "57.9%"
+        }
+      ]
+    },
+    {
+      "id": "C063",
+      "inputs": {
+        "raise": 30,
+        "pre": 182,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 53,
+        "yrs": 4,
+        "bear": 76,
+        "base": 228,
+        "bull": 455
+      },
+      "post": 212,
+      "newInvPct": 14.150943396226415,
+      "dilutionFactor": 0.7584905660377359,
+      "partAmt": 2.49,
+      "ownAfter": 7.470000000000001,
+      "investedTotal": 9.190000000000001,
+      "ourPref": 9.190000000000001,
+      "totalPref": 83,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 83,
+          "p": 9.190000000000001
+        },
+        {
+          "e": 76,
+          "p": 8.414939759036146
+        },
+        {
+          "e": 228,
+          "p": 17.0316
+        },
+        {
+          "e": 455,
+          "p": 33.9885
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 76,
+          "proceeds": 8.414939759036146,
+          "multiple": 0.9156626506024097,
+          "irr": -2.1785997945659052,
+          "proceedsDisplay": "$8.4M",
+          "multipleDisplay": "0.92x",
+          "irrDisplay": "-2.2%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 228,
+          "proceeds": 17.0316,
+          "multiple": 1.8532752992383024,
+          "irr": 16.6769275555366,
+          "proceedsDisplay": "$17.0M",
+          "multipleDisplay": "1.85x",
+          "irrDisplay": "16.7%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 455,
+          "proceeds": 33.9885,
+          "multiple": 3.698422198041349,
+          "irr": 38.67689902592737,
+          "proceedsDisplay": "$34.0M",
+          "multipleDisplay": "3.70x",
+          "irrDisplay": "38.7%"
+        }
+      ]
+    },
+    {
+      "id": "C064",
+      "inputs": {
+        "raise": 5,
+        "pre": 32,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 9,
+        "yrs": 4,
+        "bear": 13,
+        "base": 40,
+        "bull": 79
+      },
+      "post": 37,
+      "newInvPct": 13.513513513513514,
+      "dilutionFactor": 0.7648648648648649,
+      "partAmt": 0.58,
+      "ownAfter": 10.516486486486485,
+      "investedTotal": 3.18,
+      "ourPref": 3.18,
+      "totalPref": 14,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 14,
+          "p": 3.18
+        },
+        {
+          "e": 13,
+          "p": 2.952857142857143
+        },
+        {
+          "e": 40,
+          "p": 4.206594594594594
+        },
+        {
+          "e": 79,
+          "p": 8.308024324324323
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 13,
+          "proceeds": 2.952857142857143,
+          "multiple": 0.9285714285714285,
+          "irr": -1.8356423308626968,
+          "proceedsDisplay": "$3.0M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 40,
+          "proceeds": 4.206594594594594,
+          "multiple": 1.3228284888662245,
+          "irr": 7.244711402410431,
+          "proceedsDisplay": "$4.2M",
+          "multipleDisplay": "1.32x",
+          "irrDisplay": "7.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 79,
+          "proceeds": 8.308024324324323,
+          "multiple": 2.612586265510793,
+          "irr": 27.135741356710664,
+          "proceedsDisplay": "$8.3M",
+          "multipleDisplay": "2.61x",
+          "irrDisplay": "27.1%"
+        }
+      ]
+    },
+    {
+      "id": "C065",
+      "inputs": {
+        "raise": 5,
+        "pre": 32,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 9,
+        "yrs": 4,
+        "bear": 13,
+        "base": 40,
+        "bull": 81
+      },
+      "post": 37,
+      "newInvPct": 13.513513513513514,
+      "dilutionFactor": 0.7648648648648649,
+      "partAmt": 0.39,
+      "ownAfter": 7.02,
+      "investedTotal": 1.5899999999999999,
+      "ourPref": 1.5899999999999999,
+      "totalPref": 14,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 14,
+          "p": 1.5899999999999999
+        },
+        {
+          "e": 13,
+          "p": 1.4764285714285712
+        },
+        {
+          "e": 40,
+          "p": 2.808
+        },
+        {
+          "e": 81,
+          "p": 5.6861999999999995
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 13,
+          "proceeds": 1.4764285714285712,
+          "multiple": 0.9285714285714285,
+          "irr": -1.8356423308626968,
+          "proceedsDisplay": "$1.5M",
+          "multipleDisplay": "0.93x",
+          "irrDisplay": "-1.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 40,
+          "proceeds": 2.808,
+          "multiple": 1.7660377358490567,
+          "irr": 15.278945397985488,
+          "proceedsDisplay": "$2.8M",
+          "multipleDisplay": "1.77x",
+          "irrDisplay": "15.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 81,
+          "proceeds": 5.6861999999999995,
+          "multiple": 3.5762264150943395,
+          "irr": 37.51695637722943,
+          "proceedsDisplay": "$5.7M",
+          "multipleDisplay": "3.58x",
+          "irrDisplay": "37.5%"
+        }
+      ]
+    },
+    {
+      "id": "C066",
+      "inputs": {
+        "raise": 5,
+        "pre": 27,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 8,
+        "yrs": 4,
+        "bear": 11,
+        "base": 34,
+        "bull": 69
+      },
+      "post": 32,
+      "newInvPct": 15.625,
+      "dilutionFactor": 0.74375,
+      "partAmt": 0.72,
+      "ownAfter": 12.96,
+      "investedTotal": 2.42,
+      "ourPref": 2.42,
+      "totalPref": 13,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 13,
+          "p": 2.42
+        },
+        {
+          "e": 11,
+          "p": 2.0476923076923077
+        },
+        {
+          "e": 34,
+          "p": 4.4064000000000005
+        },
+        {
+          "e": 69,
+          "p": 8.942400000000001
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 11,
+          "proceeds": 2.0476923076923077,
+          "multiple": 0.8461538461538461,
+          "irr": -4.090344020646186,
+          "proceedsDisplay": "$2.0M",
+          "multipleDisplay": "0.85x",
+          "irrDisplay": "-4.1%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 34,
+          "proceeds": 4.4064000000000005,
+          "multiple": 1.820826446280992,
+          "irr": 16.162817757207335,
+          "proceedsDisplay": "$4.4M",
+          "multipleDisplay": "1.82x",
+          "irrDisplay": "16.2%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 69,
+          "proceeds": 8.942400000000001,
+          "multiple": 3.6952066115702484,
+          "irr": 38.646746098418696,
+          "proceedsDisplay": "$8.9M",
+          "multipleDisplay": "3.70x",
+          "irrDisplay": "38.6%"
+        }
+      ]
+    },
+    {
+      "id": "C067",
+      "inputs": {
+        "raise": 5,
+        "pre": 13,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 4,
+        "yrs": 4,
+        "bear": 5,
+        "base": 16,
+        "bull": 32
+      },
+      "post": 18,
+      "newInvPct": 27.77777777777778,
+      "dilutionFactor": 0.6222222222222222,
+      "partAmt": 0,
+      "ownAfter": 6.9688888888888885,
+      "investedTotal": 1.1,
+      "ourPref": 1.1,
+      "totalPref": 9,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 9,
+          "p": 1.1
+        },
+        {
+          "e": 5,
+          "p": 0.6111111111111112
+        },
+        {
+          "e": 16,
+          "p": 1.1150222222222221
+        },
+        {
+          "e": 32,
+          "p": 2.2300444444444443
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 5,
+          "proceeds": 0.6111111111111112,
+          "multiple": 0.5555555555555556,
+          "irr": -13.66599786295495,
+          "proceedsDisplay": "$0.6M",
+          "multipleDisplay": "0.56x",
+          "irrDisplay": "-13.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 16,
+          "proceeds": 1.1150222222222221,
+          "multiple": 1.0136565656565655,
+          "irr": 0.3396794864876984,
+          "proceedsDisplay": "$1.1M",
+          "multipleDisplay": "1.01x",
+          "irrDisplay": "0.3%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 32,
+          "proceeds": 2.2300444444444443,
+          "multiple": 2.027313131313131,
+          "irr": 19.32466076242376,
+          "proceedsDisplay": "$2.2M",
+          "multipleDisplay": "2.03x",
+          "irrDisplay": "19.3%"
+        }
+      ]
+    },
+    {
+      "id": "C068",
+      "inputs": {
+        "raise": 8,
+        "pre": 45,
+        "pool": 10,
+        "participate": true,
+        "partAmt": null,
+        "totalPref": 13,
+        "yrs": 4,
+        "bear": 19,
+        "base": 56,
+        "bull": 113
+      },
+      "post": 53,
+      "newInvPct": 15.09433962264151,
+      "dilutionFactor": 0.749056603773585,
+      "partAmt": 0.26,
+      "ownAfter": 2.887547169811321,
+      "investedTotal": 1.06,
+      "ourPref": 1.06,
+      "totalPref": 21,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 21,
+          "p": 1.06
+        },
+        {
+          "e": 19,
+          "p": 0.9590476190476191
+        },
+        {
+          "e": 56,
+          "p": 1.6170264150943396
+        },
+        {
+          "e": 113,
+          "p": 3.2629283018867925
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 19,
+          "proceeds": 0.9590476190476191,
+          "multiple": 0.9047619047619048,
+          "irr": -2.4710437248843586,
+          "proceedsDisplay": "$1.0M",
+          "multipleDisplay": "0.90x",
+          "irrDisplay": "-2.5%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 56,
+          "proceeds": 1.6170264150943396,
+          "multiple": 1.5254966180135279,
+          "irr": 11.135501164645989,
+          "proceedsDisplay": "$1.6M",
+          "multipleDisplay": "1.53x",
+          "irrDisplay": "11.1%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 113,
+          "proceeds": 3.2629283018867925,
+          "multiple": 3.0782342470630115,
+          "irr": 32.457153064674806,
+          "proceedsDisplay": "$3.3M",
+          "multipleDisplay": "3.08x",
+          "irrDisplay": "32.5%"
+        }
+      ]
+    },
+    {
+      "id": "C069",
+      "inputs": {
+        "raise": 17,
+        "pre": 99,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 29,
+        "yrs": 4,
+        "bear": 41,
+        "base": 124,
+        "bull": 248
+      },
+      "post": 116,
+      "newInvPct": 14.655172413793101,
+      "dilutionFactor": 0.753448275862069,
+      "partAmt": 0,
+      "ownAfter": 3.013793103448276,
+      "investedTotal": 2,
+      "ourPref": 2,
+      "totalPref": 46,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 46,
+          "p": 2
+        },
+        {
+          "e": 41,
+          "p": 1.7826086956521738
+        },
+        {
+          "e": 124,
+          "p": 3.737103448275862
+        },
+        {
+          "e": 248,
+          "p": 7.474206896551724
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 41,
+          "proceeds": 1.7826086956521738,
+          "multiple": 0.8913043478260869,
+          "irr": -2.835749214542227,
+          "proceedsDisplay": "$1.8M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.8%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 124,
+          "proceeds": 3.737103448275862,
+          "multiple": 1.868551724137931,
+          "irr": 16.91662792126547,
+          "proceedsDisplay": "$3.7M",
+          "multipleDisplay": "1.87x",
+          "irrDisplay": "16.9%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 248,
+          "proceeds": 7.474206896551724,
+          "multiple": 3.737103448275862,
+          "irr": 39.03808578609469,
+          "proceedsDisplay": "$7.5M",
+          "multipleDisplay": "3.74x",
+          "irrDisplay": "39.0%"
+        }
+      ]
+    },
+    {
+      "id": "C070",
+      "inputs": {
+        "raise": 14,
+        "pre": 82,
+        "pool": 10,
+        "participate": false,
+        "partAmt": null,
+        "totalPref": 24,
+        "yrs": 4,
+        "bear": 34,
+        "base": 102,
+        "bull": 205
+      },
+      "post": 96,
+      "newInvPct": 14.583333333333334,
+      "dilutionFactor": 0.7541666666666667,
+      "partAmt": 0,
+      "ownAfter": 9.276250000000001,
+      "investedTotal": 5.1,
+      "ourPref": 5.1,
+      "totalPref": 38,
+      "proceedsAtSamples": [
+        {
+          "e": 0,
+          "p": 0
+        },
+        {
+          "e": 38,
+          "p": 5.1
+        },
+        {
+          "e": 34,
+          "p": 4.563157894736842
+        },
+        {
+          "e": 102,
+          "p": 9.461775000000001
+        },
+        {
+          "e": 205,
+          "p": 19.0163125
+        }
+      ],
+      "cases": [
+        {
+          "label": "Bear",
+          "exitValue": 34,
+          "proceeds": 4.563157894736842,
+          "multiple": 0.8947368421052633,
+          "irr": -2.742336912358556,
+          "proceedsDisplay": "$4.6M",
+          "multipleDisplay": "0.89x",
+          "irrDisplay": "-2.7%"
+        },
+        {
+          "label": "Base",
+          "exitValue": 102,
+          "proceeds": 9.461775000000001,
+          "multiple": 1.8552500000000003,
+          "irr": 16.707995526564588,
+          "proceedsDisplay": "$9.5M",
+          "multipleDisplay": "1.86x",
+          "irrDisplay": "16.7%"
+        },
+        {
+          "label": "Bull",
+          "exitValue": 205,
+          "proceeds": 19.0163125,
+          "multiple": 3.728688725490197,
+          "irr": 38.95975264944729,
+          "proceedsDisplay": "$19.0M",
+          "multipleDisplay": "3.73x",
+          "irrDisplay": "39.0%"
+        }
+      ]
+    }
+  ]
+}

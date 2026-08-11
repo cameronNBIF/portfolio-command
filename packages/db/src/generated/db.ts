@@ -532,7 +532,6 @@ export interface VCompanyCurrent {
   hq_region: string | null;
   invested: Numeric | null;
   is_nb_based: boolean | null;
-  moic: Numeric | null;
   name: string | null;
   ownership_pct: Numeric | null;
   pro_rata_rights: boolean | null;
