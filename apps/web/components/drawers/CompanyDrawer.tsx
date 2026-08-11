@@ -15,7 +15,7 @@ import { DrawerBody, DrawerHeader, useApp } from '../AppShell';
 import { DrawerSection, Kv, KvGrid, Pill, Progress, moicClass } from '../ui';
 
 export function CompanyDrawer({ company: c }: { company: Company }) {
-  const { toast } = useApp();
+  const { openMemoFor } = useApp();
   const mo = moic(c);
   const k = c.kpis && c.kpis[0];
   const reservesLeft = (c.reservesAllocated || 0) - (c.reservesDeployed || 0);
@@ -268,7 +268,7 @@ export function CompanyDrawer({ company: c }: { company: Company }) {
         )}
 
         <div className="hint">
-          <button className="btn ghost sm" onClick={() => toast('Memo Builder arrives later in A2')}>
+          <button className="btn ghost sm" onClick={() => openMemoFor(c.id)}>
             Open in Memo Builder
           </button>
         </div>

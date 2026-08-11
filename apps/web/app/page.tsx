@@ -15,9 +15,13 @@ import { CompanyDrawer } from '../components/drawers/CompanyDrawer';
 import { DealDrawer } from '../components/drawers/DealDrawer';
 import { FundInvestmentDrawer } from '../components/drawers/FundInvestmentDrawer';
 import { DashboardTab } from '../components/tabs/DashboardTab';
+import { DataTab } from '../components/tabs/DataTab';
 import { FundsTab } from '../components/tabs/FundsTab';
 import { PipelineTab } from '../components/tabs/PipelineTab';
+import { MemoTab } from '../components/tabs/MemoTab';
+import { ModelingTab } from '../components/tabs/ModelingTab';
 import { PortfolioTab } from '../components/tabs/PortfolioTab';
+import { ReportsTab } from '../components/tabs/ReportsTab';
 import { asOfDate, loadPortfolio } from '../lib/data';
 import { EditableProvider, useEditable } from '../lib/editable';
 
@@ -67,6 +71,14 @@ function Tab({ tab }: { tab: TabId }) {
       return <FundsTab db={db} asOf={asOf} />;
     case 'pipeline':
       return <PipelineTab db={db} asOf={asOf} />;
+    case 'modeling':
+      return <ModelingTab db={db} asOf={asOf} />;
+    case 'memo':
+      return <MemoTab db={db} asOf={asOf} />;
+    case 'reports':
+      return <ReportsTab db={db} asOf={asOf} />;
+    case 'data':
+      return <DataTab db={db} asOf={asOf} />;
     default:
       return <NotYetPorted tab={TABS.find((t) => t.id === tab)?.label ?? tab} />;
   }

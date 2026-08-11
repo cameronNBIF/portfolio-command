@@ -39,8 +39,13 @@ interface AppState {
   drawer: DrawerTarget;
   openDrawer: (t: NonNullable<DrawerTarget>) => void;
   closeDrawer: () => void;
-  /** Opens a company in the drawer and switches to the Portfolio tab first. */
+  /** Opens a company in the drawer. */
   openCompany: (id: string) => void;
+  /** Which entity the Memo Builder is drafting against. */
+  memoTarget: string | null;
+  setMemoTarget: (id: string) => void;
+  /** Closes the drawer, switches to the Memo Builder and targets an entity. */
+  openMemoFor: (id: string) => void;
   toast: (message: string) => void;
 }
 
@@ -66,10 +71,18 @@ export function AppShell({
   const [tab, setTab] = useState<TabId>('dashboard');
   const [drawer, setDrawer] = useState<DrawerTarget>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [memoTarget, setMemoTarget] = useState<string | null>(null);
 
   const closeDrawer = useCallback(() => setDrawer(null), []);
   const openDrawer = useCallback((t: NonNullable<DrawerTarget>) => setDrawer(t), []);
   const openCompany = useCallback((id: string) => setDrawer({ kind: 'company', id }), []);
+
+  // `startMemoFor` (:1166): close the drawer, switch tab, target the entity.
+  const openMemoFor = useCallback((id: string) => {
+    setMemoTarget(id);
+    setDrawer(null);
+    setTab('memo');
+  }, []);
 
   const toast = useCallback((message: string) => {
     setToastMessage(message);
@@ -95,8 +108,8 @@ export function AppShell({
   }, [drawer]);
 
   const value = useMemo<AppState>(
-    () => ({ tab, setTab, drawer, openDrawer, closeDrawer, openCompany, toast }),
-    [tab, drawer, openDrawer, closeDrawer, openCompany, toast],
+    () => ({ tab, setTab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, setMemoTarget, openMemoFor, toast }),
+    [tab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, openMemoFor, toast],
   );
 
   return (
