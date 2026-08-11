@@ -745,6 +745,19 @@ returns numeric language sql stable as $$
   );
 $$;
 
+-- ADR-023: this view assembles FACTS ONLY. It sums, filters to live rows,
+-- picks the latest row by date and joins. It computes no metric.
+--
+-- A `moic` column lived here until A1 and has been removed: it divided one
+-- aggregate by another, which is the definition of a metric under ADR-023.
+-- MOIC is owned by packages/metrics and computed nowhere else (ADR-021).
+--
+-- TODO (A3): `current_date` makes this view non-deterministic and pins "now"
+-- to the database clock. ADR-007's reporting lag means a report re-run after
+-- Finance books a mark legitimately differs from the same report run before.
+-- When the read path is designed, this becomes an as-of parameter supplied by
+-- the caller -- the same date the metrics package takes as `asOf` (ADR-021).
+-- Left as-is for now rather than guessed at ahead of A3.
 create or replace view v_company_current as
 select c.company_id,
        c.name,
@@ -760,10 +773,7 @@ select c.company_id,
        rz.realized,
        (ce.company_id is not null)               as exited,
        ce.exit_date, ce.exit_type,
-       own.ownership_pct, own.pro_rata_rights,
-       case when inv.invested > 0
-            then (company_fmv_asof(c.company_id, current_date) + rz.realized) / inv.invested
-       end                                       as moic
+       own.ownership_pct, own.pro_rata_rights
 from company c
 left join v_company_invested inv on inv.company_id = c.company_id
 left join v_company_realized rz  on rz.company_id  = c.company_id
@@ -785,6 +795,15 @@ left join lateral (
 -- Leverage: third-party capital per our dollar. Rounds with a missing or
 -- invalid round_total are EXCLUDED, never imputed. Preserved exactly from
 -- Daniel's implementation (ADR-013).
+--
+-- CONVENIENCE ONLY (ADR-023). Nothing here is serialised into the ADR-001
+-- contract and nothing here is read by the API. The `where` clause below IS
+-- the leverage definition, so the contract must deliver rounds UNFILTERED and
+-- let packages/metrics apply the predicate itself (ADR-021). Retained for
+-- Finance's ad-hoc reconciliation queries; a candidate for removal once those
+-- move to the API. Note that `least(...)` caps nb_capital at the round's
+-- third-party capital, which matches the prototype's dashboard chart but NOT
+-- its fundMetrics(); the metrics package reproduces fundMetrics (ADR-013).
 create or replace view v_round_leverage as
 select r.investment_round_id,
        r.company_id,
@@ -806,6 +825,14 @@ join lateral (
 where r.round_total is not null
   and r.round_total >= ours.our_invested;
 
+-- CONVENIENCE ONLY (ADR-023). `tvpi` and `dpi` below are ratios and therefore
+-- metrics; they are never serialised into the ADR-001 contract and never read
+-- by the API, which takes `called`, `distributions` and `nav` from here and
+-- computes the multiples in packages/metrics (fiTvpi / fiDpi, ADR-021).
+-- Retained for Finance's ad-hoc reconciliation queries. Anyone pointing Power
+-- BI or a spreadsheet at these two columns gets a figure the platform itself
+-- does not use. Removal requires `drop view ... cascade` and a recreate --
+-- `create or replace view` cannot drop a column.
 create or replace view v_lp_position_current as
 select fi.fund_investment_id,
        fi.name, fi.manager_name, fi.strategy, fi.vintage_year,
