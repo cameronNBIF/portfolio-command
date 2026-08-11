@@ -17,7 +17,8 @@
     "db:types": "kysely-codegen --dialect postgres --default-schema pc --include-pattern \"pc.*\" --out-file packages/db/src/generated/db.ts",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run dev -w @portfolio-command/web"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
