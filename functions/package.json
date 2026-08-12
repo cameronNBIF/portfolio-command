@@ -3,6 +3,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
-  }
+    "affinity:probe": "tsx src/affinity/probe.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "affinity:sync": "tsx src/affinity/sync-cli.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.13.0",
+    "@azure/functions": "^4.6.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "vitest": "^3.1.0",
+    "@types/pg": "^8.11.0"
+  },
+  "main": "dist/src/index.js"
 }
