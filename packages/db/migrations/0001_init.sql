@@ -49,12 +49,46 @@ create table ref_source_channel (
   is_active     boolean not null default true
 );
 
+-- The funnel is stored at AFFINITY'S resolution and GROUPED for display.
+--
+-- Affinity's sixteen Status values are the vocabulary the investment team
+-- actually speaks -- "second meeting", "with legal", "conditional approval"
+-- are how a deal's position gets discussed -- so they are what ref_funnel_stage
+-- holds, and a company's exact position is never lost between the two systems
+-- (decision, 12 Aug 2026). Sixteen columns will not fit on a board, so each
+-- stage names the group it renders in, and the groups are the prototype's
+-- columns (ADR-014).
+--
+-- Terminality lives on the GROUP, not the stage: it is a property of where a
+-- deal has come to rest, and storing it twice invites the two to disagree.
+create table ref_funnel_group (
+  funnel_group_id serial primary key,
+  name          text not null unique,   -- Sourced, Screening, Diligence, IC Review, Term Sheet, Closed, Passed, Watchlist
+  sort_order    int not null,
+  is_terminal   boolean not null default false,
+  show_on_board boolean not null default true
+);
+
+comment on table ref_funnel_group is
+  'Display bins for the pipeline board. "Active deals" means a deal whose group is not terminal - Closed, Passed and Watchlist are. Keying the filter on this rather than on a hardcoded name list is what lets a re-binning be a row edit (ADR-009).';
+comment on column ref_funnel_group.show_on_board is
+  'Whether the group gets a kanban column. SEPARATE from is_terminal, because the two genuinely differ: Closed is terminal but the prototype renders it as a column (a closed deal is an outcome worth seeing), while Passed and Watchlist are listed beneath the board so dead and parked deals take no space. Without this the UI has to hardcode the name "Closed", which is the drift this table exists to prevent.';
+
 create table ref_funnel_stage (
   funnel_stage_id serial primary key,
-  name          text not null unique,   -- Sourced, Screening, Diligence, IC Review, Term Sheet, Closed, Passed
-  sort_order    int not null,
-  is_terminal   boolean not null default false
+  name          text not null unique,   -- New, Intake, Reached Out, First Meeting, ... Watchlist
+  funnel_group_id int not null references ref_funnel_group,
+  sort_order    int not null,           -- Affinity's own rank; orders within the group
+  -- 'affinity' is the real vocabulary. 'prototype-fixture' marks the four
+  -- values that exist ONLY in docs/reference/demo.json (Sourced, Screening,
+  -- IC Review, Term Sheet) and have no Affinity equivalent. They are here so
+  -- the reference fixture keeps loading against a NOT NULL key while it is
+  -- still the financial dataset, and they are DELETED when A6 retires it.
+  source        text not null default 'affinity'
+                  check (source in ('affinity','prototype-fixture'))
 );
+
+create index on ref_funnel_stage (funnel_group_id);
 
 create table ref_valuation_method (
   valuation_method_id serial primary key,
@@ -141,6 +175,7 @@ create table company (
   description         text,
   website             text,
   ceo_email           text,
+  year_founded        int,                       -- Affinity enrichment. Vintage sanity-check only.
   instrument_id       int references ref_instrument,  -- headline instrument (ADR-027)
   instrument_label    text,                      -- verbatim contract string (ADR-026)
   fte_at_entry        int,                       -- ADR-027
@@ -148,6 +183,23 @@ create table company (
   affinity_fmv        numeric(18,2),            -- REFERENCE ONLY. VC-team maintained. Never enters a calculation.
   affinity_total_investment numeric(18,2),      -- REFERENCE ONLY. Same.
   affinity_figures_as_of date,
+  -- Deal team. VC Lead governs the PORTFOLIO stages, Owners governs the
+  -- pipeline ones (ADR-009); the pipeline equivalents live on pipeline_deal.
+  --
+  -- NAMES, not email addresses (decision, 12 Aug 2026). Affinity merges Person
+  -- entities, so a person's primary address is not reliably their @nbif.ca one
+  -- - two VC Leads carry an external domain. The platform is an internal tool
+  -- for an eight-person team who recognise each other by name, so the address
+  -- bought nothing and was a false key. app_user resolution matches on
+  -- display_name; the label stands alone where nobody has an account yet.
+  owner_user_id       uuid references app_user,
+  secondary_user_id   uuid references app_user,
+  owner_label         text,
+  secondary_label     text,
+  -- Affinity relationship intelligence, derived from the team's mail and
+  -- calendar. Feeds an engagement-staleness alert; never a financial input.
+  last_email_date     date,
+  last_meeting_date   date,
   is_nb_based         boolean generated always as (hq_region = 'NB') stored,
   created_at          timestamptz not null default now(),
   created_by          uuid not null references app_user,
@@ -197,6 +249,30 @@ create table company_risk_flag (
   cleared_at     date,
   raised_by      uuid not null references app_user
 );
+
+-- Multi-valued company labels, one row per value.
+--
+-- Affinity's Priority Sector is dropdown-MULTI against the single-FK
+-- company.sector_id. The primary value takes sector_id and every remaining
+-- value lands here, so nothing is silently dropped (decision, 12 Aug 2026).
+-- Also carries Product/Service Industry and the enriched Industry categories,
+-- which are Crunchbase-style descriptors rather than the provincial taxonomy
+-- the mandate is framed in - they are useful as tags and must never be
+-- mistaken for the sector (ADR-009).
+create table company_tag (
+  company_tag_id bigint primary key generated always as identity,
+  company_id     text not null references company on delete cascade,
+  tag            text not null,
+  source         text not null
+                   check (source in ('priority-sector','product-service-industry',
+                                     'enriched-industry','manual')),
+  synced_at      timestamptz
+);
+
+create unique index on company_tag (company_id, source, tag);
+
+comment on column company_tag.source is
+  'Which Affinity field produced the tag. Kept because the three sources carry very different authority: priority-sector is the mandate vocabulary, the other two are enrichment. A sync refreshes only its own source and never touches manual rows.';
 
 create table company_threshold (
   company_id           text primary key references company on delete cascade,
@@ -563,11 +639,16 @@ comment on column fund_investment_nav.statement_received_at is
 
 create table pipeline_deal (
   deal_id                 text primary key,      -- Pnnn display id
-  affinity_opportunity_id text unique,
+  -- The Affinity LIST ENTRY id, and the sync's upsert key. There is no
+  -- Opportunity entity involved: NBIF Master is a company-type list, so the
+  -- list entry IS the deal. An earlier `affinity_opportunity_id` column
+  -- described a concept this account does not use and would have stayed
+  -- permanently null, which is a trap rather than a placeholder.
+  affinity_row_id         text unique,
   name                    text not null,
   sector_id               int references ref_sector,
   sector_label            text,                  -- verbatim contract string (ADR-026)
-  funnel_stage_id         int references ref_funnel_stage,
+  funnel_stage_id         int not null references ref_funnel_stage,
   funnel_label            text,                  -- verbatim contract string (ADR-026)
   source_channel_id       int references ref_source_channel,
   source_label            text,                  -- verbatim contract string (ADR-026)
@@ -580,9 +661,9 @@ create table pipeline_deal (
   vc_secondary_user_id    uuid references app_user,
   next_step               text,
   date_added              date,
+  follow_up_date          date,                  -- Affinity Follow-up Date. Stale-deal alerts.
   closed_date             date,
   converted_company_id    text references company,
-  affinity_row_id         text,
   stage_changed_date      date,
   last_email_date         date,
   last_meeting_date       date,
@@ -598,22 +679,44 @@ create table pipeline_deal_owner (
   pipeline_deal_owner_id bigint primary key generated always as identity,
   deal_id      text not null references pipeline_deal on delete cascade,
   user_id      uuid references app_user,
-  owner_email  text not null,
-  owner_name   text,
+  -- Affinity's Person entity id. The stable key: it survives both a rename and
+  -- the entity merging that makes a person's primary email unreliable, which
+  -- is why this replaced owner_email (decision, 12 Aug 2026).
+  affinity_person_id bigint not null,
+  owner_name   text not null,
   added_at     timestamptz,                      -- from the Affinity change log
   synced_at    timestamptz not null default now()
 );
 
-create unique index on pipeline_deal_owner (deal_id, owner_email);
+create unique index on pipeline_deal_owner (deal_id, affinity_person_id);
 
 comment on table pipeline_deal_owner is
   'Owners governs the pipeline stages; VC Lead governs the portfolio stages. Ownership commonly changes hands at diligence, when a lead and a secondary are assigned. Display in added_at order.';
+
+-- Why deals die. Affinity's Pass Reason is dropdown-multi and 36% filled
+-- across the whole list -- and invisible in both CSV exports, because Pipeline
+-- and Portfolio are Status-filtered views that exclude Passed entirely
+-- (ADR-009, amended 12 Aug 2026). Verbatim text, because the vocabulary is
+-- unranked, freely extended by the team, and contains entries that are clearly
+-- working notes rather than categories.
+create table pipeline_deal_pass_reason (
+  pipeline_deal_pass_reason_id bigint primary key generated always as identity,
+  deal_id            text not null references pipeline_deal on delete cascade,
+  reason_text        text not null,
+  dropdown_option_id bigint,                     -- NULL when the option was since deleted
+  synced_at          timestamptz not null default now()
+);
+
+create unique index on pipeline_deal_pass_reason (deal_id, reason_text);
+
+comment on column pipeline_deal_pass_reason.dropdown_option_id is
+  'Affinity''s option id, so a renamed option stays traceable. NULL for a deleted-entity reference, exactly as affinity_field_change handles the same case.';
 
 comment on column pipeline_deal.converted_company_id is
   'Links a closed deal to the portfolio company it became, so the funnel can be measured end to end.';
 
 comment on column pipeline_deal.funnel_stage_id is
-  'NULLABLE at A3 only, and deliberately (ADR-026). ref_funnel_stage holds Affinity''s vocabulary; the reference fixture carries the prototype''s, and the two overlap on four values of seven - Screening, IC Review and Term Sheet have no exact Affinity equivalent. Rather than invent reference rows or coerce IC Review to Team Pitch, the key is left NULL and funnel_label carries the verbatim string. RESTORE NOT NULL at A4, when the pipeline is real and every stage resolves.';
+  'NOT NULL restored at A4, as ADR-026 said it would be. This is the deal''s EXACT position in Affinity''s sixteen-stage funnel, not a display bin - ref_funnel_group is the bin, reached through ref_funnel_stage.funnel_group_id. Storing the exact stage is what stops a company''s position being lost between the two systems (decision, 12 Aug 2026), and it is what makes time-in-stage and drop-off measurable at the resolution the team actually works at. funnel_label still carries the verbatim string so a renamed or deleted Affinity option degrades to text rather than breaking the key.';
 comment on column pipeline_deal.owner_label is
   'ADR-026. The contract carries owner as a single free-text string, including "-" for unowned. vc_lead_user_id resolves it to an app_user where the name matches one; pipeline_deal_owner holds the full multi-owner list that Affinity actually governs (ADR-009).';
 
