@@ -3,14 +3,19 @@
 /**
  * Deal Pipeline, ported from `renderPipeline` (vc-toolkit.html :1065-1095).
  *
- * Six kanban columns, terminal `Passed` deals listed underneath rather than
+ * Kanban columns with terminal `Passed` deals listed underneath rather than
  * given board space. Stage weights, tile order and copy are the prototype's
  * (ADR-014).
+ *
+ * The columns, their order and the "active" test come from the contract's
+ * `funnelGroups` rather than from a hardcoded list, because a deal now carries
+ * its EXACT Affinity status -- sixteen of them -- rather than one of the
+ * prototype's seven bins. See lib/funnel.ts.
  */
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { fmt } from '@portfolio-command/metrics';
 
-import { FUNNEL, FUNNEL_WEIGHTS } from '../../lib/constants';
+import { funnelView } from '../../lib/funnel';
 import { useEditable } from '../../lib/editable';
 import { useApp } from '../AppShell';
 import { Kpi, KpiRow, Pill, Progress, ViewHeader } from '../ui';
@@ -19,8 +24,13 @@ export function PipelineTab({ db, asOf }: { db: PortfolioExport; asOf: string })
   const { openDrawer } = useApp();
   const { pipeline: deals } = useEditable();
 
-  const active = deals.filter((d) => !['Closed', 'Passed'].includes(d.funnel));
-  const passed = deals.filter((d) => d.funnel === 'Passed');
+  const funnel = funnelView(db);
+  const active = deals.filter((d) => !funnel.isTerminal(d.funnel));
+  const offBoard = funnel.offBoard.map((g) => ({
+    group: g,
+    deals: deals.filter((d) => funnel.groupOf(d.funnel) === g.name),
+  }));
+  const passed = offBoard.find((o) => o.group.name === 'Passed')?.deals ?? [];
 
   /**
    * INHERITED: the prototype hardcoded the string "2026" here (:1069). The
@@ -29,10 +39,13 @@ export function PipelineTab({ db, asOf }: { db: PortfolioExport; asOf: string })
    * (INHERITED-COERCIONS.md §9.)
    */
   const year = asOf.slice(0, 4);
-  const closedYtd = deals.filter((d) => d.funnel === 'Closed' && d.closedDate?.startsWith(year)).length;
+  const closedStages = funnel.stagesIn('Closed');
+  const closedYtd = deals.filter(
+    (d) => closedStages.includes(d.funnel) && d.closedDate?.startsWith(year),
+  ).length;
   const target = db.fund.annualPlatformTarget;
 
-  const weighted = active.reduce((s, d) => s + (d.checkSize || 0) * (FUNNEL_WEIGHTS[d.funnel] ?? 0), 0);
+  const weighted = active.reduce((s, d) => s + (d.checkSize || 0) * funnel.weightOf(d.funnel), 0);
   const activeCheck = active.reduce((s, d) => s + (d.checkSize || 0), 0);
 
   return (
@@ -58,7 +71,7 @@ export function PipelineTab({ db, asOf }: { db: PortfolioExport; asOf: string })
         <Kpi
           label="Active Deals"
           value={active.length}
-          sub={`${deals.filter((d) => d.funnel === 'Term Sheet').length} at term sheet`}
+          sub={`${deals.filter((d) => funnel.groupOf(d.funnel) === 'Term Sheet').length} at term sheet`}
         />
         <Kpi label="Active Check $" value={fmt.m(activeCheck)} sub="If all close" />
         <Kpi label="Probability-Weighted" value={fmt.m(weighted)} sub="Stage-weighted deployment" />
@@ -66,12 +79,12 @@ export function PipelineTab({ db, asOf }: { db: PortfolioExport; asOf: string })
       </KpiRow>
 
       <div className="kanban">
-        {FUNNEL.map((stage) => {
-          const ds = deals.filter((d) => d.funnel === stage);
+        {funnel.columns.map((group) => {
+          const ds = deals.filter((d) => funnel.groupOf(d.funnel) === group.name);
           return (
-            <div className="kcol" key={stage}>
+            <div className="kcol" key={group.name}>
               <h5>
-                {stage} <span>{ds.length}</span>
+                {group.name} <span>{ds.length}</span>
               </h5>
               {ds.map((d) => (
                 <div className="kcard" key={d.id} onClick={() => openDrawer({ kind: 'deal', id: d.id })}>
@@ -83,6 +96,9 @@ export function PipelineTab({ db, asOf }: { db: PortfolioExport; asOf: string })
                   </div>
                   <div className="m" style={{ marginTop: 4 }}>
                     <Pill tone="gray">{d.owner}</Pill>
+                    {/* The exact status, since the column is now a group of
+                        several and would otherwise hide where a deal sits. */}
+                    {d.funnel !== group.name && <Pill tone="blue">{d.funnel}</Pill>}
                   </div>
                 </div>
               ))}

@@ -245,6 +245,16 @@ export interface PipelineDeal {
   id: string;
   name: string;
   sector: string;
+  /**
+   * The deal's EXACT position in the funnel, not a display bin.
+   *
+   * From schemaVersion 2 this carries Affinity's own Status vocabulary --
+   * "Second Meeting", "With Legal", "Conditional Approval" and thirteen others
+   * -- because those are the terms the investment team discusses a deal in, and
+   * flattening them would lose a company's position between the two systems
+   * (ADR-009). The prototype's seven values below are what the reference
+   * fixture carries. Group it for display with `PortfolioExport.funnelGroups`.
+   */
   funnel: 'Sourced' | 'Screening' | 'Diligence' | 'IC Review' | 'Term Sheet' | 'Closed' | 'Passed' | string;
   source: string;
   checkSize: number;
@@ -298,9 +308,49 @@ export interface FundInvestment {
 /** Memo section text, keyed by company or deal id. */
 export type Memos = Record<string, Record<string, string>>;
 
+/**
+ * A column on the pipeline board, and the funnel stages that render in it.
+ *
+ * Added at schemaVersion 2. Affinity carries SIXTEEN funnel statuses and they
+ * are the terms the investment team actually speaks, so `PipelineDeal.funnel`
+ * is the deal's exact position rather than a bin (ADR-009). Sixteen columns do
+ * not fit on a board, so the API also emits this grouping and the board renders
+ * from it (ADR-014).
+ *
+ * It is reference data, so it lives at the document root ONCE rather than being
+ * repeated on every deal. Emitting it is what stops the frontend hardcoding a
+ * column list that an admin can change with a row edit.
+ */
+export interface FunnelGroup {
+  name: string;
+  /**
+   * A deal resting here is out of the funnel: Closed, Passed and Watchlist.
+   * "Active deals" is the set whose group is not terminal, and reading it from
+   * here is what keeps that definition out of a hardcoded name list.
+   */
+  isTerminal: boolean;
+  /**
+   * Whether the group gets a kanban column. SEPARATE from `isTerminal`, because
+   * the two genuinely differ: Closed is terminal but renders as a column, since
+   * a closed deal is an outcome worth seeing; Passed and Watchlist are listed
+   * beneath the board so dead and parked deals take no space.
+   */
+  showOnBoard: boolean;
+  /** Stage names rendering in this column, in their own rank order. */
+  stages: string[];
+}
+
 export interface Meta {
-  /** Bumps only when the CONTRACT changes, never when storage does. */
-  schemaVersion: 1;
+  /**
+   * Bumps only when the CONTRACT changes, never when storage does.
+   *
+   * 1 — the prototype's shape, which `docs/reference/demo.json` holds and
+   *     which is frozen (ADR-022): it is that file's own boot state and cannot
+   *     be re-exported without invalidating every golden-master fixture.
+   * 2 — adds `funnelGroups`. The API emits 2; the reference fixture stays 1,
+   *     which is why the field is optional rather than required.
+   */
+  schemaVersion: 1 | 2;
   /**
    * Wall-clock stamp. Normalised out of the contract snapshot test, because a
    * timestamp drifting is not contract drift (ADR-022).
@@ -316,5 +366,11 @@ export interface PortfolioExport {
   pipeline: PipelineDeal[];
   fundInvestments: FundInvestment[];
   memos: Memos;
+  /**
+   * Board columns for `pipeline`. Present from schemaVersion 2; absent on the
+   * reference fixture, which is schemaVersion 1. A consumer that finds it
+   * missing should fall back to treating each `funnel` value as its own column.
+   */
+  funnelGroups?: FunnelGroup[];
   meta: Meta;
 }

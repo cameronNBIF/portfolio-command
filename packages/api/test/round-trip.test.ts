@@ -110,16 +110,46 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
     expect(actual.memos).toEqual(fixture.memos);
   });
 
-  test('meta carries schemaVersion 1 and flags synthetic data', () => {
-    expect(actual.meta.schemaVersion).toBe(1);
+  test('meta carries schemaVersion 2 and flags synthetic data', () => {
+    // The API emits 2; the fixture is 1 and stays that way. demo.json is the
+    // prototype's own boot state and re-exporting it would invalidate every
+    // golden-master fixture (ADR-022), so the two legitimately differ here.
+    expect(actual.meta.schemaVersion).toBe(2);
     // ADR-020: the banner is driven by this, and every imported row is flagged.
     expect(actual.meta.demo).toBe(true);
   });
 
-  test('the whole document reproduces, savedAt aside', () => {
+  /**
+   * schemaVersion 2 adds `funnelGroups`, the board's columns. It is reference
+   * data rather than imported data, so it has no counterpart in the fixture.
+   */
+  test('funnelGroups describes the board, and every fixture stage lands in one', () => {
+    const groups = actual.funnelGroups ?? [];
+    expect(groups.map((g) => g.name)).toEqual([
+      'Sourced', 'Screening', 'Diligence', 'IC Review', 'Term Sheet', 'Closed', 'Passed', 'Watchlist',
+    ]);
+    // Terminality is the source of the "active deals" definition and must not
+    // drift into a hardcoded name list.
+    expect(groups.filter((g) => g.isTerminal).map((g) => g.name)).toEqual(['Closed', 'Passed', 'Watchlist']);
+
+    // Affinity's sixteen statuses plus the four fixture-only names, and every
+    // stage a deal can actually be in resolves to exactly one column.
+    const placements = new Map<string, number>();
+    for (const g of groups) for (const s of g.stages) placements.set(s, (placements.get(s) ?? 0) + 1);
+    expect([...placements.values()].every((n) => n === 1)).toBe(true);
+    expect(placements.size).toBe(20);
+    for (const deal of fixture.pipeline) expect(placements.has(deal.funnel)).toBe(true);
+  });
+
+  test('the whole document reproduces, savedAt and the v2 addition aside', () => {
     // savedAt is a wall-clock stamp and normalised out of contract comparison
-    // per ADR-022. Everything else must match.
-    expect({ ...actual, meta: { ...actual.meta, savedAt: null } }).toEqual({
+    // per ADR-022. funnelGroups is the schemaVersion 2 addition and has no
+    // fixture counterpart; it is asserted above. EVERYTHING ELSE MUST MATCH --
+    // that exactness is what proves the storage layer moved no board number,
+    // so this comparison is narrowed by exactly one known key and no more.
+    const rest = { ...actual };
+    delete rest.funnelGroups;
+    expect({ ...rest, meta: { ...actual.meta, savedAt: null, schemaVersion: 1 as const } }).toEqual({
       ...fixture,
       meta: { ...fixture.meta, savedAt: null },
     });
