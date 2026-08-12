@@ -1,0 +1,76 @@
+Field ID,Field Name,Field Type,Value Type,Fill,Target Table,Target Column,Transform,Use,Notes
+listEntry.id,Affinity Row ID,entity,int64,348/348,company / pipeline_deal,affinity_row_id,direct,Yes,Confirmed identical to the CSV export's "Affinity Row ID" on 162/162 rows.
+entity.id,Organization Id,entity,int64,348/348,company / pipeline_deal,affinity_org_id / affinity_opportunity_id,direct,Yes,THE entity-resolution spine. Confirmed identical to the export's "Organization Id" on 162/162 rows - closes the ADR-009 namespace question.
+entity.name,Name,entity,text,348/348,company / pipeline_deal,name,trim,Yes,Some values are bare domains (agrogenesolutions.com). Normalise before crosswalking to Finance.
+entity.domain,Website,entity,text,see note,company,website,normalise host,Yes,The crosswalk key to Visible and Finance. Null on early-stage pipeline entries; 80/80 on portfolio.
+field-5470690,Status,list,ranked-dropdown,347/348,pipeline_deal / company,funnel_stage_id + funnel_label,via affinity_status_map,Yes,"16 options with ranks 1-16, seeded from dropdown metadata. Drives Pipeline vs Portfolio membership. ONE entry has no Status - see note on NOT NULL below."
+field-5470691,Owners,list,person-multi,267/348,pipeline_deal_owner,"user_id, owner_email, owner_name",full list,Yes,"Accumulates; mirror every owner, do not pick one. Governs pipeline stages (ADR-009)."
+field-5470707,Deal Flow Stage Changed,list,datetime,213/348,pipeline_deal,stage_changed_date,parse in US/Pacific,Yes,"Verified anchored to Pacific midnight: 2026-08-11T07:00:00Z. Pin the timezone or every date lands a day early."
+field-5470703,Source of Deal,list,dropdown-multi,203/348,company / pipeline_deal,source_channel_id + source_label,"verbatim, split multi",Yes,"27 options with five duplicates for one channel (Porfolio Intro / Portfolio company / Portfolio Company / Portfolio Company Introduction / Portfolio Introduction). Being merged in Affinity - sync stays verbatim (decision, 12 Aug 2026)."
+field-5470696,Pass Reason,list,dropdown-multi,127/348,pipeline_deal,NEW COLUMN,verbatim multi,New,"NOT IN THE SCHEMA. 36% fill across 16 options - why deals die, for the whole 348-entry list rather than the 162 the exports show. Contains junk options: 'Option 1', 'Founder did not followed up'."
+field-5470705,Follow-up Date,list,datetime,70/348,pipeline_deal,NEW COLUMN,parse in US/Pacific,New,Not in the schema. Feeds a stale-deal alert more directly than last_email_date does.
+field-5470701,Potential Investment Amount,list,number,40/348,pipeline_deal,check_size,direct CAD,Yes,"Reversal of the July 'No'. Finance is the source for CLOSED amounts; a pipeline deal has no Finance record yet, and check_size exists for exactly this."
+field-5470695,Co-investors,list,company-multi,11/348,-,-,-,Reference,"July profiled this as 0/76 EMPTY. It is now 11/348. Still not a leverage source: ADR-012's deal-close form remains authoritative for NB co-investor amounts."
+field-5866791,NBIF Ownership,list,text,6/348,-,-,-,Reference,"Free text, 2% fill. Ownership is structured capture at deal close (ADR-012); this is not a substitute."
+field-5470702,Investment Type,list,dropdown,189/348,-,-,-,No,Initial Investment / Follow-on. Round-level truth comes from Finance.
+field-5470700,Investment Round,list,dropdown,73/348,-,-,-,No,Financial. Finance is the source.
+field-5470694,Investment Round Size,list,number,22/348,-,-,-,No,Would have been a leverage input; 6% fill makes it unusable. ADR-012 capture form instead.
+field-5470692,Investment Amount,list,number,18/348,-,-,-,No,Financial. Finance is the source.
+field-5470704,Investment Committee Decision,list,dropdown,0/348,-,-,-,No,Empty. IC decisions are platform-owned (memo.decision).
+field-5470693,ROW ID,list,number,0/348,-,-,-,No,Empty.
+field-5470697,Priority,list,ranked-dropdown,0/348,-,-,-,No,Empty. Configured High/Medium/Low and never used.
+field-5470698,Submitted Date,list,datetime,0/348,-,-,-,No,Empty.
+field-5470699,Deal Description,list,text,0/348,-,-,-,No,Empty.
+field-5503869..5504345,Scoring apparatus (45 fields),list,number / text,0/348,-,-,-,No,"Team / Market / Product / Financials Score and Comments for five reviewers, plus five Overall Score fields. ALL 45 are 0% filled, and five saved views exist to drive them. This is the CSV's 'Overall Score' column. Skip entirely."
+field-5450487,Priority Sector,global,dropdown-multi,177/348,company,sector_id + sector_label,primary value; remainder to company_tag,Yes,"MULTI-VALUED against a single-FK company.sector_id. Resolved 12 Aug 2026: the primary value takes sector_id and any remainder becomes company_tag rows. 'Primary' must be DETERMINISTIC - the API returns an unordered array, so array position would let a company's sector flip between syncs and move a mandate KPI with no data change. Rule: the single non-'Other' value if there is exactly one, else the lowest dropdownOptionId. Also carries a corrupt option: id 24621946 labelled '22542067', the Cybersecurity option's id."
+field-5450293,Risk Assessment,global,ranked-dropdown,82/348,company_state,risk_grade + health,A/B/C -> green/yellow/red; ACC,Yes,"Ranks 1-4. 'Accelerator Investments' is a segment, not a grade (ADR-009)."
+field-5568393,Portfolio Status,global,ranked-dropdown,33/348,company_state,lifecycle_status,direct,Yes,"7 ranked options. Still contains 'Diligence' and now 'In Legal' and 'Low on cash' - two look like leaked pipeline values."
+field-5461920,New Brunswick Region,global,dropdown,156/348,company,nb_region,direct,Yes,NW/NE/SW/SE plus N/A. Map N/A to null - the CHECK constraint has no N/A member.
+field-5448200,CEO,global,person-multi,177/348,company,ceo_name / ceo_email,hydrated inline; email is the FALLBACK,Yes,"person-multi, not person. Carries firstName/lastName/primaryEmailAddress inline - no secondary call. SOLE source for ceo_name. For ceo_email it fills the ~95 companies where field-5518126 is blank."
+field-5518126,CEO (Email),global,text,82/348,company,ceo_email,direct; WINS where present,Yes,"A SEPARATE hand-typed text field, not a projection of field-5448200. Resolved 12 Aug 2026: the typed value wins where present because it is the deal lead's deliberate choice of address, and the person field fills the gaps. NOTE the evidence runs the other way on at least three rows - AccessSync, Gray Wolf and Passiv all carry an older or off-domain address here than the contact record does. Decision taken with that visible."
+field-5401861,VC Lead,global,person,102/348,company / pipeline_deal,owner_user_id / vc_lead_user_id,join app_user on email,Yes,"Governs portfolio stages (ADR-009). Two leads use non-nbif.ca addresses and will not resolve; sync must tolerate a null join."
+field-5450456,VC Secondary,global,person,10/348,company / pipeline_deal,secondary_user_id,join app_user on email,Yes,Sparse but harmless.
+field-5450947,Company Location,global,location,113/348,company,hq_city / hq_region / hq_country,nested object,Yes,"Single location field; the CSV splits it into four columns. Lower fill than the enriched equivalent - fall back to affinity-data-location."
+field-5410026,FMV,global,number,82/348,company,affinity_fmv,direct CAD,Reference,REFERENCE ONLY and never enters a calculation. Finance's valuation_mark is authoritative (ADR-007).
+field-5462320,Total Investment Amount,global,number,82/348,company,affinity_total_investment,direct CAD,Reference,REFERENCE ONLY. Same.
+field-5461935,Women in C-Suite,global,dropdown,40/348,-,-,-,No,"EXCLUDED by decision. Yes/No, not company-reported. Naming collision with the Visible-sourced count - keep the schema names distinct (ADR-010)."
+field-5626428,Quarterly Revenue,global,number,55/348,-,-,-,No,"KPI CLUSTER - NOT SYNCED (decision, 12 Aug 2026). Visible is the single source for company-reported KPIs and ADR-010 stands unamended."
+field-5626486,Burn Rate,global,number,37/348,-,-,-,No,"KPI cluster. Also duplicated by field-5441505 'Monthly Burn Rate 2' at higher fill (58) - one superseded the other in Affinity and both still hold data."
+field-5441505,Monthly Burn Rate 2,global,number,58/348,-,-,-,No,KPI cluster. See above.
+field-5626485,Cash Position,global,number,55/348,-,-,-,No,KPI cluster.
+field-5626513,FTE (Total),global,number,55/348,-,-,-,No,"KPI cluster. company.fte_at_entry therefore sources from company_kpi via Visible at A5, as ADR-027 intended."
+field-5626521,FTE (New Brunswick),global,number,68/348,-,-,-,No,KPI cluster. The mandate jobs number comes from Visible as reported.
+field-5441461,Months of Runway Remaining,global,number,70/348,-,-,-,No,"KPI cluster. ADR-027's runwayMo stays a stored independent fact sourced from Visible, not from here."
+field-5626512,Net Revenue Retention,global,number,69/348,-,-,-,No,"KPI cluster. Also has no prototype surface, so it would be a new board metric (ADR-014)."
+field-5626538,Metrics Last Updated,global,datetime,70/348,-,-,-,No,"KPI cluster staleness stamp. Not synced, but it is the field to check when Affinity and Visible visibly disagree in a meeting."
+field-5766498,Accelerators,global,text,24/348,-,-,-,Reference,Free text. Risk Assessment's ACC grade already carries the segment.
+field-5763423,Venture Stage,global,dropdown,6/348,-,-,-,No,"2% fill, and carries the same corrupt-label bug: option id 24621953 is labelled '24615561'."
+field-5753155,Date of Incorporation,global,datetime,3/348,-,-,-,No,1% fill.
+field-5467189,Intro Date,global,datetime,1/348,-,-,-,No,1 row.
+field-5680880,Exit Amount,global,number,2/348,-,-,-,No,Financial. Finance is the source.
+field-5467188,VC firm,global,company-multi,3/348,-,-,-,No,1% fill.
+field-5763309 / 5763310 / 5753116,Contact / (Email) / (Phone Number),global,person / text / text,9 / 23 / 6,-,-,-,No,Under 7% fill. CEO is the contact the platform shows.
+field-5790297 / 5790298 / 5790305 / 5763444,Company Problem / Solution / Progress / Discovery,global,text,6/348 each,-,-,-,No,"2% fill. Memo content is platform-owned (A10)."
+field-5462306,Company Folder,global,text,0/348,-,-,-,No,Empty. Document links are platform-owned.
+affinity-data-total-funding-amount,Total Funding Amount (USD),enriched,number,64/348,company,cb_total_funding_usd,"direct, keep USD",Reference,"Crunchbase-derived. NOT a leverage source - an independent cross-check once Finance's round totals land."
+affinity-data-investors,Investors,enriched,filterable-text-multi,41/348,-,-,-,Reference,"THE ANSWER to the July question 'CB Investors - not available for export: check whether the API exposes it'. It does. Reference only: enrichment investors are not NB co-investors, so this never feeds the mandate KPI."
+affinity-data-description,Description,enriched,text,163/348,company,description,direct,Yes,Best-filled description source. The dealroom twin has 104/348.
+affinity-data-location,Location,enriched,location,152/348,company,hq_city / hq_region / hq_country,nested object,Yes,"Better fill than the hand-maintained field-5450947 (113). Use as the fallback, hand-entered value wins."
+affinity-data-year-founded,Year Founded,enriched,number,127/348,company,NEW COLUMN,direct,New,Not in the schema. Cheap and useful for vintage sanity-checking.
+affinity-data-employees-current,Employees (Current),enriched,number,162/348,-,-,-,Reference,"An INDEPENDENT headcount signal at 3x the fill of FTE (Total). Not the mandate number - that is NB FTE as reported (ADR-010) - but a good staleness check on it."
+affinity-data-linkedin-headcount,LinkedIn Headcount,enriched,number,163/348,-,-,-,Reference,Same.
+affinity-data-last-funding-amount / -date,Last Funding Amount (USD) / Date,enriched,number / datetime,55 / 35,-,-,-,Reference,Crunchbase-derived. Cross-check only.
+affinity-data-industry,Industry,enriched,filterable-text-multi,134/348,company_tag,tag,split multi,Reference,Crunchbase-style categories. Priority Sector remains THE taxonomy (ADR-009).
+affinity-data-employee-hires/departures-*,Employee Hires / Departures (6 fields),enriched,number / text-multi,13-153,-,-,-,No,"Interesting, out of scope. No prototype surface and no mandate use."
+affinity-data-employees-{1;3;6;12;24}-months-ago and growth,Employees history (8 fields),enriched,number,136-151,-,-,-,No,Out of scope. Visible's series is the reported one.
+dealroom-*,Dealroom twins (18 fields),enriched,various,0-105,-,-,-,No,"Every one duplicates an affinity-data field with worse fill, and the money fields are EUR. Twitter fields are 0%."
+persons,People,enriched,person-multi,235/348,-,-,-,No,Everyone Affinity associates with the org. CEO and Owners are the roles the platform needs.
+created-at,Date Added,relationship-intelligence,datetime,348/348,pipeline_deal,date_added,parse in US/Pacific,Yes,"100% filled. NOT returned by GET /lists/{id}/fields - it appears only on the entry payload, so a sync that builds its field list from metadata alone will silently miss it."
+last-email,Last Email,relationship-intelligence,interaction,202/348,company / pipeline_deal,last_email_date,take sentAt; parse in US/Pacific,Yes,"An interaction OBJECT (id, type, subject, sentAt), not a bare date."
+last-event,Last Meeting,relationship-intelligence,interaction,171/348,company / pipeline_deal,last_meeting_date,take sentAt; parse in US/Pacific,Yes,"The CSV's 'Last Meeting'. Named 'Last Event' in the API - the last unmatched export column."
+last-contact,Last Contact,relationship-intelligence,interaction,204/348,-,-,-,Reference,"Best-filled staleness signal of the three - the max of email, event and chat."
+next-event,Next Event,relationship-intelligence,interaction,32/348,-,-,-,Reference,Cross-check against board.nextMeeting.
+source-of-introduction,Source of Introduction,relationship-intelligence,person,215/348,-,-,-,Reference,"62% fill, person-valued. Distinct from Source of Deal, which is the channel. Feeds the LP referral scorecard if that is ever wanted."
+first-email / first-event,First Email / First Event,relationship-intelligence,interaction,202 / 171,-,-,-,No,Time-to-first-contact is not a prototype surface.
+first-chat-message / last-chat-message,Chat interactions,relationship-intelligence,interaction,0/348,-,-,-,No,Empty.
+time-in-current-status,Time in Current Status,relationship-intelligence,datetime,348/348,-,-,-,No,"DERIVED - ADR-002 forbids storing it. v_deal_stage_history already computes time-in-stage from the affinity_field_change mirror. Also absent from GET /lists/{id}/fields."

@@ -165,6 +165,64 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - **Website is the join key** across Affinity, Visible and Finance's records. It is populated on 80 of 80 portfolio rows and is namespace-independent. Note that the export's `Organization Id` and the v2 API's `entity.id` were observed in different numeric ranges and must not be assumed equivalent.
 - **Affinity's FMV and Total Investment Amount are stored as reference only** and never enter a calculation (see ADR-020).
 
+**Amended against API v2 itself, 12 August 2026.** A read-only probe of list 328745
+(`npm run affinity:probe`, `functions/src/affinity/probe.ts`) settled three of the
+items above, one of them against what this ADR previously said. Field-level detail
+is in `docs/affinity-v2-field-map.csv`; endpoint mechanics in
+`docs/affinity-v2-endpoints.md`.
+
+- **The identifier namespaces are the same, and the earlier caution was wrong.**
+  This ADR recorded that the export's `Organization Id` and the v2 `entity.id`
+  "were observed in different numeric ranges and must not be assumed equivalent."
+  They match on **162 of 162 rows** across both exports, and `Affinity Row ID` to
+  `listEntry.id` on 162 of 162. The apparent two-order spread was age, not
+  namespace: long-lived global organisation records carry low ids (Introhive
+  1607682, Lastwall 1783269) and recently created ones carry high (307–313
+  million). `company.affinity_org_id` is therefore a sound join key. **Website
+  remains the crosswalk to Visible and to Finance**, which is a different claim
+  and still holds.
+- **`field-value-changes` is account-wide and filterable, so the stated reason
+  for the mirror no longer holds — but the mirror stays.** This ADR justified
+  `affinity_field_change` on the grounds that "the endpoint is per-list-entry and
+  a funnel chart would otherwise fan out to one API call per deal."
+  `GET /v2/field-value-changes?filter=field.id=…&filter=changedAt>…` returns
+  changes across the whole account with full changer identity, making history
+  backfill a handful of paginated calls and the nightly delta a single filter.
+  The mirror is retained for local query performance, which was always the real
+  purpose; only the cost argument was overtaken.
+- **The list is 348 entries; the two exports show 162.** Pipeline and Portfolio
+  are Status-filtered views, so Passed, Watchlist, Exited and Intake appear in
+  neither. **The sync reads the whole list and derives membership from Status**
+  rather than reading the two views — a company graduating between nightly runs
+  is then a Status change rather than a disappearance from one view and an
+  arrival in the other, which is what "one list, not two" means operationally.
+  It also makes funnel conversion and drop-off measurable, which the survivors
+  alone cannot support.
+- **Seeding the funnel from metadata is now a real endpoint, and the unobserved
+  ranks were real.** `GET /v2/lists/{listId}/fields/{fieldId}/dropdown-options`
+  returns `id`, `text`, `rank` and `color`. Status has all **16** options at ranks
+  1–16, including the four this ADR predicted existed unobserved — Intake (2),
+  Conditional Approval (8), Approved (9) and Closed (11). `rank` is carried only
+  by `ranked-dropdown`; plain and multi dropdowns are unordered.
+- **Affinity date fields are confirmed anchored to US Pacific midnight.**
+  `Deal Flow Stage Changed` returns `2026-08-11T07:00:00Z`. Pin the timezone on
+  extraction or every such date lands a day early for everyone here.
+- **People are identified by NAME and by Affinity's Person entity id, never by
+  email.** Affinity merges Person entities, so a primary address is not reliably
+  the person's `@nbif.ca` one — and keying on it split single people in two
+  (`kyle.woods@nbif.ca` and `kyle.woods@creativedestructionlab.com` are one
+  person, as are two Jaime Christian addresses). `pipeline_deal_owner` keys on
+  the Person entity id, which survives both merging and a rename; `app_user`
+  resolution matches `display_name`; the deal-team labels store names. The
+  platform is an internal tool for a team who recognise each other by name
+  (decision, 12 Aug 2026). Company CEO addresses are unaffected — those are real
+  external contacts, not internal Affinity Person entities.
+- **Two dropdown vocabularies carry an option whose label is another option's
+  id** — Priority Sector id 24621946 labelled `22542067` (the Cybersecurity
+  option's id), and Venture Stage id 24621953 labelled `24615561`. Being fixed
+  in Affinity, which is where a system-of-record correction belongs; the sync
+  carries labels verbatim and does not special-case them (decision, 12 Aug 2026).
+
 ---
 
 ## ADR-010 — Visible.vc is the system of record for company-reported KPIs, including jobs and diversity
@@ -779,6 +837,80 @@ and the carried one becomes a reconciliation signal — the same relationship
   fabricating a derivation that the source data contradicts. `reservesDeployed`
   against follow-on totals is a sensible future data-quality check, in the same
   spirit as `v_mandate_completeness`, and is not one at A3.
+
+---
+
+## ADR-028 — The funnel is stored at Affinity's resolution and grouped for display; the contract gains `funnelGroups` at schemaVersion 2
+
+**Status:** Accepted (12 August 2026)
+
+**Context.** Affinity's `Status` field carries **sixteen** values — New, Intake,
+Reached Out, First Meeting, Second Meeting, Team Pitch, Diligence, Conditional
+Approval, Approved, With Legal, Closed, Portfolio, Exited, Did Not Agree to
+Terms, Passed, Watchlist. The prototype's pipeline board has **six** columns plus
+a list of passed deals underneath, and that vocabulary reached it through a CSV
+import that mapped Affinity's statuses onto it with keyword regexes (ADR-009).
+
+Three vocabularies were therefore in play — the prototype's seven, Affinity's
+sixteen, and a July hybrid of the two seeded from *observed* values that matched
+neither — and an earlier attempt at A4 resolved the conflict the wrong way: it
+made the six display bins first-class in `ref_funnel_stage` and demoted the real
+statuses to a free-text `funnel_label`. The data survived, but it stopped being a
+vocabulary. It could not be ranked, ordered or referenced, nothing prevented a
+typo becoming a stage, and a company's exact position in the deal flow was
+recoverable only by reading a string.
+
+**These sixteen are working terminology.** "Second meeting", "with legal",
+"conditional approval" is how the investment team discusses where a deal stands.
+Flattening them at the storage boundary loses that between the two systems, and
+ADR-009 already makes Affinity the system of record for pipeline.
+
+**Decision.**
+
+1. **`ref_funnel_stage` holds Affinity's sixteen statuses**, each with Affinity's
+   own rank, seeded from the field-metadata snapshot. `pipeline_deal.funnel_stage_id`
+   is a deal's **exact** position, not a bin.
+2. **`ref_funnel_group` is the display layer** — the prototype's six columns, plus
+   Passed and Watchlist. Each stage names its group. The grouping is **monotonic
+   in Affinity's rank**, so a deal moving forward never appears to move backwards.
+3. **Terminality lives on the group**, not the stage. `is_terminal` is what
+   "active deals" means, and `show_on_board` is a *separate* flag because the two
+   genuinely differ: Closed is terminal but renders as a column, while Passed and
+   Watchlist are listed beneath the board.
+4. **The export contract gains `funnelGroups` and `meta.schemaVersion` becomes 2.**
+   It is reference data, so it sits at the document root once rather than repeated
+   on every deal. `PipelineDeal.funnel` now carries the exact status.
+5. **`affinity_status_map` is retained despite becoming an identity mapping**, as
+   the seam ADR-009 requires: a renamed or newly-added Affinity status is routed
+   onto an existing stage by editing a row.
+
+**Consequences.**
+
+- **No field was removed or retyped, so the ADR-001 freeze holds.** `PipelineDeal.funnel`
+  was already `'Sourced' | … | string`, and the contract snapshot fingerprints
+  *paths and types*, not values — so carrying sixteen values where seven used to
+  be changes nothing it guards. The addition of `funnelGroups` is what bumps the
+  version, and it is optional precisely because `docs/reference/demo.json` stays
+  at schemaVersion 1: it is the prototype's own boot state and re-exporting it
+  would invalidate every golden-master fixture (ADR-022). **The API emits 2 and
+  the reference fixture is 1; they legitimately differ.**
+- **The frontend stops hardcoding the funnel.** Columns, their order, which groups
+  render at all, and the active test all come from the contract
+  (`apps/web/lib/funnel.ts`). A re-binning is a row edit, per ADR-009. The
+  probability weights stay in the view layer keyed on the **group** name, so the
+  prototype's five numbers apply unchanged and no board figure moves (ADR-013) —
+  verified: 2/5 closed, 8 active, $15.8M probability-weighted, identical to A2.
+- **Watchlist gains a group and it is not cosmetic.** At 114 of 347 it is the
+  largest single bucket in Affinity and appears in neither CSV export, so it was
+  invisible when the prototype was built. Terminal, because watchlisted companies
+  are parked rather than worked — folding them into Sourced would take "active
+  deals" from ~84 to ~198.
+- **Four `ref_funnel_stage` rows are marked `source = 'prototype-fixture'`.**
+  `Sourced`, `Screening`, `IC Review` and `Term Sheet` exist only in the reference
+  fixture and have no Affinity equivalent; they keep it loading against a NOT NULL
+  key and are deleted with a one-line query when A6 retires its pipeline section.
+- **`pipeline_deal.funnel_stage_id` is `NOT NULL`**, closing the item ADR-026
+  deferred to A4.
 
 ---
 
