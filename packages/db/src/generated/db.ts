@@ -123,9 +123,15 @@ export interface Company {
   instrument_id: number | null;
   instrument_label: string | null;
   is_nb_based: Generated<boolean | null>;
+  last_email_date: Timestamp | null;
+  last_meeting_date: Timestamp | null;
   legal_name: string | null;
   name: string;
   nb_region: string | null;
+  owner_label: string | null;
+  owner_user_id: string | null;
+  secondary_label: string | null;
+  secondary_user_id: string | null;
   sector_id: number | null;
   /**
    * ADR-026. The verbatim string the ADR-001 contract carries, which the API serialises. sector_id is the resolved reference key and is NULL where no exact match exists - the importer never invents a ref_sector row and never coerces to a nearest neighbour. Expected to be redundant once the roster is real and its vocabulary is Affinity's (ADR-009).
@@ -136,6 +142,7 @@ export interface Company {
   synced_at: Timestamp | null;
   visible_company_id: string | null;
   website: string | null;
+  year_founded: number | null;
 }
 
 export interface CompanyCovenant {
@@ -238,6 +245,17 @@ export interface CompanyState {
   set_at: Generated<Timestamp>;
   set_by: string;
   stage_id: number | null;
+}
+
+export interface CompanyTag {
+  company_id: string;
+  company_tag_id: Generated<Int8>;
+  /**
+   * Which Affinity field produced the tag. Kept because the three sources carry very different authority: priority-sector is the mandate vocabulary, the other two are enrichment. A sync refreshes only its own source and never touches manual rows.
+   */
+  source: string;
+  synced_at: Timestamp | null;
+  tag: string;
 }
 
 export interface CompanyTask {
@@ -403,7 +421,6 @@ export interface MemoSection {
 }
 
 export interface PipelineDeal {
-  affinity_opportunity_id: string | null;
   affinity_row_id: string | null;
   check_size: Numeric | null;
   closed_date: Timestamp | null;
@@ -414,11 +431,12 @@ export interface PipelineDeal {
   currency: Generated<string>;
   date_added: Timestamp | null;
   deal_id: string;
+  follow_up_date: Timestamp | null;
   funnel_label: string | null;
   /**
-   * NULLABLE at A3 only, and deliberately (ADR-026). ref_funnel_stage holds Affinity's vocabulary; the reference fixture carries the prototype's, and the two overlap on four values of seven - Screening, IC Review and Term Sheet have no exact Affinity equivalent. Rather than invent reference rows or coerce IC Review to Team Pitch, the key is left NULL and funnel_label carries the verbatim string. RESTORE NOT NULL at A4, when the pipeline is real and every stage resolves.
+   * NOT NULL restored at A4, as ADR-026 said it would be. This is the deal's EXACT position in Affinity's sixteen-stage funnel, not a display bin - ref_funnel_group is the bin, reached through ref_funnel_stage.funnel_group_id. Storing the exact stage is what stops a company's position being lost between the two systems (decision, 12 Aug 2026), and it is what makes time-in-stage and drop-off measurable at the resolution the team actually works at. funnel_label still carries the verbatim string so a renamed or deleted Affinity option degrades to text rather than breaking the key.
    */
-  funnel_stage_id: number | null;
+  funnel_stage_id: number;
   last_email_date: Timestamp | null;
   last_meeting_date: Timestamp | null;
   name: string;
@@ -441,19 +459,42 @@ export interface PipelineDeal {
 
 export interface PipelineDealOwner {
   added_at: Timestamp | null;
+  affinity_person_id: Int8;
   deal_id: string;
-  owner_email: string;
-  owner_name: string | null;
+  owner_name: string;
   pipeline_deal_owner_id: Generated<Int8>;
   synced_at: Generated<Timestamp>;
   user_id: string | null;
 }
 
-export interface RefFunnelStage {
-  funnel_stage_id: Generated<number>;
+export interface PipelineDealPassReason {
+  deal_id: string;
+  /**
+   * Affinity's option id, so a renamed option stays traceable. NULL for a deleted-entity reference, exactly as affinity_field_change handles the same case.
+   */
+  dropdown_option_id: Int8 | null;
+  pipeline_deal_pass_reason_id: Generated<Int8>;
+  reason_text: string;
+  synced_at: Generated<Timestamp>;
+}
+
+export interface RefFunnelGroup {
+  funnel_group_id: Generated<number>;
   is_terminal: Generated<boolean>;
   name: string;
+  /**
+   * Whether the group gets a kanban column. SEPARATE from is_terminal, because the two genuinely differ: Closed is terminal but the prototype renders it as a column (a closed deal is an outcome worth seeing), while Passed and Watchlist are listed beneath the board so dead and parked deals take no space. Without this the UI has to hardcode the name "Closed", which is the drift this table exists to prevent.
+   */
+  show_on_board: Generated<boolean>;
   sort_order: number;
+}
+
+export interface RefFunnelStage {
+  funnel_group_id: number;
+  funnel_stage_id: Generated<number>;
+  name: string;
+  sort_order: number;
+  source: Generated<string>;
 }
 
 export interface RefInstrument {
@@ -711,6 +752,7 @@ export interface DB {
   company_ownership: CompanyOwnership;
   company_risk_flag: CompanyRiskFlag;
   company_state: CompanyState;
+  company_tag: CompanyTag;
   company_task: CompanyTask;
   company_threshold: CompanyThreshold;
   deal_gate: DealGate;
@@ -724,6 +766,8 @@ export interface DB {
   memo_section: MemoSection;
   pipeline_deal: PipelineDeal;
   pipeline_deal_owner: PipelineDealOwner;
+  pipeline_deal_pass_reason: PipelineDealPassReason;
+  ref_funnel_group: RefFunnelGroup;
   ref_funnel_stage: RefFunnelStage;
   ref_instrument: RefInstrument;
   ref_sector: RefSector;

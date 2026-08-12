@@ -1,0 +1,91 @@
+{
+  "note": [
+    "NBIF staff, and the platform's authorisation roster (ADR-005). Loaded by db:seed.",
+    "",
+    "IDENTITY comes from this file: entra_object_id, display_name and email are",
+    "re-asserted on every seed, so a corrected spelling or a changed address",
+    "propagates. AUTHORISATION does not: `role` and `is_active` are applied when",
+    "the row is CREATED and never overwritten afterwards. That is the ADR-005",
+    "position -- Entra proves identity, the platform decides permission, and",
+    "changing someone's role is a database update rather than a code change and a",
+    "deploy. A seed that re-asserted role would silently revert it.",
+    "",
+    "display_name must match the Affinity Person's name exactly: the A4 sync",
+    "resolves deal leads and owners on it, because Affinity merges Person entities",
+    "and their email addresses are not reliably the @nbif.ca ones.",
+    "",
+    "Board members are NOT here. They receive PDFs, not accounts (ADR-005)."
+  ],
+  "users": [
+    {
+      "entra_object_id": "b0909e2c-463d-42f1-9b90-8f88a436092e",
+      "display_name": "Cameron Horwood",
+      "email": "cameron.horwood@nbif.ca",
+      "role": "admin",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "8c3d4eaa-42be-4d5b-8700-cf1980df6a61",
+      "display_name": "Daniel Armali",
+      "email": "daniel.armali@nbif.ca",
+      "role": "admin",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "5bec053a-adde-485c-89d9-bb401904c30b",
+      "display_name": "Jaime Christian",
+      "email": "jaime.christian@nbif.ca",
+      "role": "vc",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "6a7798c5-aece-4957-98ce-c499c7156fcf",
+      "display_name": "Laila Theriault",
+      "email": "laila.theriault@nbif.ca",
+      "role": "vc",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "2f6f9d49-6ffe-4614-9694-f788e0cf0e44",
+      "display_name": "Nitin Bhalla",
+      "email": "nitin.bhalla@nbif.ca",
+      "role": "vc",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "0497e652-1923-4157-a049-1d4affde73cc",
+      "display_name": "Kyle Woods",
+      "email": "kyle.woods@nbif.ca",
+      "role": "vc",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "37c655c2-f0d1-49c9-bdce-60bec8010727",
+      "display_name": "Jessica Veinotte",
+      "email": "jessica.veinotte@nbif.ca",
+      "role": "vc",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "8b61f3f7-60d3-43f4-9d68-d1b3e63b3d7d",
+      "display_name": "Pat McMullon",
+      "email": "pat.mcmullon@nbif.ca",
+      "role": "finance",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "3746c3a8-66b6-4abd-a8da-f3fb6d3a17ae",
+      "display_name": "Jeff White",
+      "email": "jeff.white@nbif.ca",
+      "role": "leadership",
+      "is_active": true
+    },
+    {
+      "entra_object_id": "27454704-c30b-4bc9-b8fa-a68e74e337c9",
+      "display_name": "Kamrul Arefin",
+      "email": "kamrul.arefin@nbif.ca",
+      "role": "vc",
+      "is_active": false
+    }
+  ]
+}

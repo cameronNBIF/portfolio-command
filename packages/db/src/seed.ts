@@ -2,113 +2,66 @@
  * Reference-data seed. Idempotent: upserts on name, safe to re-run.
  *
  * Sources:
- * - ref_sector, ref_funnel_stage, ref_source_channel: docs/affinity-vocabularies.csv
- *   (the profiled Affinity vocabularies, "Proposed Target Value" column).
+ * - ref_sector, ref_source_channel, affinity_status_map keys:
+ *   docs/affinity-vocabularies-v2.json, a committed snapshot of Affinity's
+ *   dropdown-option METADATA taken by `npm run affinity:vocab`. ADR-009 wants
+ *   the vocabulary to come from the field configuration rather than from
+ *   observed values, because options exist that no row has ever used -- four
+ *   of Affinity's sixteen Status ranks were unobserved in the July exports and
+ *   all four are real.
+ * - ref_funnel_stage: Affinity's sixteen Status options WITH THEIR RANKS, from
+ *   the same snapshot, plus four fixture-only names. ref_funnel_group is the
+ *   prototype's board columns (vc-toolkit.html:206 plus "Passed") and
+ *   Watchlist. See the notes on each below.
  * - ref_stage, ref_instrument: the prototype's constants
  *   (docs/reference/vc-toolkit.html STAGES / INSTRUMENTS, matching the
  *   comments in docs/schema.sql).
  * - ref_valuation_method: the six methods the prototype produces
  *   (decision recorded in BUILD-LOG.md, 2026-07-29).
  *
- * The CSV's `health` and `nb_region` sections are NOT seeded - those live as
- * CHECK constraints on company_state and company, not reference tables.
+ * The snapshot is a file rather than a live call because `db:seed` must run
+ * offline -- CI's database job has no Affinity key -- and must be
+ * deterministic, or the idempotency assertion is checking nothing.
+ *
+ * docs/affinity-vocabularies.csv is NO LONGER READ HERE. It was the July
+ * profiling of observed values and is superseded by the v2 snapshot; it
+ * remains as a document for the health and nb_region mappings, which live as
+ * CHECK constraints rather than reference tables.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { requireDatabaseUrl } from './env.js';
+import { loadEnv, requireDatabaseUrl } from './env.js';
+
+// BEFORE any module-level process.env read below. See loadEnv's note.
+loadEnv();
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const csvPath = path.resolve(here, '../../../docs/affinity-vocabularies.csv');
+const snapshotPath = path.resolve(here, '../../../docs/affinity-vocabularies-v2.json');
+const rosterPath = path.resolve(here, '../data/app_user.json');
 
-// --- minimal RFC 4180 CSV parser (handles quoted fields, embedded commas
-// --- and doubled quotes, e.g. `"C Grade ""At Risk"""`)
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  const pushField = () => {
-    row.push(field);
-    field = '';
-  };
-  const pushRow = () => {
-    pushField();
-    // ignore blank lines
-    if (row.length > 1 || (row[0] ?? '') !== '') rows.push(row);
-    row = [];
-  };
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        field += c;
-      }
-    } else if (c === '"') {
-      inQuotes = true;
-    } else if (c === ',') {
-      pushField();
-    } else if (c === '\n') {
-      pushRow();
-    } else if (c !== '\r') {
-      field += c;
-    }
-  }
-  if (field !== '' || row.length > 0) pushRow();
-  return rows;
+interface VocabularySnapshot {
+  generatedAt: string;
+  listId: number;
+  fields: Record<string, { fieldId: string; valueType: string; options: { id: number; text: string; rank?: number }[] }>;
 }
 
-interface VocabRow {
-  table: string;
-  affinityValue: string;
-  target: string;
-  notes: string;
-}
+const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8')) as VocabularySnapshot;
 
-function readVocabulary(): VocabRow[] {
-  const rows = parseCsv(readFileSync(csvPath, 'utf8'));
-  rows.shift(); // header: Reference Table,Affinity Value,Count,Proposed Target Value,Notes
-  const out: VocabRow[] = [];
-  let currentTable = '';
-  for (const r of rows) {
-    const [table = '', affinityValue = '', , target = '', notes = ''] = r;
-    if (table !== '') currentTable = table;
-    out.push({ table: currentTable, affinityValue, target, notes });
-  }
-  return out;
+interface RosterUser {
+  entra_object_id: string;
+  display_name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
 }
+const roster = (JSON.parse(readFileSync(rosterPath, 'utf8')) as { users: RosterUser[] }).users;
 
-/**
- * Resolves the seedable names for one reference table.
- * - `(as listed)` expands the slash-separated Affinity value into one row each
- *   (Propel / Apex / AVF / ONB / AllNB).
- * - Other parenthesised targets are annotations, not values, and are skipped.
- *   That includes the `Network; Personal Outreach` multi-value row - both
- *   values already exist as their own rows here, but the Affinity SYNC loader
- *   (phase A4) must split Source of Deal on ';' when it encounters such rows.
- */
-function targetsFor(vocab: VocabRow[], table: string): { name: string; notes: string }[] {
-  const out: { name: string; notes: string }[] = [];
-  for (const row of vocab.filter((r) => r.table === table)) {
-    if (row.target === '(as listed)') {
-      for (const name of row.affinityValue.split('/').map((s) => s.trim()).filter(Boolean)) {
-        out.push({ name, notes: row.notes });
-      }
-    } else if (row.target.startsWith('(') || row.target === '') {
-      continue;
-    } else {
-      out.push({ name: row.target, notes: row.notes });
-    }
-  }
-  return out;
+function optionsFor(key: string): { id: number; text: string; rank?: number }[] {
+  const field = snapshot.fields[key];
+  if (!field) throw new Error(`affinity-vocabularies-v2.json has no "${key}" field. Re-run: npm run affinity:vocab`);
+  return field.options;
 }
 
 /**
@@ -148,21 +101,109 @@ const VALUATION_METHODS = [
   'Realized',
 ];
 
-const vocab = readVocabulary();
-const sectors = targetsFor(vocab, 'ref_sector');
-const sourceChannels = targetsFor(vocab, 'ref_source_channel');
+/**
+ * The board's display bins. These are the prototype's columns (ADR-014) plus
+ * Watchlist.
+ *
+ * Watchlist is the one addition and it is not cosmetic: it is the LARGEST
+ * single bucket in Affinity at 114 of 347, and it appears in neither CSV
+ * export, so it was invisible when the prototype was built. Terminal, because
+ * watchlisted companies are parked rather than worked -- folding them into
+ * Sourced would take "Active Deals" from ~84 to ~198.
+ */
+const FUNNEL_GROUPS: { name: string; isTerminal: boolean; showOnBoard: boolean }[] = [
+  { name: 'Sourced', isTerminal: false, showOnBoard: true },
+  { name: 'Screening', isTerminal: false, showOnBoard: true },
+  { name: 'Diligence', isTerminal: false, showOnBoard: true },
+  { name: 'IC Review', isTerminal: false, showOnBoard: true },
+  { name: 'Term Sheet', isTerminal: false, showOnBoard: true },
+  // Terminal but still a column: a closed deal is an outcome worth seeing.
+  { name: 'Closed', isTerminal: true, showOnBoard: true },
+  // Listed beneath the board, so dead and parked deals take no board space.
+  { name: 'Passed', isTerminal: true, showOnBoard: false },
+  { name: 'Watchlist', isTerminal: true, showOnBoard: false },
+];
 
-// TODO(A4 · Affinity sync): ref_funnel_stage must eventually be seeded from
-// Affinity's Status field dropdown-option METADATA, not from this CSV of
-// observed values - ranks 2, 8, 9 and 11 exist in the field configuration but
-// were never observed in the data, so they are missing here (ADR-009;
-// BUILD-LOG 2026-07-29 outstanding item). Sort order below is the CSV row
-// order, which matches the "Sort N" annotations in its Notes column.
-const funnelStages = targetsFor(vocab, 'ref_funnel_stage').map((s, i) => ({
-  ...s,
-  sortOrder: i + 1,
-  isTerminal: /terminal/i.test(s.notes),
-}));
+/**
+ * Affinity's sixteen Status values ARE the funnel. They are the vocabulary the
+ * investment team speaks, so the platform stores a deal's exact position
+ * rather than a bin, and nothing is lost between the two systems (decision,
+ * 12 Aug 2026). `sort_order` is Affinity's own rank, taken from the field
+ * metadata snapshot rather than typed here.
+ *
+ * The grouping below is MONOTONIC in that rank -- a deal moving forward in
+ * Affinity never moves backwards on the board. That is what rules out the
+ * otherwise tempting Team Pitch -> IC Review: Team Pitch is rank 6, before
+ * Diligence at 7, while IC Review sits after Diligence on the board, so a deal
+ * would appear to regress on entering diligence.
+ *
+ * Note there is no Affinity Status of "Closed" in the live data at all -- deals
+ * go Approved straight to Portfolio -- so the board's Closed column is fed by
+ * Portfolio and Exited rather than by a status of the same name.
+ */
+const STATUS_TO_GROUP: Record<string, string> = {
+  'New': 'Sourced',
+  'Intake': 'Sourced',
+  'Reached Out': 'Screening',
+  'First Meeting': 'Screening',
+  'Second Meeting': 'Screening',
+  'Team Pitch': 'Screening',
+  'Diligence': 'Diligence',
+  'Conditional Approval': 'IC Review',
+  'Approved': 'IC Review',
+  'With Legal': 'Term Sheet',
+  'Closed': 'Closed',
+  'Portfolio': 'Closed',
+  'Exited': 'Closed',
+  'Did Not Agree to Terms': 'Passed',
+  'Passed': 'Passed',
+  'Watchlist': 'Watchlist',
+};
+
+/**
+ * Four stage names exist ONLY in docs/reference/demo.json and have no Affinity
+ * equivalent. They are seeded so the reference fixture keeps loading against a
+ * NOT NULL funnel_stage_id while it is still the financial dataset, and they
+ * are DELETED when A6 retires its pipeline section. Marked `prototype-fixture`
+ * so that deletion is a one-line query rather than an archaeology exercise.
+ *
+ * The fixture's other three values -- Diligence, Closed, Passed -- are real
+ * Affinity statuses and need no row of their own.
+ */
+const FIXTURE_ONLY_STAGES: { name: string; group: string }[] = [
+  { name: 'Sourced', group: 'Sourced' },
+  { name: 'Screening', group: 'Screening' },
+  { name: 'IC Review', group: 'IC Review' },
+  { name: 'Term Sheet', group: 'Term Sheet' },
+];
+
+/**
+ * The fund row.
+ *
+ * `fund` is CONFIGURATION, not financial history: the vehicle's name, style,
+ * inception year and fiscal calendar are facts about NBIF that no amount of
+ * Finance data will supply. Seeding it is what lets the platform run on a real
+ * Affinity roster before A6's financial spine exists -- without a fund row the
+ * export contract has no valid document and every page throws.
+ *
+ * Two values are CONFIRMED and hardcoded: the vehicle is evergreen
+ * (`docs/field-inventory.csv`) and the fiscal year starts in April (ADR-006).
+ * Name and inception year are marked "Platform (user entry)" in that same
+ * inventory, so they come from the environment and are NOT invented here. The
+ * defaults are deliberately conspicuous -- a provisional fund name renders on
+ * screen, which is the point.
+ *
+ * Financial fields stay NULL. A capital base nobody supplied would be a
+ * fabricated board number, which is exactly what ADR-020 exists to prevent.
+ */
+const FUND = {
+  name: process.env.FUND_NAME ?? 'NBIF — fund name not yet configured',
+  style: 'evergreen',
+  currency: 'CAD',
+  inceptionYear: Number(process.env.FUND_INCEPTION_YEAR) || null,
+  fiscalYearStartMonth: 4,
+  annualPlatformTarget: Number(process.env.FUND_ANNUAL_PLATFORM_TARGET) || null,
+} as const;
 
 const client = new pg.Client({ connectionString: requireDatabaseUrl() });
 await client.connect();
@@ -188,44 +229,155 @@ try {
     ],
   );
 
+  /**
+   * NBIF staff (packages/db/data/app_user.json).
+   *
+   * IDENTITY is re-asserted every seed -- a corrected spelling or a changed
+   * address propagates. AUTHORISATION is not: `role` and `is_active` apply when
+   * the row is CREATED and are never overwritten. That is ADR-005's position,
+   * and the A3 decision that "changing someone's role is a database update
+   * rather than a tenant change"; a seed that re-asserted role would silently
+   * revert an operator's change on the next run.
+   *
+   * display_name is load-bearing beyond display: the A4 Affinity sync resolves
+   * deal leads and owners on it (Affinity merges Person entities, so their
+   * email addresses are not reliably the @nbif.ca ones).
+   */
+  for (const u of roster) {
+    await client.query(
+      `insert into app_user (entra_object_id, display_name, email, role, is_active)
+       values ($1,$2,$3,$4,$5)
+       on conflict (email) do update set
+         entra_object_id = excluded.entra_object_id,
+         display_name    = excluded.display_name`,
+      [u.entra_object_id, u.display_name, u.email, u.role, u.is_active],
+    );
+  }
+
   // Optional local development principal. AUTH_MODE=dev resolves
   // DEV_PRINCIPAL_EMAIL against app_user, and a developer needs a row that is
   // NOT the system principal -- an automated writer and a person must stay
-  // distinguishable in audit_log. Set DEV_ADMIN_EMAIL in .env to create one.
-  // Nobody's address is committed here, and unset means no row.
+  // distinguishable in audit_log.
+  //
+  // Only creates a row when the address is NOT already in the roster. It used
+  // to force role='admin' on conflict, which would have quietly promoted a
+  // roster member to admin just because a developer had set DEV_ADMIN_EMAIL to
+  // their own address -- and it wrote display_name = the email, which would
+  // have broken the sync's name resolution for that person.
   const devAdminEmail = process.env.DEV_ADMIN_EMAIL;
-  if (devAdminEmail) {
+  if (devAdminEmail && !roster.some((u) => u.email.toLowerCase() === devAdminEmail.toLowerCase())) {
     await client.query(
       `insert into app_user (entra_object_id, display_name, email, role)
        values ($1, $2, $3, 'admin')
-       on conflict (email) do update set is_active = true, role = 'admin'`,
+       on conflict (email) do update set is_active = true`,
       [`dev:${devAdminEmail}`, devAdminEmail, devAdminEmail],
     );
   }
 
-  for (const [i, s] of sectors.entries()) {
+  // Affinity's Priority Sector, verbatim. THE taxonomy the mandate is framed
+  // in; no sectors are invented to absorb the Other population (ADR-009).
+  for (const [i, o] of optionsFor('prioritySector').entries()) {
     await client.query(
       `insert into ref_sector (name, sort_order) values ($1, $2)
        on conflict (name) do update set sort_order = excluded.sort_order, is_active = true`,
-      [s.name, i + 1],
+      [o.text, i + 1],
     );
   }
 
-  for (const f of funnelStages) {
+  for (const [i, g] of FUNNEL_GROUPS.entries()) {
     await client.query(
-      `insert into ref_funnel_stage (name, sort_order, is_terminal) values ($1, $2, $3)
-       on conflict (name) do update set sort_order = excluded.sort_order, is_terminal = excluded.is_terminal`,
-      [f.name, f.sortOrder, f.isTerminal],
+      `insert into ref_funnel_group (name, sort_order, is_terminal, show_on_board) values ($1, $2, $3, $4)
+       on conflict (name) do update
+         set sort_order    = excluded.sort_order,
+             is_terminal   = excluded.is_terminal,
+             show_on_board = excluded.show_on_board`,
+      [g.name, i + 1, g.isTerminal, g.showOnBoard],
     );
   }
 
-  for (const c of sourceChannels) {
+  // Every Affinity Status option must have a group, or the sync silently drops
+  // deals. Checked BEFORE writing anything, so a new Affinity status fails the
+  // seed loudly rather than being discovered at 2am by the nightly run.
+  const ungrouped = optionsFor('status')
+    .map((o) => o.text)
+    .filter((t) => !(t in STATUS_TO_GROUP));
+  if (ungrouped.length) {
+    throw new Error(
+      `Affinity Status options with no display group: ${ungrouped.join(', ')}.\n` +
+        'Add them to STATUS_TO_GROUP in this file, or re-bin them in ref_funnel_stage after seeding.',
+    );
+  }
+
+  // sort_order is Affinity's own rank, from the metadata snapshot.
+  for (const o of optionsFor('status')) {
+    await client.query(
+      `insert into ref_funnel_stage (name, funnel_group_id, sort_order, source)
+       select $1, funnel_group_id, $3, 'affinity' from ref_funnel_group where name = $2
+       on conflict (name) do update
+         set funnel_group_id = excluded.funnel_group_id,
+             sort_order      = excluded.sort_order,
+             source          = excluded.source`,
+      [o.text, STATUS_TO_GROUP[o.text], o.rank ?? 0],
+    );
+  }
+
+  for (const s of FIXTURE_ONLY_STAGES) {
+    await client.query(
+      `insert into ref_funnel_stage (name, funnel_group_id, sort_order, source)
+       select $1, funnel_group_id, 0, 'prototype-fixture' from ref_funnel_group where name = $2
+       on conflict (name) do nothing`,
+      [s.name, s.group],
+    );
+  }
+
+  // Affinity's Source of Deal, verbatim. It currently carries five options for
+  // one channel (Porfolio Intro / Portfolio company / Portfolio Company /
+  // Portfolio Company Introduction / Portfolio Introduction); those are being
+  // merged in Affinity, which is system of record, rather than mapped around
+  // here (decision, 12 Aug 2026). Re-run `npm run affinity:vocab` and re-seed
+  // once that lands.
+  for (const o of optionsFor('sourceOfDeal')) {
     await client.query(
       `insert into ref_source_channel (name) values ($1)
        on conflict (name) do update set is_active = true`,
-      [c.name],
+      [o.text],
     );
   }
+
+  // affinity_status_map is now an identity mapping, and still earns its place.
+  // ADR-009 requires the Affinity-status-to-stage resolution to be a table
+  // rather than code so that a change is a row edit; what that buys once the
+  // vocabularies agree is a place to route a RENAMED or newly-added status
+  // onto an existing stage without a deploy. The sync resolves through here,
+  // never by matching text against ref_funnel_stage directly.
+  for (const o of optionsFor('status')) {
+    await client.query(
+      `insert into affinity_status_map (affinity_status, funnel_stage_id)
+       select $1, funnel_stage_id from ref_funnel_stage where name = $1
+       on conflict (affinity_status) do update
+         set funnel_stage_id = excluded.funnel_stage_id, updated_at = now()`,
+      [o.text],
+    );
+  }
+
+  // Created once and then left alone: an operator editing the fund's identity
+  // in the application must not have it reverted by the next seed. Only the
+  // fiscal calendar and style are re-asserted, because both are architectural
+  // (ADR-006, and "confirmed evergreen" in docs/field-inventory.csv).
+  await client.query(
+    `insert into fund (name, style, reporting_currency, inception_year,
+                       fiscal_year_start_month, annual_platform_target)
+     select $1, $2, $3, coalesce($4::int, extract(year from current_date)::int), $5, $6
+      where not exists (select 1 from fund)`,
+    [
+      FUND.name,
+      FUND.style,
+      FUND.currency,
+      FUND.inceptionYear,
+      FUND.fiscalYearStartMonth,
+      FUND.annualPlatformTarget,
+    ],
+  );
 
   for (const [i, name] of STAGES.entries()) {
     await client.query(
@@ -252,12 +404,30 @@ try {
   const counts = await client.query(`
     select 'app_user' as t, count(*) from pc.app_user
     union all select 'ref_sector', count(*) from pc.ref_sector
+    union all select 'ref_funnel_group', count(*) from pc.ref_funnel_group
     union all select 'ref_funnel_stage', count(*) from pc.ref_funnel_stage
+    union all select 'affinity_status_map', count(*) from pc.affinity_status_map
     union all select 'ref_source_channel', count(*) from pc.ref_source_channel
     union all select 'ref_stage', count(*) from pc.ref_stage
     union all select 'ref_instrument', count(*) from pc.ref_instrument
     union all select 'ref_valuation_method', count(*) from pc.ref_valuation_method`);
   for (const r of counts.rows) console.log(`${String(r.t).padEnd(22)} ${r.count} rows`);
+  console.log(`\nvocabulary snapshot taken ${snapshot.generatedAt}`);
+
+  const { rows: fundRows } = await client.query<{ name: string; inception_year: number }>(
+    'select name, inception_year from pc.fund order by fund_id limit 1',
+  );
+  const fund = fundRows[0];
+  const provisional: string[] = [];
+  if (!process.env.FUND_NAME) provisional.push('FUND_NAME');
+  if (!process.env.FUND_INCEPTION_YEAR) provisional.push('FUND_INCEPTION_YEAR');
+  if (fund && provisional.length) {
+    console.log(
+      `\n  !! FUND IDENTITY IS PROVISIONAL: "${fund.name}", inception ${fund.inception_year}.\n` +
+        `     Set ${provisional.join(' and ')} in .env and update the row. These render on\n` +
+        '     board-facing screens; the seed will not overwrite an existing fund row.',
+    );
+  }
 } catch (err) {
   await client.query('rollback').catch(() => undefined);
   throw err;

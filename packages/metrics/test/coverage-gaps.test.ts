@@ -148,11 +148,22 @@ describe('NB co-investment (gap 4 -- the clamp never binds in demo.json)', () =>
 /* ------------------------- gap 2: diversity ------------------------ */
 
 describe('diversity nulls (gap 2 -- no nulls in demo.json)', () => {
+  /**
+   * A KPI row is what marks a company as HAVING REPORTED. The diversity
+   * scalars are serialised from the latest one (ADR-010), and where no row
+   * exists the API emits 0 rather than null -- the reference fixture carries a
+   * literal 0 on its six KPI-less companies and the ADR-001 round trip has to
+   * reproduce it. So the scalar alone cannot distinguish "reported none" from
+   * "never asked"; the presence of history can.
+   */
+  const reported = (over: Partial<Company>) =>
+    company({ kpis: [{ period: '2026-Q1', revenue: 1, burn: 1, cash: 10, runwayMo: 10 }], ...over });
+
   const roster = [
-    company({ id: 'A', womenCSuite: 2, cSuiteSize: 5 }),
-    company({ id: 'B', womenCSuite: 0, cSuiteSize: 4 }),
-    company({ id: 'C', womenCSuite: null, cSuiteSize: null }),
-    company({ id: 'D', womenCSuite: null, cSuiteSize: null }),
+    reported({ id: 'A', womenCSuite: 2, cSuiteSize: 5 }),
+    reported({ id: 'B', womenCSuite: 0, cSuiteSize: 4 }),
+    reported({ id: 'C', womenCSuite: null, cSuiteSize: null }),
+    reported({ id: 'D', womenCSuite: null, cSuiteSize: null }),
   ];
 
   it('fundMetrics counts a non-reporter as a company with no women (frozen behaviour)', () => {
@@ -176,19 +187,35 @@ describe('diversity nulls (gap 2 -- no nulls in demo.json)', () => {
   it('reports null, never 0%, when nobody has reported at all', () => {
     // The live case today: the fields are not yet collected (ADR-010, O-4).
     // "0% of companies have women in the C-suite" would be a false statement.
-    const d = diversityWithCoverage(db([company({ womenCSuite: null, cSuiteSize: null })]), {});
+    const d = diversityWithCoverage(db([reported({ womenCSuite: null, cSuiteSize: null })]), {});
     expect(d.womenCosPct).toBeNull();
     expect(d.reported).toBe(0);
     expect(fmt.pct0(d.womenCosPct)).toBe('-');
   });
 
   it('distinguishes a reported zero from an unreported one', () => {
-    const reportedZero = diversityWithCoverage(db([company({ womenCSuite: 0, cSuiteSize: 3 })]), {});
-    const notReported = diversityWithCoverage(db([company({ womenCSuite: null, cSuiteSize: null })]), {});
+    const reportedZero = diversityWithCoverage(db([reported({ womenCSuite: 0, cSuiteSize: 3 })]), {});
+    const notReported = diversityWithCoverage(db([reported({ womenCSuite: null, cSuiteSize: null })]), {});
     expect(reportedZero.womenCosPct).toBe(0);
     expect(reportedZero.reported).toBe(1);
     expect(notReported.womenCosPct).toBeNull();
     expect(notReported.reported).toBe(0);
+  });
+
+  /**
+   * The A4 case, and the reason the KPI test exists at all. Every company on
+   * the real Affinity roster is KPI-less until A5 brings Visible in, and the
+   * API emits 0 for their diversity scalars. Without the history check the
+   * tile read "0% of companies have women in the C-suite, reported by 82 of
+   * 82" -- the exact false statement D-5 exists to prevent, board-facing.
+   */
+  it('treats a company with NO KPI history as a non-reporter, whatever its scalar says', () => {
+    const d = diversityWithCoverage(db([company({ kpis: [], womenCSuite: 0, cSuiteSize: 0 })]), {});
+    expect(d.reported).toBe(0);
+    expect(d.total).toBe(1);
+    expect(d.coveragePct).toBe(0);
+    expect(d.womenCosPct).toBeNull();
+    expect(fmt.pct0(d.womenCosPct)).toBe('-');
   });
 });
 

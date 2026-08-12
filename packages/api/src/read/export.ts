@@ -88,16 +88,40 @@ const asDate = (d: Date | string | null): string | null =>
  * fact rather than two that can silently disagree.
  */
 export async function resolveAsOf(db: Kysely<DB>): Promise<string> {
-  const rows = await sql<{ as_of: Date | string | null }>`
-    select max(effective_date) as as_of from valuation_mark where status = 'final'
+  const rows = await sql<{ as_of: Date | string | null; any_marks: boolean }>`
+    select max(effective_date) filter (where status = 'final') as as_of,
+           count(*) > 0                                        as any_marks
+      from valuation_mark
   `.execute(db);
-  const value = rows.rows[0]?.as_of ?? null;
-  if (value === null) {
-    throw new Error(
-      'No final valuation marks, so there is no as-at date to report on. Import a contract document first.',
-    );
+  const row = rows.rows[0];
+  const value = row?.as_of ?? null;
+  if (value !== null) return asDate(value)!;
+
+  /**
+   * No marks AT ALL: the financial spine does not exist yet.
+   *
+   * This is the state between A4 and A6 -- a real Affinity roster with no
+   * transactions, rounds or marks attached. The clock is used, and that is
+   * safe here for the precise reason it is unsafe elsewhere: the objection in
+   * ADR-021 is that "today" makes a number DRIFT between two runs on identical
+   * data. With no marks there are no cashflows and no NAV, so every metric is
+   * zero or null whatever date is chosen. Nothing can drift.
+   *
+   * The moment a single mark exists the date comes from the data again.
+   */
+  if (row && !row.any_marks) {
+    return new Date().toISOString().slice(0, 10);
   }
-  return asDate(value)!;
+
+  /**
+   * Marks exist but none is final. NOT the empty-portfolio case -- this is a
+   * real data problem (an import that loaded only drafts) and falling back to
+   * the clock would hide it behind a plausible-looking report.
+   */
+  throw new Error(
+    'Valuation marks exist but none is final, so there is no as-at date to report on. ' +
+      'Finalise a mark, or check what the last import loaded.',
+  );
 }
 
 export interface ExportOptions {
@@ -137,6 +161,7 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     gateRows,
     termRows,
     memoRows,
+    funnelGroupRows,
     syntheticRows,
   ] = await Promise.all([
     q<{
@@ -292,6 +317,28 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
             from memo m join memo_section s on s.memo_id = m.memo_id
            order by m.subject_id, s.sort_order`,
     ),
+
+    // The board's columns, and which funnel stages render in each. Reference
+    // data, emitted once at the document root rather than repeated on every
+    // deal -- and emitted at all so the frontend stops hardcoding a column list
+    // that an admin can change with a row edit (ADR-009, ADR-014).
+    //
+    // Stage membership deliberately includes the `prototype-fixture` rows, so a
+    // reference-fixture deal at "Sourced" groups alongside a real one at "New"
+    // for as long as both datasets coexist. Those rows disappear at A6.
+    q<{ name: string; is_terminal: boolean; show_on_board: boolean; stages: string[] }>(sql`
+      select g.name,
+             g.is_terminal,
+             g.show_on_board,
+             coalesce(
+               array_agg(s.name order by s.sort_order, s.name)
+                 filter (where s.name is not null),
+               '{}'
+             ) as stages
+        from ref_funnel_group g
+        left join ref_funnel_stage s on s.funnel_group_id = g.funnel_group_id
+       group by g.funnel_group_id, g.name, g.is_terminal, g.show_on_board, g.sort_order
+       order by g.sort_order`),
 
     q<{ contains_synthetic: boolean }>(sql`select contains_synthetic from v_synthetic_data_status`),
   ]);
@@ -545,8 +592,17 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     pipeline,
     fundInvestments,
     memos,
+    funnelGroups: funnelGroupRows.map((g) => ({
+      name: g.name,
+      isTerminal: g.is_terminal,
+      showOnBoard: g.show_on_board,
+      stages: g.stages,
+    })),
     meta: {
-      schemaVersion: 1,
+      // 2, not 1: funnelGroups is new. The reference fixture stays at 1 -- it
+      // is the prototype's own boot state and re-exporting it would invalidate
+      // every golden-master fixture (ADR-022) -- so the two legitimately differ.
+      schemaVersion: 2,
       // The prototype's localStorage save stamp. The platform generates an
       // export on demand and has nothing to report here; A11's board PDF
       // carries its own as-at date, which is the stamp that matters (ADR-007).

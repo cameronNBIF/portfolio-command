@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react';
 import type { Company, PortfolioExport } from '@portfolio-command/contract';
 import { fmt, moic, totalGainLoss } from '@portfolio-command/metrics';
 
-import { INSTRUMENTS, SECTORS, STAGES } from '../../lib/constants';
+import { INSTRUMENTS, optionsFrom, SECTORS, STAGES } from '../../lib/constants';
 import { useApp } from '../AppShell';
 import { Card, Dot, Pill, ViewHeader, moicClass } from '../ui';
 
@@ -100,6 +100,8 @@ export function PortfolioTab({ db }: { db: PortfolioExport }) {
         sub="Click any company for full detail: rounds, cap-table position, reserves, covenants, marks."
       />
 
+      {/* Filter options are derived from the roster, so a real Affinity
+          portfolio is not offered the prototype's sector list. See optionsFrom. */}
       <div className="fbar">
         <input type="text" placeholder="Search name / CEO / HQ..." value={q} onChange={(e) => setQ(e.target.value)} />
         <select value={show} onChange={(e) => setShow(e.target.value as ShowFilter)}>
@@ -109,13 +111,13 @@ export function PortfolioTab({ db }: { db: PortfolioExport }) {
         </select>
         <select value={sector} onChange={(e) => setSector(e.target.value)}>
           <option value="">All sectors</option>
-          {SECTORS.map((s) => (
+          {optionsFrom(db.companies.map((c) => c.sector), SECTORS).map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
         <select value={stage} onChange={(e) => setStage(e.target.value)}>
           <option value="">All stages</option>
-          {STAGES.map((s) => (
+          {optionsFrom(db.companies.map((c) => c.stage), STAGES).map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
@@ -127,7 +129,7 @@ export function PortfolioTab({ db }: { db: PortfolioExport }) {
         </select>
         <select value={instrument} onChange={(e) => setInstrument(e.target.value)}>
           <option value="">All instruments</option>
-          {INSTRUMENTS.map((s) => (
+          {optionsFrom(db.companies.map((c) => c.instrument), INSTRUMENTS).map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>

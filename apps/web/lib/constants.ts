@@ -51,3 +51,34 @@ export const FUNNEL_WEIGHTS: Record<string, number> = {
   'IC Review': 0.6,
   'Term Sheet': 0.85,
 };
+
+/**
+ * Filter options, taken from the DATA rather than from the constants above.
+ *
+ * Those constants are the prototype's vocabularies, and against a real Affinity
+ * roster they match nothing: the sector dropdown would offer "Enterprise SaaS"
+ * and "Fintech" to a portfolio filed under ICT, Agritech and Oceans. This
+ * file's own header always said they "move behind the API at A4" -- for the
+ * funnel that happened via `PortfolioExport.funnelGroups`; sector, stage and
+ * instrument need no contract change, because every value in use is already
+ * present on the companies themselves.
+ *
+ * Ordering keeps ADR-014: values known to the prototype keep the prototype's
+ * order, and anything new is appended alphabetically. On the reference fixture
+ * every value is a known one, so the dropdowns render exactly as before.
+ *
+ * Falls back to the full constant when NO company carries a value -- true of
+ * stage and instrument until A6 attaches the financial spine, and an empty
+ * dropdown looks broken where a stale one merely looks unused.
+ */
+export function optionsFrom<T extends string>(
+  values: readonly (string | null | undefined)[],
+  fallback: readonly T[],
+): string[] {
+  const present = new Set(values.filter((v): v is string => typeof v === 'string' && v.trim() !== ''));
+  if (present.size === 0) return [...fallback];
+
+  const known = fallback.filter((v) => present.has(v));
+  const extra = [...present].filter((v) => !(fallback as readonly string[]).includes(v)).sort();
+  return [...known, ...extra];
+}
