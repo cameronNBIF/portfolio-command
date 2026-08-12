@@ -1,6 +1,14 @@
 /**
- * Azure Functions for the Affinity (A4) and Visible.vc (A5) one-way inbound
- * syncs. The Functions runtime scaffold (host.json, @azure/functions) arrives
- * with A4, alongside the Azure resources - nothing to run yet.
+ * Azure Functions entry point.
+ *
+ * The v4 programming model registers functions as a side effect of importing
+ * the module that calls `app.timer(...)`, so this file's job is to import them.
+ * The Affinity client is re-exported because the CLI tools and tests consume it
+ * directly, without any Functions runtime involved.
  */
-export {};
+import './functions/affinity-sync.js';
+
+export * from './affinity/client.js';
+export * from './affinity/map.js';
+export * from './affinity/sync.js';
+export * from './affinity/history.js';
