@@ -121,6 +121,8 @@ This works because ADR-001 makes the export contract and the API response the sa
 
 **Exit:** real quarterly KPI history flowing, with per-field coverage visible.
 
+**Met, 13 August 2026.** 999 rows across 81 of 82 companies, 2021 Q2 to 2026 Q2, converging on re-run. Two findings changed the design and are recorded in ADR-029: the burn question was renamed mid-series and needed splicing under `request_version`, and `fte` became `numeric` because a full-time equivalent is fractional. `net_revenue_retention` and `gross_margins` were added as columns. Diversity remains NULL — nothing to sync until action A-1 lands, and `v_kpi_coverage` now reports that as a running cost.
+
 #### A6 · Synthetic financial dataset
 Generated transactions, rounds, marks, ownership and LP activity, attached to the **real** company ids from A4.
 
