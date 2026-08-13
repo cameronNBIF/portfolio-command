@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "affinity:probe": "tsx src/affinity/probe.ts",
+    "visible:probe": "tsx src/visible/probe.ts",
+    "visible:sync": "tsx src/visible/sync-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "affinity:sync": "tsx src/affinity/sync-cli.ts",
