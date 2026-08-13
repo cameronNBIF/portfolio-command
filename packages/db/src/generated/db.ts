@@ -677,6 +677,24 @@ export interface VDealStageHistory {
   stage_rank: number | null;
 }
 
+export interface VKpiCoverage {
+  cash_balance: Int8 | null;
+  companies_reporting: Int8 | null;
+  companies_total: Int8 | null;
+  csuite_size: Int8 | null;
+  fte: Int8 | null;
+  fte_nb: Int8 | null;
+  gross_margins: Int8 | null;
+  manual_rows: Int8 | null;
+  monthly_burn: Int8 | null;
+  net_revenue_retention: Int8 | null;
+  period_end: Timestamp | null;
+  period_start: Timestamp | null;
+  revenue: Int8 | null;
+  runway_months: Int8 | null;
+  women_csuite: Int8 | null;
+}
+
 export interface VLpCapitalToDirect {
   capital_to_direct: Numeric | null;
   companies_touched: Int8 | null;
@@ -796,6 +814,7 @@ export interface DB {
   v_company_invested: VCompanyInvested;
   v_company_realized: VCompanyRealized;
   v_deal_stage_history: VDealStageHistory;
+  v_kpi_coverage: VKpiCoverage;
   v_lp_capital_to_direct: VLpCapitalToDirect;
   v_lp_position_current: VLpPositionCurrent;
   v_mandate_completeness: VMandateCompleteness;
