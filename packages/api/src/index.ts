@@ -11,6 +11,7 @@ export { toDollars, toMillions, toNumber, toNumeric } from './units.js';
 export { periodOf, toCalendarLabel, type QuarterPeriod } from './periods.js';
 
 export { buildExport, resolveAsOf, type ExportOptions } from './read/export.js';
+export { readKpiCoverage, type KpiCoverageRow } from './read/kpi-coverage.js';
 export { importContract, asOfDate, type ImportResult, type ImportWarning } from './import/import-contract.js';
 
 export {

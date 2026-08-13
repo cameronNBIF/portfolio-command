@@ -13,6 +13,7 @@
  * `db` and `asOf` now arrive as props from the server component in `page.tsx`,
  * which reads them through `packages/api`.
  */
+import type { KpiCoverageRow } from '@portfolio-command/api';
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { fmt, fundMetrics, isEvergreen } from '@portfolio-command/metrics';
 
@@ -73,7 +74,7 @@ function FundTag({ db, asOf }: PortfolioProps) {
   );
 }
 
-function Tab({ tab, db, asOf }: PortfolioProps & { tab: TabId }) {
+function Tab({ tab, db, asOf, kpiCoverage }: PortfolioProps & { tab: TabId; kpiCoverage: KpiCoverageRow[] }) {
   switch (tab) {
     case 'dashboard':
       return <DashboardTab db={db} asOf={asOf} />;
@@ -90,13 +91,17 @@ function Tab({ tab, db, asOf }: PortfolioProps & { tab: TabId }) {
     case 'reports':
       return <ReportsTab db={db} asOf={asOf} />;
     case 'data':
-      return <DataTab db={db} asOf={asOf} />;
+      return <DataTab db={db} asOf={asOf} kpiCoverage={kpiCoverage} />;
     default:
       return <NotYetPorted tab={TABS.find((t) => t.id === tab)?.label ?? tab} />;
   }
 }
 
-export function PortfolioApp({ db, asOf }: PortfolioProps) {
+export function PortfolioApp({
+  db,
+  asOf,
+  kpiCoverage,
+}: PortfolioProps & { kpiCoverage: KpiCoverageRow[] }) {
   return (
     <EditableProvider db={db}>
       <AppShell
@@ -107,7 +112,7 @@ export function PortfolioApp({ db, asOf }: PortfolioProps) {
         // rather than a build-time flag someone can forget to flip.
         containsSynthetic={db.meta.demo}
       >
-        {(tab: TabId) => <Tab tab={tab} db={db} asOf={asOf} />}
+        {(tab: TabId) => <Tab tab={tab} db={db} asOf={asOf} kpiCoverage={kpiCoverage} />}
       </AppShell>
     </EditableProvider>
   );

@@ -36,6 +36,7 @@ import { fiDpi, fiIrr, fiTvpi, fundMetrics, lpMetrics, moic, xirr } from '@portf
 import { closeDb, db } from '../src/db.js';
 import { importContract } from '../src/import/import-contract.js';
 import { buildExport } from '../src/read/export.js';
+import { readKpiCoverage } from '../src/read/kpi-coverage.js';
 import { periodOf, toCalendarLabel } from '../src/periods.js';
 import { toDollars, toMillions } from '../src/units.js';
 
@@ -139,6 +140,46 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
     expect([...placements.values()].every((n) => n === 1)).toBe(true);
     expect(placements.size).toBe(20);
     for (const deal of fixture.pipeline) expect(placements.has(deal.funnel)).toBe(true);
+  });
+
+  /**
+   * A5's exit criterion. Coverage is deliberately NOT in the contract, and this
+   * asserts the reason: the adapter coerces a null KPI to 0, so the document
+   * cannot distinguish "reported nothing" from "reported zero" and the view can.
+   */
+  test('KPI coverage counts nulls the exported document cannot see', async () => {
+    const coverage = await readKpiCoverage(db());
+    expect(coverage.length).toBeGreaterThan(0);
+
+    // Newest first, matching kpis[] in the contract.
+    const ends = coverage.map((c) => c.periodEnd);
+    expect([...ends].sort().reverse()).toEqual(ends);
+    expect(coverage[0]!.period).toMatch(/^\d{4}-Q[1-4]$/);
+
+    // The fixture has six companies with no KPI history at all, so reporting
+    // must be short of the roster -- if these were equal the view would be
+    // counting rows rather than answers.
+    const latest = coverage[0]!;
+    expect(latest.companiesReporting).toBeLessThan(latest.companiesTotal);
+    expect(latest.fields.map((f) => f.label)).toContain('Women C-suite');
+
+    // No field can report more often than companies filed, in any quarter.
+    for (const row of coverage) {
+      for (const field of row.fields) {
+        expect(field.reported).toBeLessThanOrEqual(row.companiesReporting);
+      }
+    }
+
+    // The fixture DOES carry womenCSuite -- the prototype holds it as a company
+    // scalar and the importer lands it on the KPI row -- so coverage here is
+    // non-zero while the same column reads zero on live Visible data, where the
+    // question has never been asked. That contrast is the whole point: the view
+    // reports what is actually present rather than what the schema allows.
+    expect(latest.fields.find((f) => f.label === 'Women C-suite')!.reported).toBeGreaterThan(0);
+
+    // Net revenue retention and gross margins are A5 additions with no
+    // prototype ancestor, so the fixture cannot supply them.
+    expect(latest.fields.find((f) => f.label === 'NRR')!.reported).toBe(0);
   });
 
   test('the whole document reproduces, savedAt and the v2 addition aside', () => {
