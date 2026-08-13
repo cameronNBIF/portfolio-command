@@ -227,7 +227,10 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     q<{
       company_id: string; period_end: Date | string; revenue: string | null;
       monthly_burn: string | null; cash_balance: string | null; runway_months: string | null;
-      fte: number | null; fte_nb: number | null; women_csuite: number | null;
+      // fte and fte_nb are `numeric` since A5 -- a full-time EQUIVALENT is
+      // fractional by definition -- so pg hands them back as strings like every
+      // other numeric (ADR-008) and they need toNumber, not a bare `?? 0`.
+      fte: string | null; fte_nb: string | null; women_csuite: number | null;
       csuite_size: number | null;
     }>(sql`select company_id, period_end, revenue, monthly_burn, cash_balance, runway_months,
                   fte, fte_nb, women_csuite, csuite_size
@@ -469,8 +472,8 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
       // and that must stay null: rendering it as zero is precisely the error
       // D-5 exists to prevent ("0% of companies have women in the C-suite"
       // when the truth is "not asked").
-      fte: latestKpi?.fte ?? 0,
-      fteNB: latestKpi?.fte_nb ?? 0,
+      fte: toNumber(latestKpi?.fte ?? null) ?? 0,
+      fteNB: toNumber(latestKpi?.fte_nb ?? null) ?? 0,
       womenCSuite: latestKpi === undefined ? 0 : latestKpi.women_csuite,
       cSuiteSize: latestKpi === undefined ? 0 : latestKpi.csuite_size,
       source: c.source_label ?? '',
