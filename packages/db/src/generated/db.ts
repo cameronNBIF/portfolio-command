@@ -180,14 +180,28 @@ export interface CompanyKpi {
   company_id: string;
   company_kpi_id: Generated<Int8>;
   csuite_size: number | null;
-  fte: number | null;
-  fte_nb: number | null;
+  /**
+   * ADR-010. FRACTIONAL BY DESIGN, and numeric rather than int since A5. FTE means full-time EQUIVALENT, so 3.5 is the correct way to report three full-timers and one half-timer - it is a measure, not a headcount. Five companies report fractional figures every quarter; as an int column those readings were refused and the platform showed Soricimed as having 0 employees when it reports 3.5, which is the same class of error as rendering an unreported diversity figure as zero (D-5). Stored exactly as reported, never rounded: the platform is not the system of submission (ADR-017) and rounding would silently move a mandate number in one direction or the other.
+   */
+  fte: Numeric | null;
+  /**
+   * ADR-010. Fractional for the same reason as fte, and constrained fte_nb <= fte.
+   */
+  fte_nb: Numeric | null;
+  /**
+   * ADR-010. Company-reported, collected quarterly by Visible since 2025 Q1 and answered by 65 of 82 companies. PERCENT AS A WHOLE NUMBER: 65.0 means 65%. Added at A5 on the same reasoning as net_revenue_retention - the data is being collected now and a quarter not captured is permanent. Stored, not part of the frozen ADR-001 export contract, not yet displayed.
+   */
+  gross_margins: Numeric | null;
   monthly_burn: Numeric | null;
+  /**
+   * ADR-010. Company-reported, collected quarterly by Visible since 2021 Q4 and answered by 75 of 82 companies. PERCENT AS A WHOLE NUMBER: 107.0 means 107%, matching the contract convention that percentages are plain numbers, not fractions. Added at A5 - the field was an oversight in the prototype, not a decision against it. NOT part of the frozen ADR-001 export contract, so it is stored and not yet displayed; surfacing it is a contract change and a separate conversation.
+   */
+  net_revenue_retention: Numeric | null;
   period_end: Timestamp;
   period_start: Timestamp;
   reported_at: Generated<Timestamp>;
   /**
-   * Definitions for FTE / NB FTE / C-suite live in the Visible request text. Stamping the version makes a definition change visible as a break in the series rather than a silent shift (Q6).
+   * Definitions for FTE / NB FTE / C-suite live in the Visible request text. Stamping the version makes a definition change visible as a break in the series rather than a silent shift (Q6). A5 proved the mechanism necessary rather than theoretical: the burn question was renamed from "Monthly Burn Rate" to "Monthly Net Burn Rate" at 2025 Q3, so monthly_burn is one column fed by two request wordings and this is the only record of where the seam falls.
    */
   request_version: string | null;
   revenue: Numeric | null;
@@ -663,6 +677,24 @@ export interface VDealStageHistory {
   stage_rank: number | null;
 }
 
+export interface VKpiCoverage {
+  cash_balance: Int8 | null;
+  companies_reporting: Int8 | null;
+  companies_total: Int8 | null;
+  csuite_size: Int8 | null;
+  fte: Int8 | null;
+  fte_nb: Int8 | null;
+  gross_margins: Int8 | null;
+  manual_rows: Int8 | null;
+  monthly_burn: Int8 | null;
+  net_revenue_retention: Int8 | null;
+  period_end: Timestamp | null;
+  period_start: Timestamp | null;
+  revenue: Int8 | null;
+  runway_months: Int8 | null;
+  women_csuite: Int8 | null;
+}
+
 export interface VLpCapitalToDirect {
   capital_to_direct: Numeric | null;
   companies_touched: Int8 | null;
@@ -782,6 +814,7 @@ export interface DB {
   v_company_invested: VCompanyInvested;
   v_company_realized: VCompanyRealized;
   v_deal_stage_history: VDealStageHistory;
+  v_kpi_coverage: VKpiCoverage;
   v_lp_capital_to_direct: VLpCapitalToDirect;
   v_lp_position_current: VLpPositionCurrent;
   v_mandate_completeness: VMandateCompleteness;

@@ -18,6 +18,8 @@
     "import:fixture": "npm run import:contract -w @portfolio-command/api",
     "affinity:probe": "tsx functions/src/affinity/probe.ts",
     "affinity:vocab": "tsx functions/src/affinity/vocabularies.ts",
+    "visible:probe": "tsx functions/src/visible/probe.ts",
+    "visible:sync": "tsx functions/src/visible/sync-cli.ts",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",

@@ -451,14 +451,16 @@ create table company_kpi (
   company_id      text not null references company on delete cascade,
   period_start    date not null,
   period_end      date not null,
-  revenue         numeric(18,2),                 -- run-rate
+  revenue         numeric(18,2),                 -- period actual, NOT run-rate (D-2)
   monthly_burn    numeric(18,2),                 -- negative = cash-flow positive
   cash_balance    numeric(18,2),
   runway_months   numeric(8,2),                  -- as reported, NOT cash/burn (ADR-027)
-  fte             int,                           -- MANDATE: jobs
-  fte_nb          int,                           -- MANDATE: NB jobs
-  women_csuite    int,                           -- MANDATE: diversity
+  fte             numeric(10,2),                 -- MANDATE: jobs. Fractional: see comment.
+  fte_nb          numeric(10,2),                 -- MANDATE: NB jobs
+  women_csuite    int,                           -- MANDATE: diversity. People, so genuinely int.
   csuite_size     int,
+  net_revenue_retention numeric(8,2),            -- percent as reported, 107.0 = 107%
+  gross_margins   numeric(8,2),                  -- percent as reported, 65.0 = 65%
   source_system   text not null default 'visible'
                     check (source_system in ('visible','manual')),
   reported_at     timestamptz not null default now(),
@@ -476,7 +478,15 @@ create index on company_kpi (period_end);
 comment on column company_kpi.runway_months is
   'ADR-027. AS REPORTED by the company, not computed. cash_balance / monthly_burn reproduces it on 10 of 71 rows in the reference dataset - C004 reports 99 months against a computed 610 - because a founder nets expected inflows and a committed round against the burn, and the platform is not the system of submission (ADR-017). It drives the runway health alert, so a computed substitute would change which companies appear on the watchlist.';
 comment on column company_kpi.request_version is
-  'Definitions for FTE / NB FTE / C-suite live in the Visible request text. Stamping the version makes a definition change visible as a break in the series rather than a silent shift (Q6).';
+  'Definitions for FTE / NB FTE / C-suite live in the Visible request text. Stamping the version makes a definition change visible as a break in the series rather than a silent shift (Q6). A5 proved the mechanism necessary rather than theoretical: the burn question was renamed from "Monthly Burn Rate" to "Monthly Net Burn Rate" at 2025 Q3, so monthly_burn is one column fed by two request wordings and this is the only record of where the seam falls.';
+comment on column company_kpi.fte is
+  'ADR-010. FRACTIONAL BY DESIGN, and numeric rather than int since A5. FTE means full-time EQUIVALENT, so 3.5 is the correct way to report three full-timers and one half-timer - it is a measure, not a headcount. Five companies report fractional figures every quarter; as an int column those readings were refused and the platform showed Soricimed as having 0 employees when it reports 3.5, which is the same class of error as rendering an unreported diversity figure as zero (D-5). Stored exactly as reported, never rounded: the platform is not the system of submission (ADR-017) and rounding would silently move a mandate number in one direction or the other.';
+comment on column company_kpi.fte_nb is
+  'ADR-010. Fractional for the same reason as fte, and constrained fte_nb <= fte.';
+comment on column company_kpi.gross_margins is
+  'ADR-010. Company-reported, collected quarterly by Visible since 2025 Q1 and answered by 65 of 82 companies. PERCENT AS A WHOLE NUMBER: 65.0 means 65%. Added at A5 on the same reasoning as net_revenue_retention - the data is being collected now and a quarter not captured is permanent. Stored, not part of the frozen ADR-001 export contract, not yet displayed.';
+comment on column company_kpi.net_revenue_retention is
+  'ADR-010. Company-reported, collected quarterly by Visible since 2021 Q4 and answered by 75 of 82 companies. PERCENT AS A WHOLE NUMBER: 107.0 means 107%, matching the contract convention that percentages are plain numbers, not fractions. Added at A5 - the field was an oversight in the prototype, not a decision against it. NOT part of the frozen ADR-001 export contract, so it is stored and not yet displayed; surfacing it is a contract change and a separate conversation.';
 
 -- =====================================================================
 -- 8. OWNERSHIP AND RESERVES
@@ -1112,6 +1122,39 @@ select count(*)                                                as rounds_total,
        round(100.0 * count(*) filter (where round_total is not null)
              / nullif(count(*),0), 1)                          as pct_leverage_coverage
 from investment_round;
+
+-- The same idea for the Visible series, and A5's exit criterion: per-field
+-- coverage, per quarter (ADR-010).
+--
+-- Coverage is not a nicety here. A founder can answer six questions and skip
+-- the seventh, a quarter's submissions arrive over the weeks after the due
+-- date, and NB FTE only entered the request in 2023 -- so "how many companies
+-- reported revenue this quarter" and "how many reported at all" are different
+-- numbers, and a board tile built on the wrong one is wrong quietly.
+--
+-- Counts, not percentages, because the denominator is a judgement: 82 companies
+-- exist, 81 have a Visible profile, and the current quarter is still open.
+create or replace view v_kpi_coverage as
+select k.period_start,
+       k.period_end,
+       count(*)                                             as companies_reporting,
+       count(k.revenue)                                     as revenue,
+       count(k.monthly_burn)                                as monthly_burn,
+       count(k.cash_balance)                                as cash_balance,
+       count(k.runway_months)                               as runway_months,
+       count(k.fte)                                         as fte,
+       count(k.fte_nb)                                      as fte_nb,
+       count(k.net_revenue_retention)                       as net_revenue_retention,
+       count(k.gross_margins)                               as gross_margins,
+       count(k.women_csuite)                                as women_csuite,
+       count(k.csuite_size)                                 as csuite_size,
+       count(*) filter (where k.source_system = 'manual')   as manual_rows,
+       (select count(*) from company)                       as companies_total
+from company_kpi k
+group by k.period_start, k.period_end;
+
+comment on view v_kpi_coverage is
+  'A5 exit criterion: per-field KPI coverage by calendar quarter. companies_reporting counts rows, so a company that answered one question and skipped six still counts once - compare it against the per-field counts to see what was actually filled in. women_csuite and csuite_size read zero on every quarter until action A-1 changes the Visible request, and that zero is the point: it is the measured cost of the delay.';
 
 -- =====================================================================
 -- 17. SYNTHETIC DATA GUARD (ADR-020)

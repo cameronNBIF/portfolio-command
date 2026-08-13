@@ -18,7 +18,15 @@
  */
 import { headers } from 'next/headers';
 
-import { buildExport, CAN_READ, db, requireRole, resolveAsOf, resolvePrincipal } from '@portfolio-command/api';
+import {
+  buildExport,
+  CAN_READ,
+  db,
+  readKpiCoverage,
+  requireRole,
+  resolveAsOf,
+  resolvePrincipal,
+} from '@portfolio-command/api';
 
 import { PortfolioApp } from './PortfolioApp';
 
@@ -36,5 +44,9 @@ export default async function Home() {
   const asOf = await resolveAsOf(db());
   const doc = await buildExport(db(), { asOf });
 
-  return <PortfolioApp db={doc} asOf={asOf} />;
+  // Read alongside the document, not inside it. Coverage is a statement about
+  // the data rather than part of it, and the ADR-001 shape is frozen (A5).
+  const kpiCoverage = await readKpiCoverage(db());
+
+  return <PortfolioApp db={doc} asOf={asOf} kpiCoverage={kpiCoverage} />;
 }

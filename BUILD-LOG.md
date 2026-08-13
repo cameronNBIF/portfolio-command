@@ -28,6 +28,54 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-13 · A5 · Visible.vc integration — five years of real quarterly KPIs
+
+**Built**
+- **`functions/src/visible/client.ts`** — the Visible client. **GET-only by construction**, which matters more here than it did for Affinity: Visible's API *does* expose `PUT /data_points`, so a stray write would edit what founders reported. Page-numbered pagination, resource-named envelopes, 429 backoff.
+- **`functions/src/visible/probe.ts`** (`npm run visible:probe [-- --full --match]`) — read-only reconnaissance. Metric inventory with cadence, unit and fill rate; website/currency/fiscal-year coverage; batching test; history depth; domain reconciliation against the A4 roster. Output gitignored — it is the real portfolio.
+- **`functions/src/visible/map.ts`** — the pure layer: metric name → column, data point date → calendar quarter, value handling, quarter folding. **38 tests.**
+- **`functions/src/visible/sync.ts`** and **`npm run visible:sync`** (`-- --dry` reads, reports, rolls back). Five rules at the top of the file: one-way inbound; **full refresh, not incremental** (a founder can restate a past quarter, and "since last run" would never see it); never touch a `manual` row; never invent a company; **never write the diversity columns at all**, because writing NULL nightly would erase a manual entry.
+- **`functions/src/functions/visible-sync.ts`** — timer Function at **07:00 UTC, an hour after the Affinity sync**, so a website corrected in Affinity overnight is matchable the same night. Daily despite quarterly data: submissions trickle in for weeks after the due date.
+- **`docs/visible-endpoints.md`** and **`docs/visible-metric-map.csv`** — 30 rows, every metric with its measured fill rate and a Yes/New/No call with the reason.
+- **ADR-029** — exact-domain matching, and one KPI column fed by more than one request wording.
+- **`v_kpi_coverage` and the Data tab's coverage panel** — the phase's exit criterion. Per-field, per-quarter counts of who actually answered what. **The one panel in the app with no prototype ancestor**, so it is a third departure from ADR-014's one-to-one rule; it sits on the Data tab rather than the Dashboard because it is a chasing list, not a board figure. Read through `packages/api/src/read/kpi-coverage.ts`, **deliberately outside the ADR-001 document**: coverage is a statement about the data rather than part of it, and the contract is frozen.
+  - It also **cannot** be derived from the exported document, which is why the view exists. The adapter coerces a null KPI to `0` because the reference fixture carries literal zeros, so within the contract "reported no revenue" and "did not answer" are the same value. A test in `round-trip.test.ts` pins that distinction.
+  - It immediately earned itself: **in 2025 Q4, 53 companies submitted and only 42 answered the burn question.** That gap is invisible in every other view.
+
+**Verified** — against live Visible, then in the browser:
+- **999 KPI rows across 81 companies, 2021 Q2 to 2026 Q2**, from 6,341 data points in 107 API calls. (First pass was 877 rows across 69; the websites were corrected in Affinity and Visible the same day, taking the join from 69/82 to **81/82**.)
+- **It converges.** A second run reports 999 unchanged, zero updates.
+- **Four warnings, all correct**: MyCodev is in Visible but not Affinity, SiMBi in Affinity but not Visible — the two sides of the master-list rule — and two genuine data-quality findings where NB FTE exceeds total FTE.
+- **The dashboard reads real mandate numbers for the first time: jobs 590 NB / 1,068.5 total, portfolio revenue $38.4M quarterly as reported.** Financial figures remain $0.0M, correct until A6.
+- **The diversity tile reads `-`, "reported by 0 of 82"**, and the drawer reads "Not reported" — D-5 holding on real data.
+- **The drawer shows a 19-quarter history** with calendar labels; the same rows label fiscal on board-facing views (2026-04-01→2026-06-30 is calendar 2026-Q2 and fiscal FY2026-27 Q1). D-6 proven on real data rather than on the fixture.
+
+**Decided**
+- **`metric_id` must be bracketed.** `metric_id=a&metric_id=b` returns a valid 200 carrying only the **last** id's points. A sync built on it would store one company's history and silently drop the other 81. Measured four encodings; the finding is in the client's header comment because it is invisible from the response.
+- **The burn question was renamed mid-series and both wordings are spliced** (ADR-029). `Monthly Burn Rate` ran 2021 Q2–2025 Q2 (774 answers); `Monthly Net Burn Rate` runs 2025 Q3 on. Reading only the current name — which is what the existing NBIF Visible→Affinity pipeline correctly does for a CRM field — would have started the platform's burn history in October 2025. **`request_version` stops being theoretical**: it was designed for a definition change that might happen, and one already had.
+- **Companies match on exact normalised domain, with no crosswalk table** (your call, 13 Aug). The fix for a mismatch is upstream in the website field. The sync names every miss in both directions on every run, because a pure domain join has no other way to make a rebrand visible.
+- **`net_revenue_retention` and `gross_margins` added to `company_kpi`** (approved 13 Aug). Both collected today, neither in the frozen ADR-001 contract, so both are stored and not displayed. `revenue`'s stale `-- run-rate` comment corrected to `-- period actual` per D-2.
+- **Change detection runs in Postgres, not JavaScript.** Visible sends more precision than the columns hold (`141.6666666666666` into `numeric(8,2)`), so six rows compared unequal forever and rewrote themselves plus an `audit_log` entry every night. The `UPDATE`'s `WHERE` clause now casts through the column type and asks the only question that matters: would storing this change what is stored?
+- **The sync writes `audit_log` on change only.** `fte` and `fte_nb` are mandate fields so every change is auditable, but a full nightly refresh over five years would otherwise put ~4,400 rows through the audit log daily and bury the one quarter a founder actually restated.
+
+**Fixed — two defects only real data could surface**
+- **Visible float-formats every number, so a count of twelve arrives as `"12.0"`** and Postgres rejects it for an `int` column. This took the entire first sync run down. Integral counts are now spelled as integers before they reach the two remaining int columns; a genuine fraction there is still refused and named.
+- **`frequency` has a fifth value the documentation does not list** — `annually`, on 41 metrics. Caught by the compiler against a type built from the docs.
+
+**Changed after the first pass, same session**
+- **`fte` and `fte_nb` are `numeric(10,2)`, not `int`** (your call, 13 Aug). A full-time *equivalent* of 3.5 is three full-timers and a half-timer — a measurement, not a typo. As int columns, five companies' readings were refused and **Soricimed's drawer read "JOBS 0 / 0" when it reports 3.5**, which is the D-5 error class applied to jobs. The 23 fractional-count warnings are gone; the contract still emits `fte` as a **number** (`3.5`), so the frozen ADR-001 shape is untouched and the golden master does not move. `women_csuite` and `csuite_size` stay `int`: they count people. The export adapter now runs both through `toNumber`, since `numeric` reaches pg as a string.
+- **The master-list rule is encoded** (ADR-029 1a). Affinity's portfolio is the master company list, and the two directions of a miss are different things: `visible-only` is expected residue — MyCodev wound down, left Affinity, and its Visible profile outlived it, so its metrics are deliberately not stored — while `no-visible-profile` is a prompt rather than a fault, since SiMBi predates Visible adoption and blank KPIs are the honest answer.
+- **The websites were corrected in Affinity and Visible**, taking the join from 69/82 to **81/82**. The only two left are the two the rule covers.
+
+**Outstanding**
+- **Two quarters report NB FTE above total FTE** — C032 at 2024 Q3 (5 of 1) and C067 at 2024 Q4 (4 of 3) — which the schema refuses. NB FTE is dropped for those quarters and the rest of the row kept. Both are founder reporting errors and would be corrected in Visible, not here.
+- **Action A-1 is still open and now has a measured cost.** No diversity metric exists in Visible at all. The KPI series is five years deep for everything else; diversity starts from zero on the quarter the request changes.
+- **Two later-stage opportunities, both confirmed as not-yet-asked rather than not-yet-read** (13 Aug). The ONB/ACOA/IRAP/BDC/SRED funding fields exist in Visible but have never been part of the quarterly request sent to portfolio companies, so adding them carries the same "the series starts when the request changes" cost as A-1 — and they are the leverage and NB co-investment inputs. Separately, the portfolio properties for `Total Invested`, `Fair Market Value`, `Ownership %`, `Shares Owned`, `Entry Pre Money Valuation` and `Investment Date` are unfilled, and **whether Visible should hold rounds, funds and transactions — act as NBIF's transaction register — is an open organisational question.** Until it is answered ADR-011 stands and A6 generates the financial spine synthetically.
+- **`npm test` truncates the shared dev database** (the fixture round-trip test), which wipes the real roster and every KPI row. Run `npm run db:reset && npm run visible:sync` after a test run, not before.
+- Carried: `v_company_current.fmv` still reads `current_date`; `npm audit` transitive dev-tooling findings; deploy not wired (A0).
+
+---
+
 ## 2026-08-12 · A4 · Affinity integration — real roster, real pipeline, nightly sync
 
 **Built (stage 6 — the staff roster, derived close dates, real filter options)**

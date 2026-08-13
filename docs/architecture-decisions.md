@@ -914,6 +914,81 @@ ADR-009 already makes Affinity the system of record for pipeline.
 
 ---
 
+## ADR-029 — Visible ingestion: exact-domain matching, and one KPI column may be fed by more than one request wording
+
+**Status:** Accepted (13 August 2026)
+
+**Context.** A5 connects Visible.vc, which ADR-010 makes the system of record for
+company-reported KPIs. Reconnaissance against the live account raised two
+questions that ADR-010 does not answer, both of them discovered only by looking
+at five years of real data rather than at the current quarter.
+
+**First, the join does not fully land.** ADR-009 names `website` as the crosswalk
+between Affinity, Visible and Finance. Both systems fill it on 82 of 82
+companies, and normalised to bare domains they agree on 69. The thirteen misses
+are not missing data: they are the same company recorded under a different
+domain — rebrands (`simptekinc.com` / `climative.ai`), subdomains
+(`app.trippl.ca` / `trippl.ca`), TLD swaps (`trelent.net` / `trelent.com`).
+
+**Second, one metric changed its name mid-series.** The burn question was asked
+as `Monthly Burn Rate` from 2021 Q2 to 2025 Q2 — 774 answers from 73 companies —
+and as `Monthly Net Burn Rate` from 2025 Q3 onward. A third name, `Net Burn
+Rate`, is defined on all 82 companies and has never been answered. Reading only
+the current name, which is what a "latest value" CRM sync correctly does, starts
+the platform's burn history in October 2025.
+
+**Decision.**
+
+1. **Companies match on exact normalised domain and nothing else.** No fuzzy
+   fallback, no crosswalk table. Where the two systems disagree, the fix is
+   upstream in the website field itself. Every miss is reported in both
+   directions on every run.
+1a. **Affinity's portfolio is the master list of companies, and the two
+   directions of a miss mean different things.** A Visible profile with no
+   Affinity company is **expected residue**, not a defect: MyCodev wound down and
+   left Affinity while its Visible profile outlived it. Its metrics are
+   deliberately not stored, because a KPI row hanging off it would put a company
+   on the platform that exists nowhere else. An Affinity company with no Visible
+   profile leaves its KPIs **blank**, which is honest — SiMBi is a position old
+   enough that contact was lost before Visible was adopted — and is a prompt to
+   either create a profile and start collecting or accept that nobody reports on
+   it any more.
+1b. **`fte` and `fte_nb` are `numeric`, not `int`.** A full-time *equivalent* of
+   3.5 is three full-timers and a half-timer: a measurement, not a typo. As
+   integer columns those readings were refused, and the platform showed a company
+   reporting 3.5 staff as having none — the same class of error as rendering an
+   unreported diversity figure as zero (D-5). Stored exactly as reported and
+   never rounded, because rounding moves a mandate number in one direction or the
+   other on the company's behalf and the platform is not the system of submission
+   (ADR-017). `women_csuite` and `csuite_size` stay `int`: they count people.
+2. **`monthly_burn` is fed by both burn wordings**, spliced into one continuous
+   series, with `company_kpi.request_version` recording which wording produced
+   each row (`2021-baseline` / `2025Q3-net-burn`). Where a company answered both
+   in the changeover quarter, the current wording wins.
+3. **`net_revenue_retention` and `gross_margins` are stored but not exported.**
+   Both are collected today, neither is in the frozen ADR-001 contract.
+
+**Consequences.**
+
+- **A pure domain join makes a rebrand silently lose a company's KPIs**, which is
+  the cost of not holding a crosswalk. It is mitigated, not removed, by the sync
+  naming every unmatched company on both sides on every run: the failure is loud
+  rather than invisible, but it still needs somebody to read the warnings and fix
+  a website. This was chosen over a crosswalk table deliberately (13 August 2026)
+  on the grounds that correcting the source improves both systems rather than
+  papering over them.
+- **`request_version` stops being a theoretical safeguard.** ADR-010 introduced
+  it for a definition change that might happen; one already had, four years into
+  the series, and nothing else records where the seam falls.
+- **The seam is real, not clerical.** "Burn Rate" and "Net Burn Rate" plausibly
+  differ by whether revenue is netted off. A quarter-on-quarter comparison
+  spanning 2025 Q3 is comparing two questions, and any view that crosses it must
+  say so rather than drawing a step change as though it were performance.
+- **Two columns exist that no screen shows.** That is the intended state:
+  displaying them is a change to a frozen contract and a separate decision.
+
+---
+
 ## Resolved open items
 
 | Ref | Item | Resolution |

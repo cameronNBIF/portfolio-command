@@ -7,8 +7,12 @@
  * directly, without any Functions runtime involved.
  */
 import './functions/affinity-sync.js';
+import './functions/visible-sync.js';
 
 export * from './affinity/client.js';
 export * from './affinity/map.js';
 export * from './affinity/sync.js';
 export * from './affinity/history.js';
+export * from './visible/client.js';
+export * from './visible/map.js';
+export * from './visible/sync.js';

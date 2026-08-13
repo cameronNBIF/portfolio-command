@@ -1,0 +1,32 @@
+visible_metric_name,frequency,unit,defined_on_companies,answered_values,answering_companies,earliest,latest,decision,target_table,target_column,request_version,notes
+Quarterly Revenue,quarterly,CAD,82,983,,2021-04-01,2026-04-01,Yes,company_kpi,revenue,,"Period actual, stored and displayed as reported. No annualisation (D-2, ADR-010). 203 of 983 values are zero: pre-revenue companies, legitimate."
+Cash Position,quarterly,CAD,82,897,,2021-04-01,2026-04-01,Yes,company_kpi,cash_balance,,"4 negative values, which is an overdrawn position as reported."
+Monthly Net Burn Rate,quarterly,CAD,82,128,,2025-07-01,2026-04-01,Yes,company_kpi,monthly_burn,2025Q3-net-burn,"The CURRENT burn wording. Spliced with the one below into a single series (ADR-029). Wins a same-date tie."
+Monthly Burn Rate,quarterly,CAD,82,774,73,2021-04-01,2025-07-01,Yes,company_kpi,monthly_burn,2021-baseline,"The PRE-2025Q3 wording of the same question. Retired after 2025 Q3. Mapping only the current name would start the burn history in October 2025 and discard 774 reported figures."
+Net Burn Rate,monthly,number,82,0,0,,,No,-,-,,"A third burn metric, defined on every company and NEVER ONCE ANSWERED. Mapping it would look harmless and would compete with the two wordings that carry the real series."
+Full-time Employees,quarterly,number,82,902,,2021-04-01,2026-04-01,Yes,company_kpi,fte,,"MANDATE: jobs. numeric(10,2) since A5 - a full-time EQUIVALENT is fractional by definition. Five companies report figures like 3.5 and 59.3 every quarter; stored exactly as reported, never rounded (ADR-029)."
+NB Full-time Employees,quarterly,number,82,645,,2022-07-01,2026-04-01,Yes,company_kpi,fte_nb,,"MANDATE: NB jobs. numeric(10,2), fractional as above. Series effectively begins 2023 Q1 -- shorter than the rest. 132 of 645 are zero. Schema constrains fte_nb <= fte; a violating quarter drops fte_nb only and keeps the rest of the row."
+Months of Runway Remaining,quarterly,number,82,894,,2021-04-01,2026-04-01,Yes,company_kpi,runway_months,,"AS REPORTED, never computed from cash/burn (ADR-027). Max observed 26000 months, which is a founder data-entry error stored faithfully."
+Net Revenue Retention,quarterly,percent,82,864,75,2021-10-01,2026-04-01,New,company_kpi,net_revenue_retention,,"Column ADDED at A5 (approved 13 Aug 2026). Percent as a WHOLE NUMBER: 107.0 is 107%. Stored, NOT in the frozen ADR-001 export contract, not yet displayed."
+Gross Margins,quarterly,percent,82,264,65,2025-01-01,2026-04-01,New,company_kpi,gross_margins,,"Column ADDED at A5 (approved 13 Aug 2026). Percent as a whole number. Newer metric than the rest; series begins 2025 Q1."
+Bi-Annual Revenue,quarterly,CAD,82,0,0,,,No,-,-,,"Defined on every company, never answered."
+Year End Revenue,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,"Part of an ANNUAL survey block that stopped in 2023. Annual figures must never reach a quarterly column: a year of revenue landing in company_kpi.revenue would multiply a board total roughly fourfold."
+Year End Net Income,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,Same dead annual block.
+Total Payroll,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,Same dead annual block.
+Total # Employees,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,"Same dead annual block. NOT a substitute for Full-time Employees: different definition, different cadence, stopped three years ago."
+Full-Time Employee Count,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,Same dead annual block.
+Part-Time Employee Count,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,Same dead annual block.
+Full-Time Average Salary,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,Same dead annual block.
+Part-Time Average Salary,annually,number,82,164,41,2020-01-01,2023-01-01,No,-,-,,Same dead annual block.
+Revenue Export,annually,percent,82,41,41,2022-01-01,2022-01-01,No,-,-,,"Answered once, in 2022, by 41 companies."
+ONB Funding,annually,number,82,0,0,,,No,-,-,,"A leverage / NB co-investment input. Defined on every company, never answered because it has never been part of the quarterly request NBIF sends out. Adding it is a later-stage opportunity (13 Aug 2026); the series starts from the quarter the request changes."
+ACOA Funding,annually,number,82,0,0,,,No,-,-,,As above.
+IRAP Funding,annually,number,82,0,0,,,No,-,-,,As above.
+BDC Funding,annually,number,82,0,0,,,No,-,-,,As above.
+SRED Funding,annually,number,82,0,0,,,No,-,-,,As above.
+Angel Investment,monthly/annually,number,82,0,0,,,No,-,-,,As above.
+Venture Capital Funding,annually,number,82,0,0,,,No,-,-,,As above.
+Venture Capital,annually,number,82,0,0,,,No,-,-,,As above.
+Other,annually,number,82,0,0,,,No,-,-,,As above.
+women_csuite,,,0,0,0,,,Awaiting A-1,company_kpi,women_csuite,,"NO Visible metric exists. Nothing matches /c-suite|women|gender|diversity/. NULL until the request changes, and NULL must never render as zero (D-5)."
+csuite_size,,,0,0,0,,,Awaiting A-1,company_kpi,csuite_size,,As above.
