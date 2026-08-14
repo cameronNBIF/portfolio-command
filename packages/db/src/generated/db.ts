@@ -393,6 +393,7 @@ export interface InvestmentRound {
   company_id: string;
   instrument_id: number;
   investment_round_id: Generated<Int8>;
+  investment_vehicle_id: number | null;
   is_synthetic: Generated<boolean>;
   label: string;
   lead_investor: string | null;
@@ -516,6 +517,14 @@ export interface RefInstrument {
   name: string;
 }
 
+export interface RefInvestmentVehicle {
+  code: string;
+  investment_vehicle_id: Generated<number>;
+  is_active: Generated<boolean>;
+  name: string;
+  sort_order: Generated<number>;
+}
+
 export interface RefSector {
   is_active: Generated<boolean>;
   name: string;
@@ -596,6 +605,7 @@ export interface Transaction {
   fund_investment_id: string | null;
   fx_rate_to_cad: Numeric | null;
   investment_round_id: Int8 | null;
+  investment_vehicle_id: number | null;
   is_synthetic: Generated<boolean>;
   note: string | null;
   reverses_transaction_id: Int8 | null;
@@ -749,6 +759,7 @@ export interface VSyntheticDataStatus {
 
 export interface VTransactionLive {
   amount: Numeric | null;
+  amount_cad: Numeric | null;
   batch_id: string | null;
   booked_at: Timestamp | null;
   company_id: string | null;
@@ -757,6 +768,7 @@ export interface VTransactionLive {
   fund_investment_id: string | null;
   fx_rate_to_cad: Numeric | null;
   investment_round_id: Int8 | null;
+  investment_vehicle_id: number | null;
   is_synthetic: boolean | null;
   note: string | null;
   reverses_transaction_id: Int8 | null;
@@ -802,6 +814,7 @@ export interface DB {
   ref_funnel_group: RefFunnelGroup;
   ref_funnel_stage: RefFunnelStage;
   ref_instrument: RefInstrument;
+  ref_investment_vehicle: RefInvestmentVehicle;
   ref_sector: RefSector;
   ref_source_channel: RefSourceChannel;
   ref_stage: RefStage;

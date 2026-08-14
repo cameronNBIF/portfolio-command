@@ -102,6 +102,23 @@ const VALUATION_METHODS = [
 ];
 
 /**
+ * NBIF's three investment vehicles (ADR-030).
+ *
+ * The codes are what the team says and what the Affinity export's `Fund` column
+ * carries. The long names are expanded here and nowhere else, so a screen never
+ * has to decide what "SIF" stands for.
+ *
+ * NOT sourced from the Affinity vocabulary snapshot, because `Fund` is not in
+ * Affinity's profiled field metadata at all -- see
+ * packages/db/data/investment_vehicle.json.
+ */
+const INVESTMENT_VEHICLES = [
+  { code: 'VCF', name: 'Venture Capital Fund', sortOrder: 1 },
+  { code: 'SIF', name: 'Startup Investment Fund', sortOrder: 2 },
+  { code: 'ACC', name: 'Accelerator Investments', sortOrder: 3 },
+];
+
+/**
  * The board's display bins. These are the prototype's columns (ADR-014) plus
  * Watchlist.
  *
@@ -399,6 +416,15 @@ try {
     );
   }
 
+  for (const v of INVESTMENT_VEHICLES) {
+    await client.query(
+      `insert into ref_investment_vehicle (code, name, sort_order) values ($1, $2, $3)
+       on conflict (code) do update
+         set name = excluded.name, sort_order = excluded.sort_order, is_active = true`,
+      [v.code, v.name, v.sortOrder],
+    );
+  }
+
   await client.query('commit');
 
   const counts = await client.query(`
@@ -410,7 +436,8 @@ try {
     union all select 'ref_source_channel', count(*) from pc.ref_source_channel
     union all select 'ref_stage', count(*) from pc.ref_stage
     union all select 'ref_instrument', count(*) from pc.ref_instrument
-    union all select 'ref_valuation_method', count(*) from pc.ref_valuation_method`);
+    union all select 'ref_valuation_method', count(*) from pc.ref_valuation_method
+    union all select 'ref_investment_vehicle', count(*) from pc.ref_investment_vehicle`);
   for (const r of counts.rows) console.log(`${String(r.t).padEnd(22)} ${r.count} rows`);
   console.log(`\nvocabulary snapshot taken ${snapshot.generatedAt}`);
 
