@@ -44,5 +44,6 @@ export {
   jobs,
   revenue,
   diversityWithCoverage,
+  hasCapitalBasis,
   type DiversityCoverage,
 } from './selectors.js';

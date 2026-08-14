@@ -20,6 +20,7 @@ import {
   activeCompanies,
   fmt,
   fundMetrics,
+  hasCapitalBasis,
   isEvergreen,
   moic,
   runScenario,
@@ -88,8 +89,14 @@ function ReservesTool({ db, asOf }: { db: PortfolioExport; asOf: string }) {
         />
         <Kpi
           label={isEvergreen(db) ? 'Dry Powder' : 'Uncalled Capital'}
-          value={fmt.m(dry)}
-          sub={isEvergreen(db) ? 'Capital base less net deployed' : 'Committed less called'}
+          value={hasCapitalBasis(db) ? fmt.m(dry) : '-'}
+          sub={
+            hasCapitalBasis(db)
+              ? isEvergreen(db)
+                ? 'Capital base less net deployed'
+                : 'Committed less called'
+              : 'Capital base not recorded on the fund'
+          }
         />
         <Kpi label="Annual Follow-On Budget" value={fmt.m(db.fund.annualFollowOnBudget)} sub="per plan" />
       </KpiRow>

@@ -19,6 +19,7 @@ import {
   diversityWithCoverage,
   fmt,
   fundMetrics,
+  hasCapitalBasis,
   isEvergreen,
   lpMetrics,
   moic,
@@ -69,7 +70,11 @@ export function ReportsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) 
 
   const execSummary = () => {
     const line2 = evergreen
-      ? `TVPI ${fmt.x(m.tvpi)} / DPI ${fmt.x(m.dpi)} / RVPI ${fmt.x(m.rvpi)} since inception; gross IRR ${fmt.pct(m.grossIRR)} (net ~${fmt.pct(m.netIRR)} est.). Realized proceeds ${fmt.m(m.distributions)} recycled per policy (DPI reflects recycling, not shareholder distributions); dry powder ${fmt.m(m.dryPowder)} of ${fmt.m(db.fund.capitalBase)} capital base.`
+      ? `TVPI ${fmt.x(m.tvpi)} / DPI ${fmt.x(m.dpi)} / RVPI ${fmt.x(m.rvpi)} since inception; gross IRR ${fmt.pct(m.grossIRR)} (net ~${fmt.pct(m.netIRR)} est.). Realized proceeds ${fmt.m(m.distributions)} recycled per policy (DPI reflects recycling, not shareholder distributions)${
+          hasCapitalBasis(db)
+            ? `; dry powder ${fmt.m(m.dryPowder)} of ${fmt.m(db.fund.capitalBase)} capital base.`
+            : '; capital base not recorded, so dry powder is not stated.'
+        }`
       : `TVPI ${fmt.x(m.tvpi)} / DPI ${fmt.x(m.dpi)} / RVPI ${fmt.x(m.rvpi)}; gross IRR ${fmt.pct(m.grossIRR)} (net ~${fmt.pct(m.netIRR)} est.).`;
     const txt =
       `${db.fund.name} - Summary ${asOf} (${fiscalQuarterLabel(asOf)})\n` +
@@ -132,8 +137,10 @@ export function ReportsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) 
           <>
             <Kpi
               label="Capital Base"
-              value={fmt.m(db.fund.capitalBase)}
-              sub={`Net deployed ${fmt.m(m.netDeployed)} / dry powder ${fmt.m(m.dryPowder)}`}
+              value={hasCapitalBasis(db) ? fmt.m(db.fund.capitalBase) : '-'}
+              sub={`Net deployed ${fmt.m(m.netDeployed)} / dry powder ${
+                hasCapitalBasis(db) ? fmt.m(m.dryPowder) : '-'
+              }`}
             />
             <Kpi label="Invested" value={fmt.m(m.invested)} sub={`${m.nActive} active positions`} />
             <Kpi label="NAV (FMV)" value={fmt.m(m.fmv)} />
@@ -202,7 +209,8 @@ export function ReportsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) 
             <AlertRow>
               <Pill tone="teal">RECYCLE</Pill>
               <span>
-                {fmt.m(m.distributions)} realized proceeds recycled to date; dry powder {fmt.m(m.dryPowder)}.{' '}
+                {fmt.m(m.distributions)} realized proceeds recycled to date
+                {hasCapitalBasis(db) ? `; dry powder ${fmt.m(m.dryPowder)}` : ''}.{' '}
                 {db.fund.distributionPolicy}
               </span>
             </AlertRow>
