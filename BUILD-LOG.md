@@ -28,6 +28,103 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-14 · A6 · Synthetic financial dataset on the real roster — reconciled to Affinity's own totals
+
+**A6 exit criteria — met.** *"A full, messy, realistic dataset attached to the real roster and reconciling to the control totals the VC team already knows; the banner works; the platform is demonstrable end to end on it."* The criterion was restated this session when B2 was withdrawn — see the decision below.
+
+**Built**
+- **`packages/db/src/generate/`** and **`npm run db:generate`** (`-- --dry` generates, reconciles, reports and rolls back). Five files, split so the half worth testing has no database in it, on the `functions/src/affinity/map.ts` precedent:
+  - **`rng.ts`** — the prototype's `mulberry32` verbatim (`vc-toolkit.html:197`), the precedent the roadmap names. **Seeded per company**, so adding a company to the roster or regenerating one position leaves every other company's history byte-identical. One shared stream would reshuffle the whole portfolio every time Affinity gained a row.
+  - **`plan.ts`** — the company planner. Rounds, cheques, dates, instruments, round totals, co-investors, ownership, marks, reserves, write-offs.
+  - **`lp.ts`** — the LP planner. Capital calls, NAV, vintages.
+  - **`dirt.ts`** — the ADR-020 defects, each targeted at a named company and printed on every run.
+  - **`run.ts`** — reads the real facts, writes, reconciles, reports. Aborts the transaction if any company disagrees with its control total.
+- **38 tests** in `packages/db/test/generate.test.ts`, over the pure planners.
+- **`packages/db/data/investment_vehicle.json`** and **`lp_fund.json`**, from the two supplied workbooks. Committed because neither figure exists in any system the platform syncs.
+- **`ref_investment_vehicle`**, and `investment_vehicle_id` on `transaction` and `investment_round` (**ADR-030**).
+- **A dedicated test database.** See below — this is the one item that is infrastructure rather than data, and it is here because it bit twice in one session.
+
+**The property the whole phase rests on**
+
+Finance has not supplied per-transaction history (ADR-011), so every date, cheque size, round label and mark is invented. The totals are not. For all 82 companies:
+
+| | generated | Affinity |
+|---|---|---|
+| invested | **$47,216,678.00** | $47,216,678.00 |
+| FMV | **$42,030,272.00** | $42,030,272.00 |
+
+and for the LP sleeve, against the workbook:
+
+| | generated | workbook |
+|---|---|---|
+| committed | **$8,725,000.00** | $8,725,000.00 |
+| called | **$4,152,160.00** | $4,152,160.00 |
+
+`run.ts` re-reads all four **out of Postgres after the write** — not from the plan objects — and rolls back on any disagreement. Checking the database rather than the plan is what catches a bad cast, a lost row, a currency that never got converted and a constraint that silently dropped something. Arithmetic is in integer cents throughout, because a control total out by $0.01 is indistinguishable from one out by $10,000 when the assertion is exact.
+
+**Verified**
+- **371 tests pass.** The A1 golden master is untouched: no metric definition moved.
+- **The generator is deterministic and idempotent.** Two consecutive runs leave an md5 over the whole transaction table byte-identical.
+- **Distribution is realistic, and matches what the roadmap asked for**: vintages spread **2009–2025** (17 years); 39 companies at one round, 27 at two or three, 11 at four, 5 with five to seven; 24 rounds with no captured total; 7 write-offs.
+- **In the browser**: dashboard reads $47.2M invested / $42.0M FMV / 75 active / 7 exited, marks as at 2026-07-31, TVPI 0.89x, DPI 0.00x, leverage 5.9:1, FMV growth +5.6% YoY. Portfolio tab sorts on real MOIC with Sonrai at 2.81x and Eigen at 0.64x. Funds tab reads $8.7M committed / $4.2M called / NAV $5.5M / TVPI 1.32x. Company drawers show full round histories, per-round leverage, marks, reserves, board seats, milestones and government funding. **The ADR-020 banner is on every screen.**
+
+**Decided**
+- **The vehicle is an attribute of the transaction, not the company** (ADR-030, your call). The export's `Fund` column (VCF 40 / SIF 20 / ACC 20) is **not in Affinity's profiled field metadata at all**, so the sync cannot fetch it and it is committed as a keyed data file instead. Two roster companies are absent from the Status-filtered export and carry a NULL vehicle rather than a guess — $3.7M of real deployment that nobody has attributed.
+- **No realizations are generated** (your call). The export carries invested and FMV and nothing else, so proceeds would be four board numbers with no source. DPI reads 0.00x, which is what the data says. Write-offs *are* generated; a `company_exit` row additionally requires the Affinity lifecycle status to read `Winding Down`, because a write-down and a closure are different assertions — 15 companies carry a zero FMV without that status and are not exits.
+- **`fund.capital_base` stays NULL** (your call), and it surfaced a defect rather than a blank tile. See below.
+- **Marks start at the 2016 exercise, not at first investment.** A formal semi-annual valuation policy has a start date; generating exercises back to 2009 would invent seventeen years of them. Older positions are held at cost until then, which is what `company_fmv_asof` already does with no mark on or before the date — so the oldest vintages now exercise that path instead of merely asserting it.
+- **A quarter of priced rounds name an LP position we actually hold** as a co-investor. Without it `v_lp_capital_to_direct` had nothing to aggregate and the Funds tab read "CAPITAL TO DIRECT $0.0M / 0 co-invests" — a mandate KPI reporting zero. It now reads $40.7M across 55 co-investments.
+- **Leverage is a generator dial, and it was checked rather than guessed.** Participation is drawn at 4–32% of a round, giving 5.9:1. `cb_total_funding_usd` is documented as a cross-check and never a leverage input; used as one it says the generated round totals ($243M) sit **below** real Crunchbase funding ($460M) for the 55 companies carrying it. Conservative, not inflated.
+- **`women_senior_gp` is left NULL on all sixteen LP positions.** These are real, named firms; a guess about a real manager's senior team is a claim about identifiable people and a demo is not worth it.
+
+**Fixed — three defects only this dataset could surface**
+- **`fx_rate_to_cad` had been stored since A1 and read by nothing.** Every row in the reference fixture was CAD, so the first genuinely non-CAD transaction showed that `v_company_invested`, `v_company_realized`, `company_fmv_asof`, `v_round_leverage`, `v_lp_position_current` and the export adapter's per-round sum were all summing the booked amount and ignoring the currency. `v_transaction_live` now exposes `amount_cad` and all six read it. Sonrai's USD 171,291 at 1.35 books as $231,242.85 and the company still reconciles to $713,243 exactly.
+- **A missing capital base produced a false number, not an absent one.** With `capital_base` NULL the dashboard read **"dry powder $-47.2M"** and Reports read "CAPITAL BASE $0.0M" — the precise D-5 error class, on board-facing tiles. `fundMetrics.dryPowder` is frozen under ADR-013 and is correct; what it cannot express is the difference between zero and not-recorded. `hasCapitalBasis()` sits beside it on the `diversityWithCoverage` precedent, and the four display sites render `-`. **The frozen bag is untouched.**
+- **A young company could be given a first round predating its own founding.** Reserving room for seven rounds at ten-month spacing pulled the start date back sixty months, and the founding-year floor lost to the spacing clamp. The round count now bends to the available time, never the other way round. Caught by a test, not by inspection.
+
+**Fixed — the test suite was destroying the development database**
+Carried from A5 as "a separate test database is the real fix". It stopped being a note and became urgent: **the ADR-001 round-trip test truncates every root table and reloads `demo.json`, and it wiped the real roster, five years of Visible KPIs and the whole A6 dataset twice during this session** — once mid-build, with no signal except the dashboard suddenly showing the prototype's fictional companies.
+- **`testDatabaseUrl()`** derives `<database>_test` from `DATABASE_URL`, so isolation is the default rather than something to remember. `TEST_DATABASE_URL` overrides it.
+- **`packages/api/test/db-setup.ts`** (vitest `globalSetup`) creates and migrates that database; **`use-test-db.ts`** (`setupFiles`) redirects each worker onto it. `setupFiles` rather than `globalSetup` for the redirect because the latter runs in the main process and its `process.env` does not reliably reach workers.
+- CI gets it free: its database job points `DATABASE_URL` at a throwaway container, and the derived `_test` name is created inside the same one.
+- **Verified**: `npm test` now runs 371 tests green and leaves the dev database's 82 companies, 999 KPI rows and 282 transactions untouched.
+
+**Deliberately dirty (ADR-020) — seven targeted defects, printed on every run**
+Each lands on a named company and none of them moves a control total, which is deliberate: a defect that quietly broke the roll-up would destroy the only assertion that can catch a real generator bug.
+
+| Defect | On | What it exercises |
+|---|---|---|
+| Non-CAD transaction | Sonrai Security | `fx_rate_to_cad`, and the six aggregates that were ignoring it |
+| Duplicate cheque, reversed | Eigen Innovations | ADR-018 correction by reversal; both rows excluded by `v_transaction_live` |
+| Mark predating first investment | Introhive | `company_fmv_asof` will return it for an early as-of date |
+| Round total below our cheque | Smart Skin Technologies | `v_round_leverage`'s exclusion predicate; the export still carries it unfiltered |
+| Unresolvable co-investor name | Picketa Systems | `"Concrete Venture"` against the LP position `"Concrete Ventures"` — exact-match resolution (ADR-026) leaves the FK NULL and the mandate KPI silently understates |
+| Superseded valuation mark | ProcedureFlow | `supersedes_id` and the partial unique index permitting one final mark per date |
+| Transaction on another company's round | Beauceron Security | The orphan class. A literal orphan is refused by `txn_one_subject`, but nothing stops a transaction referencing another company's round |
+
+Four of the roadmap's list needed no fabrication and that is worth recording rather than papering over: **six companies genuinely have no KPI history**; the roster already carries renames spelled into the name (`AccessSync (Elandas)`, `snapB2B (Snap Accounts Payable)`); missing round totals are modelled at the real rate (45% before 2015, 8% after 2020); and two companies have genuinely unknown vehicle attribution.
+
+**Decided after the build, same session — B2 is withdrawn and A6 is met**
+
+Your call, 14 August 2026. The 5–10 company real sample is no longer being requested from Finance, and A6's exit criterion is restated without it.
+
+- **What changed the calculus.** The sample's real job was two things: prove the schema fits how Finance holds data, and get something demonstrable in front of the VC team lead. A6 delivered the second outright — the platform now shows him his own portfolio, reconciling to the invested and FMV figures he already knows, on every screen. That did not need a day of Finance's time.
+- **What is genuinely given up, and it is not nothing.** Early warning on schema fit. A granularity or aggregation mismatch — one aggregated row per company per year where the schema wants transactions, fund-level NAV where it wants per-company marks — now surfaces during the port instead of months ahead of it. **Accepted, not solved.** Three things reduce it: the load path is exercised against deliberately dirty synthetic data before it sees a real row; `batch_id` rollback is proven before the first real batch rather than after a bad one; and batches reconcile to control totals one at a time, so a mismatch shows on batch one rather than after the lot is in.
+- **The real load becomes a named phase, and cutover splits in two.** **A13 · Financial history port** is the single operation in which all of Finance's history loads, reconciles and the synthetic dataset is removed — including retiring `npm run db:generate`, which has no business existing in an environment holding real money. **A14 · Go-live** is the parallel run, the backup rehearsal and the MSP runbook. They are separated because a perfect load into a system nobody can restart at 9pm is not a launch, and neither failure should be able to mask the other.
+- **After A13 there is no second import.** Affinity stays authoritative for company identity and pipeline and Visible for company-reported KPIs, both syncing nightly; everything financial is entered and maintained through the A7 and A8 interfaces from that point. That is now the stated reason those interfaces are built *before* the port rather than after it.
+- Recorded as an **amendment to ADR-020 in place** (condition 3 withdrawn, on the ADR-009 precedent), in the roadmap at version 2.1, and by striking action A‑8.
+
+**Outstanding**
+- **`FundInvestment.womenSeniorGP` cannot express "not reported".** The contract types it `boolean`, so sixteen NULLs render as **"0 / 16 positions with women senior partners"** — the same false statement D-5 exists to prevent, on the Funds tab. Fixing it is an ADR-001 contract change and needs your call.
+- **The dashboard renders `organic +$-4.2M`.** The prototype hardcodes the plus sign (`vc-toolkit.html:699`) while every other signed figure on that line uses the `>=0?"+":""` idiom. Reproduced verbatim under ADR-014 and recorded in `INHERITED-COERCIONS.md §13`; correcting it would be a third sanctioned content exception, so it waits on your call. The Reports tab's equivalent line is unaffected.
+- **`ytdPlatformsClosed` reads 0 while Reports lists 12 new investments YTD.** The first comes from Affinity-derived pipeline close dates (only 5 are credible, per A4's same-day rule), the second from generated round dates. Both are internally correct and they measure different things; the screen does not say so.
+- **`fund.capital_base`, `annual_followon_budget`, `fee_drag_pct`, `distribution_policy` and `reserves_policy` are all still NULL.** Net IRR therefore equals gross. These are real fund facts, not generator output.
+- **The vehicle mapping is a committed file, not a sync.** If `Fund` is added to Affinity's field metadata, it should move to the A4 sync and the file should go.
+- **Regenerating discards operator edits to `board_seat`**, which has no authorship column to scope the delete by. Every other generated table is cleared by `is_synthetic` or by system-principal authorship.
+- Carried: Entra app registration unconfigured, no MSAL sign-in UI; memos untested against real content; `v_lp_position_current.tvpi`/`.dpi` and `v_round_leverage` still convenience-only; `fund.currency` USD/CAD mismatch; `eslint-config-next` not wired; `npm audit` dev-tooling findings; branch protection; deploy not wired (A0).
+
+---
+
 ## 2026-08-13 · A5 · Visible.vc integration — five years of real quarterly KPIs
 
 **Built**

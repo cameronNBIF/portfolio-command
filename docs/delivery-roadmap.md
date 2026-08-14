@@ -1,7 +1,8 @@
 # Portfolio Command — Delivery Roadmap
 
-**Version:** 2.0, 28 July 2026 — supersedes v1.0
-**What changed:** development is decoupled from Finance's data timeline. The platform is built end to end against synthetic financial data attached to real companies from Affinity, and real history is loaded once at cutover (ADR-020).
+**Version:** 2.1, 14 August 2026 — supersedes v2.0
+**What changed in 2.1:** the 5–10 company real sample (B2) is **withdrawn**. The schema-fit question is answered at cutover on the whole dataset instead, and A6's synthetic spine — which reconciles to Affinity's own per-company invested and FMV figures — is what makes that acceptable. Cutover splits into **A13 · Financial history port** and **A14 · Go-live**, because loading fifteen years of financial history and proving the platform is operationally ready fail in different ways and neither should be able to hide the other.
+**What changed in 2.0:** development is decoupled from Finance's data timeline. The platform is built end to end against synthetic financial data attached to real companies from Affinity, and real history is loaded once at cutover (ADR-020).
 **Constraint that shapes everything below:** one developer, who is also the organisation's internal IT, with no external deadline.
 
 ---
@@ -40,18 +41,17 @@ The lever remains scope, not speed — see *Minimum launchable product*.
 | Confirm Affinity API v2 access on your plan tier, pull one test record | A4 assumes it. A plan change or support ticket is cheap to discover now and expensive in month four. |
 | Confirm Visible.vc API access and what it exposes | Same. Also confirms revenue granularity and whether the new diversity fields will come through the API. |
 | Start capturing round totals and NB co-investors on paper | Deals will close during the build. A shared sheet from today means no gap when the form arrives. |
-| **Request a 5–10 company real sample from Finance** | See A6. The one Track B item that is genuinely urgent, and a day of their time rather than months. |
 
 ---
 
 ## Track B — Data readiness (asynchronous)
 
-Runs on Finance's clock. Nothing in Track A waits on it except A13.
+Runs on Finance's clock. Nothing in Track A waits on it except A13, where all of it lands at once.
 
 | Step | Exit criteria |
 |---|---|
 | B1 · Company crosswalk | Every company in Finance's records mapped to an Affinity organisation and an internal id. Renames, duplicates and restructures documented. |
-| B2 · **Real sample, 5–10 companies** | Complete real history for a representative handful. **Delivered during A6, not at the end.** Validates that the schema fits how Finance actually holds data. |
+| B2 · ~~Real sample, 5–10 companies~~ | **Withdrawn, 14 August 2026.** The sample existed to answer the schema-fit question early, on a handful of companies. A6 answered enough of it another way: the synthetic spine is attached to the real roster and reconciles to Affinity's own invested and FMV figures per company, which makes the platform demonstrable to the VC team lead now — the thing the sample was really buying. The remainder of the question moves to B4–B7 and is answered on everything at once. Numbering is left with a gap rather than renumbered, because the steps are referenced elsewhere. |
 | B3 · Staging load pipeline | Templates load, resolve names to keys, validate, emit exceptions. Rollback by `batch_id` proven. |
 | B4 · Rounds and transactions | All batches tie to Finance's control totals. |
 | B5 · Valuation marks | Loaded with effective dates. Coverage boundary documented — the date before which only fund-level NAV exists, if any. |
@@ -131,9 +131,11 @@ Generated transactions, rounds, marks, ownership and LP activity, attached to th
 - **Deliberately dirty**, per ADR-020: orphan transactions, unresolvable names, missing round totals at the rate expected for old vintages, a renamed company, a duplicate, a mark predating first investment, a non-CAD transaction, a company with no KPIs
 - Every row flagged `is_synthetic`; `v_synthetic_data_status` drives a persistent banner on every screen and every PDF
 
-**Runs alongside B2.** The real sample arrives here and loads next to the synthetic data to check the schema actually fits.
+**Exit:** a full, messy, realistic dataset attached to the real roster and reconciling to the control totals the VC team already knows; the banner works; the platform is demonstrable end to end on it. Schema gaps the synthetic data exposes are fixed here, while that is still cheap.
 
-**Exit:** a full, messy, realistic dataset; the banner works; the real sample loads without schema changes — or the schema changes now, cheaply.
+*Restated 14 August 2026.* The criterion previously ended "…and the real sample loads without schema changes". B2 is withdrawn, so the clause is gone rather than merely unmet — see Track B.
+
+**Met, 14 August 2026.** 177 rounds, 282 transactions, 1,015 marks, 16 LP positions and 69 quarterly NAV snapshots against the real 82-company roster, **reconciling to Affinity's own control totals exactly: $47,216,678 invested and $42,030,272 FMV, to the cent, asserted per company before the generator will commit.** LP commitments and capital called reconcile to the workbook the same way. The schema did change, and cheaply, which is the criterion working as intended: `ref_investment_vehicle` and vehicle attribution on the transaction (ADR-030), and `amount_cad` on `v_transaction_live` after the first genuinely non-CAD row proved four aggregates had been ignoring `fx_rate_to_cad` since A1.
 
 ### Stage 3 — Production workflows, all testable on synthetic data
 
@@ -168,15 +170,26 @@ Generated transactions, rounds, marks, ownership and LP activity, attached to th
 
 ### Stage 4 — Cutover
 
-#### A13 · Real data migration and go-live
-The riskiest phase, and the reason it gets its own budget rather than being treated as a switch.
+#### A13 · Financial history port — the one-time load from Finance
+**The phase where the platform stops being a demo.** Everything Affinity and Visible do not supply arrives here, in one designed operation rather than a trickle, and it is the riskiest phase in the programme — which is why it gets its own budget rather than being treated as a switch.
 
-- Load real history through the B3 pipeline, batch by batch, reconciled to control totals
-- **Verified removal of every synthetic row** — `v_synthetic_data_status` must read zero
-- Banner disappears only when that is true
+- Company crosswalk resolved (B1): every name in Finance's records mapped to an Affinity organisation and an internal `company_id`
+- Staging load pipeline (B3): templates load, resolve names to keys, validate, emit exceptions. **`batch_id` rollback proven before the first real batch, not after a bad one**
+- Transactions and rounds (B4), valuation marks (B5), LP positions, cashflows and NAV (B6), ownership backfill (B7) — batch by batch, each reconciled to Finance's control totals before the next one starts
+- **Verified removal of every synthetic row** — `v_synthetic_data_status` must read zero, and the banner disappears only when it does
+- **The A6 generator is retired in the same operation.** `npm run db:generate` has no business existing in an environment holding real money; the command, its data files and `is_synthetic` handling are removed or hard-disabled here
+
+**After this phase the platform is the system of record for financial data, and there is no second import.** Affinity stays authoritative for company identity and pipeline (ADR-009) and Visible for company-reported KPIs (ADR-010), both syncing nightly. Everything financial — every new transaction, mark, round, LP cashflow and ownership change — is entered and maintained through the A7 and A8 interfaces from this point on. That is the whole reason those interfaces are built before the port rather than after it.
+
+**Exit:** every figure on every screen traces to Finance's records, Affinity or Visible. Control totals tie batch by batch. `v_synthetic_data_status` reads zero and the banner is gone.
+
+#### A14 · Go-live
+Operational readiness, separated from the data work above because the two fail in different ways and neither should be able to mask the other. A perfect load into a system nobody can restart at 9pm is not a launch.
+
 - Parallel run: platform and prototype side by side for one full reporting cycle, numbers compared line by line
 - Backup and restore rehearsed, not assumed
 - MSP runbook: how to restart, where the logs are, what to check
+- Accounts issued and roles assigned per ADR-005; board members receive PDFs, not accounts
 
 **Exit:** a board report produced from the platform matches one produced from the prototype, and any differences that remain are explained and intended.
 
@@ -186,7 +199,7 @@ The riskiest phase, and the reason it gets its own budget rather than being trea
 
 If the full sequence runs too long, this is the smaller thing worth launching.
 
-**In:** A0–A9, A11, A13 — Pipeline, Portfolio, Funds, Dashboard, Reports, Finance entry, alerts.
+**In:** A0–A9, A11, A13, A14 — Pipeline, Portfolio, Funds, Dashboard, Reports, Finance entry, alerts. Neither cutover phase is optional: A13 is what makes the numbers real and A14 is what makes them supportable.
 **Deferred past launch:** A10 Memo builder and A12 Modeling. Daniel keeps using the prototype for both; neither has an upstream data dependency, so nothing decays while they wait.
 
 ---
@@ -195,7 +208,7 @@ If the full sequence runs too long, this is the smaller thing worth launching.
 
 **Buys:** development never waits on another department. Something real is in front of Daniel by the end of A2, months earlier than v1.0 would have managed. Synthetic data can be made *harder* than real data, so edge-case handling gets tested more thoroughly than a partial real load would allow.
 
-**Costs:** cutover becomes a genuine phase with genuine risk rather than a configuration change. And the schema-fit question — does Finance actually hold transactions the way we assumed — moves from "discovered early on real data" to "discovered at A6 on a small sample, or at A13 on everything." Which of those two it turns out to be depends entirely on whether the real sample gets requested. That is the single highest-leverage item in this document.
+**Costs:** cutover becomes a genuine phase with genuine risk rather than a configuration change — which is why it is now two of them, A13 and A14. And the schema-fit question — does Finance actually hold transactions the way we assumed — is answered at A13 on everything at once, rather than early on a sample. **That is a deliberate trade, taken 14 August 2026 when B2 was withdrawn**, and what pays for it is that A6 stopped being a guess: the synthetic spine hangs off the real roster, reconciles to Affinity's own per-company invested and FMV figures, and is deliberately dirtier than the real extract is expected to be. The exception paths the port will need are therefore built and exercised before the port begins, which is the substance of what the sample was going to buy. What is genuinely given up is the early warning — a granularity or aggregation mismatch now surfaces during A13 rather than months ahead of it, and A13's budget has to carry that.
 
 ---
 
@@ -203,7 +216,7 @@ If the full sequence runs too long, this is the smaller thing worth launching.
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **Schema does not match how Finance holds data.** Granularity, aggregation, missing early years, fund-level-only marks. | High | The 5–10 company real sample at A6/B2. Without it this surfaces at A13, after everything is built on the assumption. |
+| **Schema does not match how Finance holds data.** Granularity, aggregation, missing early years, fund-level-only marks. | High | **Accepted into A13 rather than mitigated early (B2 withdrawn, 14 August 2026).** Reduced by three things: the load path is built and exercised against deliberately dirty synthetic data (ADR-020 condition 1); `batch_id` rollback is proven before the first real batch; and each batch reconciles to Finance's control totals before the next starts, so a mismatch surfaces on batch one rather than after the lot is in. A6's per-company reconciliation to Affinity's figures also means the target numbers are already known and agreed. |
 | **Synthetic data flatters the build.** Clean generated data validates only the happy path. | High | Deliberate dirt per ADR-020 condition 1. Exception handling built against mess, not ideal input. |
 | **Synthetic numbers escape into a real conversation.** | Medium | `is_synthetic` flags, `v_synthetic_data_status`, persistent banner on screen and in every PDF. Removed only when the count reads zero. |
 | **Bus factor of one.** Developer, DBA and internal IT are the same person. | High | Single-language stack (ADR-003). Runbook written as you go, targeted at what the MSP can realistically do. |
@@ -217,8 +230,9 @@ If the full sequence runs too long, this is the smaller thing worth launching.
 
 1. Confirm Affinity v2 and Visible API access on your current plan tiers.
 2. Add the two diversity fields to the Visible quarterly request.
-3. **Ask Finance for the 5–10 company real sample**, and be explicit that it is a small early ask, separate from and ahead of the full backfill.
-4. Send `finance-data-templates.xlsx` for the full extract and agree control totals for the first batch.
-5. Stand up the repository and Azure resources (A0).
+3. Send `finance-data-templates.xlsx` for the full extract and agree control totals for the first batch.
+4. Stand up the repository and Azure resources (A0).
 
-Items 1 to 4 are hours of your time with long lead times. Item 5 is where the real days go. Doing them in that order means Finance, Affinity and Visible are all moving while you build foundations.
+Items 1 to 3 are hours of your time with long lead times. Item 4 is where the real days go. Doing them in that order means Finance, Affinity and Visible are all moving while you build foundations.
+
+*Item 3 carries more weight since B2 was withdrawn: the full extract is now the only real financial data the programme will see before A13, so the templates and the agreed control totals are the whole of Track B's early surface.*
