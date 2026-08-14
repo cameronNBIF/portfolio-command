@@ -1,0 +1,406 @@
+{
+  "source": "Affinity NBIF Portfolio Export.xlsx, supplied 14 Aug 2026",
+  "note": "The Fund column is NOT in Affinity's profiled field metadata (docs/affinity-v2-field-map.csv, 78 fields) and so cannot be synced. Keyed on Organization Id because it survives a rename. Two roster companies are absent from this export - it is Status-filtered to Portfolio - and their vehicle is genuinely unknown, not defaulted.",
+  "vehicles": [
+    {
+      "affinity_org_id": "313218476",
+      "name": "AccessSync (Elandas)",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "287587118",
+      "name": "Acuicy",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "302133579",
+      "name": "agrogenesolutions.com",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "224485576",
+      "name": "Anessa",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "293890680",
+      "name": "ASETS-CA",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "154902887",
+      "name": "Avrij Analytics",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307518355",
+      "name": "AVSS - Aerial Vehicle Safety Solutions",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "124897406",
+      "name": "Beauceron Security",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "313711980",
+      "name": "Black Arcs",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307190400",
+      "name": "Bluejay",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307518356",
+      "name": "Breathe BioMedical",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "263223453",
+      "name": "brunvalley",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "294027712",
+      "name": "Chick Pick",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "42086462",
+      "name": "Chinova Bioworks",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307396423",
+      "name": "Climative",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "306073482",
+      "name": "ClinicGlide",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307202911",
+      "name": "CropMind",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307518372",
+      "name": "CyberCheck",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "282520114",
+      "name": "Drinkable Water Solutions",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "283477869",
+      "name": "East Coast Innovation",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307518375",
+      "name": "Eigen Innovations",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "292977286",
+      "name": "Elle, MD",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "1545040",
+      "name": "Encore Interactive",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "302799973",
+      "name": "FloraTrack AI",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "223165768",
+      "name": "FoodByte",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "313671427",
+      "name": "Fourth Wave Technology",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "289700796",
+      "name": "Gaia Refinery",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "225000628",
+      "name": "Gray Wolf Analytics",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307396439",
+      "name": "Hollo Medical",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "312886922",
+      "name": "HomeschoolToGo",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "286496118",
+      "name": "Iceberg Cyber",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "1607682",
+      "name": "Introhive",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "201804035",
+      "name": "Inversa Systems",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "158343203",
+      "name": "Kognitiv Spark",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "1783269",
+      "name": "Lastwall Networks, Inc.",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "223880106",
+      "name": "MADA Analytics",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "268168941",
+      "name": "MedReddie",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307518378",
+      "name": "MESH/diversity",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307517340",
+      "name": "Mulli Swing",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307396452",
+      "name": "Parados",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307396453",
+      "name": "Passiv",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "301888062",
+      "name": "pHathom Technologies",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "282274302",
+      "name": "Picketa Systems",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "282208275",
+      "name": "PLAEX Building Systems",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307188380",
+      "name": "Populus Global Solutions",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "290153623",
+      "name": "Postilize",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "95105532",
+      "name": "ProcedureFlow",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "303517977",
+      "name": "Profitual",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307518398",
+      "name": "QUBER",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "284081244",
+      "name": "QuickFacts Inc",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "219855953",
+      "name": "ReelData AI",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "121552798",
+      "name": "Renderator Virtual Model Suites\u2122",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "118761224",
+      "name": "Rise",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "224704722",
+      "name": "Sensi.AI",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "197481090",
+      "name": "Side Door",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "213999953",
+      "name": "SiMBi",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "1656466",
+      "name": "Smart Skin Technologies",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307518400",
+      "name": "snapB2B (Snap Accounts Payable)",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "263635219",
+      "name": "SolarSteam Inc.",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "291924328",
+      "name": "Solyntek",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "122977982",
+      "name": "SomaDetect",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "219925287",
+      "name": "Sonrai Security",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "1641795",
+      "name": "Soricimed",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "293277100",
+      "name": "Stemble Learning",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "307518407",
+      "name": "StockCalc",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "274009626",
+      "name": "SweetSpot Labs",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "307518410",
+      "name": "Symbodi",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "263430285",
+      "name": "TotalPave",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "287981821",
+      "name": "Tracktile",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "307396491",
+      "name": "Trelent",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "258481786",
+      "name": "Triple Hair",
+      "vehicle": "SIF"
+    },
+    {
+      "affinity_org_id": "292236346",
+      "name": "Trippl.ca",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "255189611",
+      "name": "TROES",
+      "vehicle": "ACC"
+    },
+    {
+      "affinity_org_id": "225080310",
+      "name": "TrojAI",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "220058634",
+      "name": "TurboPlay",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "304715391",
+      "name": "Urai AI",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307396497",
+      "name": "Uresta",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "293274085",
+      "name": "versos AI",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "307396499",
+      "name": "Victory Advanced Technologies",
+      "vehicle": "VCF"
+    },
+    {
+      "affinity_org_id": "293528316",
+      "name": "Work Water",
+      "vehicle": "SIF"
+    }
+  ]
+}
