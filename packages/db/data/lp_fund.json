@@ -1,0 +1,107 @@
+{
+  "source": "NBIF LP Funds.xlsx, supplied 14 Aug 2026",
+  "note": "Commitment, capital called to date and remaining are REAL and are the control totals the generated cashflows must reconcile to. Manager name, vintage year, strategy and NAV are NOT in the workbook and are synthetic.",
+  "controlTotals": {
+    "committed": 8725000,
+    "called": 4152160,
+    "remaining": 4572840
+  },
+  "funds": [
+    {
+      "name": "Propel",
+      "committed": 500000,
+      "called": 488819,
+      "remaining": 11181
+    },
+    {
+      "name": "Energia Ventures",
+      "committed": 500000,
+      "called": 500000,
+      "remaining": 0
+    },
+    {
+      "name": "Concrete Ventures",
+      "committed": 500000,
+      "called": 417494,
+      "remaining": 82506
+    },
+    {
+      "name": "Brightspark Ventures",
+      "committed": 1000000,
+      "called": 324440,
+      "remaining": 675560
+    },
+    {
+      "name": "Sandpiper Ventures",
+      "committed": 1000000,
+      "called": 98118,
+      "remaining": 901882
+    },
+    {
+      "name": "Two Small Fish Ventures",
+      "committed": 500000,
+      "called": 326481,
+      "remaining": 173519
+    },
+    {
+      "name": "Tidal Ventures",
+      "committed": 550000,
+      "called": 224309,
+      "remaining": 325691
+    },
+    {
+      "name": "WEL Atlantic",
+      "committed": 250000,
+      "called": 65000,
+      "remaining": 185000
+    },
+    {
+      "name": "Sandpiper Ventures II",
+      "committed": 1000000,
+      "called": 463477,
+      "remaining": 536523
+    },
+    {
+      "name": "Green Sky Ventures",
+      "committed": 500000,
+      "called": 500000,
+      "remaining": 0
+    },
+    {
+      "name": "Amplify Capital",
+      "committed": 500000,
+      "called": 172541,
+      "remaining": 327459
+    },
+    {
+      "name": "Mistral Venture Partners",
+      "committed": 500000,
+      "called": 159358,
+      "remaining": 340642
+    },
+    {
+      "name": "Active Impact Investments",
+      "committed": 500000,
+      "called": 237123,
+      "remaining": 262877
+    },
+    {
+      "name": "Island Capital Partners",
+      "committed": 500000,
+      "called": 0,
+      "remaining": 500000
+    },
+    {
+      "name": "Nadarra Ventures",
+      "committed": 250000,
+      "called": 0,
+      "remaining": 250000
+    },
+    {
+      "name": "Accelerators",
+      "committed": 175000,
+      "called": 175000,
+      "remaining": 0
+    }
+  ]
+}

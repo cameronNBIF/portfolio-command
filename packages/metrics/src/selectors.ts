@@ -131,3 +131,28 @@ export function diversityWithCoverage(db: PortfolioExport, opts: Pick<MetricOpti
     coveragePct: active.length ? (reporting.length / active.length) * 100 : null,
   };
 }
+
+/**
+ * Whether the fund has a stated capital basis at all.
+ *
+ * `fundMetrics.dryPowder` is `capitalBase - netDeployed` for an evergreen fund
+ * and `committed - netDeployed` for a closed-end one. That definition is frozen
+ * (ADR-013) and is correct; what it cannot express is the difference between a
+ * capital base of zero and no capital base on record. With neither set --
+ * which is the state A4 deliberately left the fund row in, because a capital
+ * base nobody supplied would be a fabricated board number -- the subtraction
+ * runs anyway and the dashboard reads "dry powder $-47.2M".
+ *
+ * That is the D-5 error class exactly: a screen stating a precise falsehood
+ * where the truth is "not recorded". A6 surfaced it because A6 is the first
+ * dataset with real deployment and no capital base; on the reference fixture
+ * both were populated and the gap could not appear.
+ *
+ * So this sits BESIDE the frozen definition rather than changing it, on the
+ * `diversityWithCoverage` precedent. The metric still returns its number; the
+ * view asks this first and renders "-" when the answer is no.
+ */
+export function hasCapitalBasis(db: PortfolioExport): boolean {
+  const basis = db.fund.style === 'evergreen' ? db.fund.capitalBase : db.fund.committed;
+  return typeof basis === 'number' && basis > 0;
+}

@@ -398,7 +398,7 @@ Records that represent judgement rather than fact — health rating, risk flags,
 
 ## ADR-020 — Development proceeds on synthetic financial data; real data is a cutover event
 
-**Status:** Accepted
+**Status:** Accepted. **Condition 3 withdrawn 14 August 2026** — see the amendment at the end.
 
 **Context.** Finance is assembling fifteen-plus years of transactions, valuation marks and LP activity from spreadsheets and closing documents. That work is measured in months and is not under the development team's control. Sequencing the build behind it would idle the only developer available, at a point when development capacity exceeds Finance's extraction capacity.
 
@@ -410,7 +410,7 @@ Four conditions attach to this decision, and it is not sound without them.
 
 1. **The synthetic data is dirty on purpose.** Data generated cleanly from Affinity is by construction perfectly resolvable, which is precisely what real data will not be. The generator deliberately produces orphan transactions, unresolvable company names, rounds with missing totals at a rate matching what Finance expects for old vintages, a renamed company, a duplicate, a mark predating its first investment, a non-CAD transaction, and a company reporting no KPIs. Exception handling is built against dirt, not against the happy path.
 2. **Every synthetic row is flagged and every environment says so.** `is_synthetic` is set on `transaction`, `valuation_mark`, `investment_round`, `fund_investment_nav` and `company_ownership`. The application reads `v_synthetic_data_status` at start and displays a persistent, unmissable banner on every screen and every PDF export while synthetic rows exist. In a small organisation, a plausible-looking NAV on a screen someone walks past becomes a number in a conversation.
-3. **A small real sample arrives early, not with the full backfill.** Five to ten companies with complete real history — transactions, rounds, marks, ownership — requested from Finance during the synthetic-data phase. This is a day of their time rather than months, and it is the only way to discover whether the schema actually fits how Finance holds the data.
+3. ~~**A small real sample arrives early, not with the full backfill.**~~ **Withdrawn 14 August 2026.** Five to ten companies with complete real history were to be requested from Finance during the synthetic-data phase, to discover whether the schema actually fits how Finance holds the data. See the amendment below for what replaced it and what was given up.
 4. **The Finance entry interfaces are walked through with the Director of Finance before they are built,** using the synthetic dataset. Building an entry workflow entirely without its user, on the strength of a schema, is how you reach cutover with something correct and unusable.
 
 **Consequences.**
@@ -418,10 +418,23 @@ Four conditions attach to this decision, and it is not sound without them.
 - Synthetic data can be made harder than real data — deliberately adversarial volumes, distributions and edge cases — which makes it a better test bed than a partial real load would be.
 - The frontend can be ported against a static seed fixture before any backend exists, because ADR-001 makes the export contract and the API response the same shape. The fixture *is* the contract.
 - **Cutover becomes a designed phase carrying real risk**, rather than a configuration change. It requires reconciliation against Finance's control totals, verified removal of every synthetic row, and a parallel run against the prototype for one reporting cycle.
-- Condition 3 is the load-bearing one. Without a real sample, a mismatch between the schema and how Finance actually holds transactions — granularity, aggregation, missing early years, fund-level-only marks — surfaces at cutover, after everything has been built on the assumption. That is the worst possible moment to find it.
+- Condition 3 was written as the load-bearing one, on the reasoning that without a real sample a mismatch between the schema and how Finance actually holds transactions — granularity, aggregation, missing early years, fund-level-only marks — surfaces at cutover, after everything has been built on the assumption. **That reasoning still stands and the risk is now accepted rather than mitigated** (amendment, 14 August 2026).
 - **The generator is calibrated to Affinity's real figures (decision, 29 July 2026).** Affinity holds a VC-team-maintained FMV and Total Investment Amount for every portfolio company. These are *not* used as metric inputs — the metrics are ratios across fields, and mixing a real FMV with a synthetic invested cost produces a MOIC that is neither real nor coherent. Instead the generator works backward from them as targets, so synthetic rounds sum to roughly the real invested amount and synthetic marks land near the real FMV. Company-level figures land in the right ballpark, making a pilot with the VC team lead meaningful, while the dataset stays internally consistent and flagged synthetic throughout.
 - **Affinity's figures are additionally stored as labelled reference columns** (`company.affinity_fmv`, `company.affinity_total_investment`), displayed in the company drawer as VC-team-maintained values and never entering a calculation. Post-launch they become a standing reconciliation signal between the two systems. The change log justifies the caution: one deal's Potential Investment Amount ran 1,000,000 → 500,000 → deleted → 1,000,000 → 1,500 → 1,500,000, the fat-finger corrected 33 seconds later. Accurate enough to steer by, not to calculate from.
 - The metrics golden-master fixtures remain derived from Daniel's demo dataset (ADR-013), not from the synthetic financial data. They test different things: one that the port is faithful, the other that the application survives realistic volume and mess.
+
+**Amendment, 14 August 2026 — condition 3 is withdrawn, and the real load becomes a named phase.**
+
+Condition 3 required a 5–10 company real sample during the synthetic-data phase. It is withdrawn at the VC team lead's direction, and the reasoning is worth recording because the risk it covered has not gone anywhere.
+
+**What changed the calculus.** A6 delivered something the condition did not anticipate. The synthetic spine is not merely attached to real company ids — it **reconciles to Affinity's own per-company `Total Investment Amount` and FMV exactly, to the cent, asserted for all 82 companies before the generator will commit** (ADR-030). The platform therefore already shows the VC team lead numbers he knows by heart, on his own portfolio, through every screen. That demonstrability was most of what the sample was really being asked to buy, and it arrived without occupying a day of Finance's time.
+
+**What the sample was ALSO buying, and is no longer.** Early warning on schema fit. A granularity mismatch — Finance holding one aggregated row per company per year where the schema wants a transaction, or fund-level NAV where it wants per-company marks — now surfaces during the port itself rather than months ahead of it. **That is a real cost and it is accepted, not solved.** Three things reduce it, none of which eliminate it:
+  - the load path is built and exercised against deliberately dirty synthetic data (condition 1), so the exception handling exists before the first real row;
+  - `batch_id` rollback is proven before the first real batch rather than discovered after a bad one (ADR-018);
+  - batches reconcile to Finance's control totals one at a time, so a mismatch shows up on batch one instead of after the whole extract is in.
+
+**And the real load is now a phase with a name.** The roadmap splits cutover into **A13 · Financial history port** and **A14 · Go-live**. A13 is the single operation in which all of Finance's history — transactions, rounds, marks, LP cashflows, NAV, ownership — is loaded, reconciled and the synthetic dataset removed. **After A13 the platform is the system of record for financial data and there is no second import**: Affinity remains authoritative for company identity and pipeline and Visible for company-reported KPIs, both syncing nightly, while every new transaction, mark, round and LP cashflow is entered through the A7 and A8 interfaces. That is why those interfaces are built before the port rather than after it, and why the A6 generator is retired as part of A13 rather than left in a repository that now touches real money.
 
 ---
 
@@ -998,6 +1011,127 @@ the platform's burn history in October 2025.
 | O‑3 | Diff funding-agreement definitions against the prototype | **Closed as a blocker.** The platform is not the system of submission (ADR-017). Worth doing before external quotation; no longer gating. |
 | O‑6 | Historical availability of round totals and co-investor amounts | **Closed.** Extensive but imperfect, with histories exceeding fifteen years. Coverage tapers with age and is reported rather than imputed (ADR-015). |
 
+## ADR-030 — The investment vehicle is an attribute of the transaction, not of the company; and A6 reconciles to Affinity's control totals rather than inventing its own
+
+**Status:** Accepted (14 August 2026)
+
+**Context.** A6 generates the synthetic financial spine — transactions, rounds,
+marks, ownership and LP activity — against the real company roster A4 brought
+in. Two questions arose that no earlier ADR answers, and both were raised by
+looking at the operator's own portfolio export rather than at the schema.
+
+**First, NBIF invests through three vehicles and nothing modelled it.** The
+Affinity portfolio export carries a `Fund` column reading `VCF`, `SIF` or `ACC`
+— the venture capital fund, the startup investment fund and the accelerator
+programme — split 40 / 20 / 20 across the eighty portfolio companies. The schema
+had a `fund` table with one row, described as the reporting entity, and no link
+from any company, round or transaction to a vehicle. The column is also **not in
+Affinity's profiled field metadata** (`docs/affinity-v2-field-map.csv`, 78
+fields), so the A4 sync cannot fetch it and no amount of re-probing will make it
+appear on its own.
+
+**Second, the generated data needed a definition of "right".** Finance has not
+supplied per-transaction history (ADR-011), so every date, cheque size, round
+label and mark in the generated dataset is invented. Without an anchor,
+"looks plausible" is the only available standard — and a plausible portfolio
+that adds up to $41M when the team knows it is $47M is worse than no portfolio
+at all.
+
+**Decision.**
+
+**1. Vehicle attribution lives on `transaction` and `investment_round`, never on
+`company`.** A new `ref_investment_vehicle` holds the three codes;
+`transaction.investment_vehicle_id` and `investment_round.investment_vehicle_id`
+are nullable references to it. Affinity records one vehicle per company because
+its record *is* the company, but a dollar belongs to the vehicle that wrote the
+cheque, and an accelerator position followed on from the VC fund is a normal
+progression that a company-level column cannot express. It is also the shape
+Finance books in, so the A13 backfill arrives in this form rather than needing
+to be decomposed into it.
+
+**2. The column is NULLABLE and is never defaulted.** Two roster companies —
+Alongside and Potential Motors — are absent from the Status-filtered export the
+`Fund` column came from, so their vehicle is genuinely unknown. They carry NULL.
+Guessing `VCF` on the strength of a cheque size would put $3.7M of real
+deployment into a vehicle it may never have come from, and a year from now the
+guess would be indistinguishable from a fact.
+
+**3. `company.affinity_total_investment` and `company.affinity_fmv` are the
+generator's control totals.** Both are synced nightly from Affinity by the A4
+job and were already stored, marked REFERENCE ONLY — never an input to a
+calculation. They are still not an input: the generator does not *display*
+them, it *reconciles to* them. Every company's generated transactions sum to
+the first, exactly; its final valuation mark equals the second, exactly; and
+`run.ts` re-reads both out of Postgres after the write and **aborts the
+transaction** if any of the 82 disagrees by a cent. Reading the targets from the
+database rather than from the supplied spreadsheet means a correction made in
+Affinity today is picked up by a regeneration tomorrow, with no file to
+re-export.
+
+**4. No realizations are generated** (VC team lead's call, 14 August 2026). The
+export carries invested and FMV and nothing else. Realized proceeds would move
+DPI, TVPI, IRR and the fund distributions series — four board numbers — with no
+source. DPI reads 0.00x and TVPI 0.89x, which is what the supplied data says.
+Write-offs *are* generated, because an FMV of zero is in the data; a
+`company_exit` row additionally requires Affinity's lifecycle status to read
+`Winding Down`, because a write-down and a closure are different assertions and
+fifteen companies carry a zero FMV without that status.
+
+**5. `fund.capital_base` stays NULL** (VC team lead's call, 14 August 2026),
+continuing A4's refusal to invent one. This surfaced a real defect rather than
+merely a blank tile — see the consequences below.
+
+**Consequences.**
+
+- **The FX rate became load-bearing for the first time.** `fx_rate_to_cad` had
+  been stored since A1 and read by nothing, because every row in the reference
+  fixture was CAD. A6's deliberately non-CAD tranche made four aggregates
+  understate by the spread. `v_transaction_live` now exposes `amount_cad`
+  (`amount * coalesce(fx_rate_to_cad, 1)`), and `v_company_invested`,
+  `v_company_realized`, `company_fmv_asof`, `v_round_leverage`,
+  `v_lp_position_current` and the export adapter's per-round sum all read it.
+  The rate is the one at the transaction date, not today's: re-translating a
+  historical cheque nightly would make a board number drift on data that has
+  not changed (ADR-021).
+- **A missing capital base produced a false number, not an absent one.**
+  `fundMetrics.dryPowder` is `capitalBase - netDeployed`, frozen under ADR-013
+  and correct; what it cannot express is the difference between a capital base
+  of zero and no capital base on record. With neither set the dashboard read
+  *"dry powder $-47.2M"* — the D-5 error class exactly, on a board-facing tile.
+  The frozen definition is untouched; `hasCapitalBasis()` sits beside it on the
+  `diversityWithCoverage` precedent and the four display sites render `-`.
+- **`FundInvestment.womenSeniorGP` cannot express "not reported".** The contract
+  types it `boolean`. The LP workbook carries no such column and these are real,
+  named firms, so the generator leaves it NULL rather than asserting anything
+  about identifiable people — and the Funds tab renders *"0 / 16 positions with
+  women senior partners"*, which is the same false statement D-5 exists to
+  prevent. Recorded, not fixed: correcting it is an ADR-001 contract change and
+  a separate conversation.
+- **The three carried LP mandate fields are set from the generated co-investor
+  rows.** `capital_to_direct`, `co_invests_done` and `referrals` are carried
+  rather than derived until the A8 capture form exists (ADR-027); the generator
+  writes them consistently with the `round_coinvestor` rows it creates, so the
+  stored figure and the derivable one agree instead of the tile reading zero
+  against sixty-two co-investments in the table beneath it.
+- **The generator is deterministic and per-company seeded.** `mulberry32` from
+  the prototype, seeded on `company_id`, so adding a company to the roster or
+  regenerating one position leaves every other company's history byte-identical.
+  A regeneration is reviewable in a diff rather than merely plausible.
+- **Every generated financial row carries `is_synthetic` (ADR-020)** and the
+  banner is live on every screen. Clearing is scoped by that flag where the
+  column exists and by authorship against the system principal where it does
+  not, so an allocation a person edited through the ADR-018 judgement path
+  survives a regeneration.
+- **Leverage is a generator parameter, and it was checked rather than guessed.**
+  Our participation is drawn at 4–32% of a round, giving portfolio leverage of
+  5.9:1. `company.cb_total_funding_usd` is documented as a cross-check and never
+  a leverage input; used as a cross-check it says the generated round totals
+  ($243M) sit *below* the real Crunchbase funding ($460M) for the 55 companies
+  that carry it, so the figure is conservative rather than inflated. It remains
+  a dial, not a finding.
+
+---
+
 ## Decisions requiring the VC team lead
 
 **All settled as of 28 July 2026.** No architecture or data decision remains open.
@@ -1017,7 +1151,7 @@ the platform's burn history in October 2025.
 |---|---|---|
 | A‑1 | Add women in C-suite and C-suite size to the Visible quarterly request | VC team |
 | A‑2 | Historical backfill: transactions, rounds, marks, ownership. Runs asynchronously; gates launch, not development (ADR-020) | Systems & Data Analyst + Finance |
-| A‑8 | Request a 5–10 company **real sample** with complete history, during the synthetic-data phase | Finance |
+| ~~A‑8~~ | ~~Request a 5–10 company **real sample** with complete history~~ — **withdrawn 14 August 2026**, see the ADR-020 amendment | — |
 | A‑9 | Walk the transaction and mark entry workflow through with the Director of Finance before building it | Systems & Data Analyst |
 | A‑3 | Issue the staging templates to Finance and reconcile a first batch against agreed control totals | Systems & Data Analyst + Finance |
 | A‑4 | Build the company crosswalk — Finance name → Affinity organisation → internal company_id — before any transaction loads | Systems & Data Analyst |

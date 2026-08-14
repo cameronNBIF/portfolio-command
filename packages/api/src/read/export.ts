@@ -218,7 +218,10 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
         from investment_round r
         left join ref_instrument i on i.instrument_id = r.instrument_id
         left join lateral (
-          select sum(amount) as ours from v_transaction_live
+          -- amount_cad, not amount: a round can carry a non-CAD tranche, and
+          -- summing the booked figure would understate our cheque by the
+          -- spread. Same correction as v_company_invested (ADR-030).
+          select sum(amount_cad) as ours from v_transaction_live
            where investment_round_id = r.investment_round_id
              and txn_type in ('investment','follow_on')) t on true
        order by r.company_id, r.round_date, r.investment_round_id`),

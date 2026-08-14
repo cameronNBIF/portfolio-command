@@ -187,6 +187,29 @@ than a rounded sum. Measured delta on `demo.json`: **$128.9M vs $129.09M**.
 
 ---
 
+## 13 · A sign hardcoded into a label
+
+Found by A6, on the first dataset where the value could go negative.
+
+- **:699 — the dashboard FMV Growth sub-line hardcodes a plus sign in front of
+  organic value creation**: `"- organic +"+fmt.m(m.organicYoY)`. `organicYoY`
+  is `(nav - navYoY) - (cost - costYoY)`, which is negative whenever a year's
+  new deployment exceeds the year's value growth — an ordinary state for an
+  early-stage book, and the state the real portfolio is in. The tile renders
+  **"organic +$-4.2M"**.
+
+  Every other signed figure on that same line goes through the
+  `m.fmvYoY>=0?"+":""` idiom, so this is an oversight in the prototype rather
+  than a convention. It is reproduced verbatim under ADR-014 and is NOT fixed:
+  the frontend ports one-to-one and the two sanctioned content exceptions are
+  D-2 and D-5. Correcting it is a third exception and therefore the VC team
+  lead's call, not a tidy-up. **Raised 14 August 2026; awaiting that call.**
+
+  The Reports tab's GROWTH line (:1255) is unaffected — it interpolates
+  `fmt.m(m.organicYoY)` with no sign in front and reads correctly.
+
+---
+
 ## Examined and found sound
 
 Recorded so the same ground is not re-litigated:

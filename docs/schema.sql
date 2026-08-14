@@ -96,6 +96,32 @@ create table ref_valuation_method (
   is_active     boolean not null default true
 );
 
+-- The investment vehicle a dollar was deployed from. NBIF invests through
+-- THREE, which nothing in the schema modelled before A6: the VC Fund, the
+-- Startup Investment Fund and the accelerator programme.
+--
+-- ATTRIBUTION LIVES ON THE TRANSACTION AND THE ROUND, NOT ON THE COMPANY, and
+-- that is deliberate. Affinity records one vehicle per company because its
+-- record IS the company, but a dollar belongs to the vehicle that wrote the
+-- cheque: an accelerator position followed on from the VC fund is a normal
+-- progression and a company-level column cannot express it. Finance books per
+-- transaction, so this is also the shape the real backfill arrives in
+-- (ADR-030).
+--
+-- NULLABLE, and never defaulted. A historical transaction whose vehicle nobody
+-- recorded is an unknown, and guessing one would put real dollars in a vehicle
+-- they never came from.
+create table ref_investment_vehicle (
+  investment_vehicle_id serial primary key,
+  code          text not null unique,   -- VCF, SIF, ACC
+  name          text not null,
+  is_active     boolean not null default true,
+  sort_order    int not null default 0
+);
+
+comment on table ref_investment_vehicle is
+  'ADR-030. NBIF''s three investment vehicles. NOT the same concept as `fund`, which is the reporting entity the board sees, nor as `fund_investment`, which is a third-party fund NBIF holds an LP position in. All three were called "fund" in different rooms; the codes are what the team says.';
+
 -- Affinity status -> funnel stage mapping. Replaces the regex in the
 -- MVP's importAffinityCsv() with an editable table (ADR-009).
 create table affinity_status_map (
@@ -311,6 +337,10 @@ create table investment_round (
   round_date           date not null,
   label                text not null,            -- Seed, Series A, ...
   instrument_id        int not null references ref_instrument,
+  -- ADR-030. Which vehicle our participation came from. NULL = unrecorded,
+  -- never a default. The round's own transactions carry it too, because a
+  -- round can be funded from two vehicles at once.
+  investment_vehicle_id int references ref_investment_vehicle,
 
   -- MANDATE FIELDS. Captured by the deal lead at close (ADR-012).
   -- NULL means "unknown" and is EXCLUDED from leverage, never imputed.
@@ -364,6 +394,8 @@ create table transaction (
   company_id           text references company,
   fund_investment_id   text,
   investment_round_id  bigint references investment_round,
+  -- ADR-030. The vehicle this dollar was deployed from. NULL = unrecorded.
+  investment_vehicle_id int references ref_investment_vehicle,
   amount               numeric(18,2) not null,   -- DOLLARS, not millions
   currency             char(3) not null default 'CAD',
   fx_rate_to_cad       numeric(18,8),            -- null when currency = CAD
@@ -832,8 +864,13 @@ comment on table fund_nav_snapshot is
 -- IRR 19.0%->19.1%, net IRR 16.7%->16.8%, dry powder $146.7M->$152.2M).
 -- A3 keeps them frozen so that any number moving during the fixture-to-API
 -- swap is an adapter bug rather than an intended change. The correction is
--- deferred to A6/A13, on real data, with the VC team lead's sign-off and a
--- golden-master recapture. See ADR-025.
+-- deferred to A13, on real data, with the VC team lead's sign-off and a
+-- golden-master recapture.
+--
+-- A6 did NOT resolve it, deliberately: no realizations were generated at all,
+-- because the Affinity export carries invested and FMV and nothing else, so
+-- proceeds would have been a board number with no source (ADR-030). This table
+-- is therefore still empty and still the exception. See ADR-025.
 --
 -- Deliberately a separate table rather than a nullable-subject transaction
 -- row: an exception that is greppable is an exception that gets removed.
@@ -913,21 +950,36 @@ comment on function fiscal_quarter_label is
 -- NOTE: every view below reads LIVE rows only. Voided originals and their
 -- reversals both carry voided_at / reverses_transaction_id and are excluded,
 -- so totals are net of corrections while the history remains intact (ADR-018).
+-- Live rows, with the reporting-currency amount alongside the booked one.
+--
+-- `amount_cad` exists because A6 put a genuinely non-CAD transaction into the
+-- dataset for the first time and every aggregate below was summing `amount`
+-- raw. `fx_rate_to_cad` had been carried since A1 and read by nothing, so a
+-- USD cheque booked at 250,000 counted as 250,000 CAD and understated invested
+-- capital by the spread. The CHECK constraint `txn_fx_present` already
+-- guarantees the rate is present whenever the currency is not CAD, so the
+-- coalesce is defensive rather than load-bearing.
+--
+-- Rate at the transaction date, not today's: a historical cheque is worth what
+-- it was worth when it cleared, and re-translating it nightly would make a
+-- board number drift on data that has not changed (ADR-021).
 create or replace view v_transaction_live as
-select * from transaction
+select *,
+       amount * coalesce(fx_rate_to_cad, 1) as amount_cad
+from transaction
 where voided_at is null and reverses_transaction_id is null;
 
 create or replace view v_company_invested as
 select c.company_id,
-       coalesce(sum(t.amount) filter (where t.txn_type in ('investment','follow_on')), 0) as invested,
-       min(t.txn_date) filter (where t.txn_type = 'investment')                            as first_investment_date
+       coalesce(sum(t.amount_cad) filter (where t.txn_type in ('investment','follow_on')), 0) as invested,
+       min(t.txn_date) filter (where t.txn_type = 'investment')                                as first_investment_date
 from company c
 left join v_transaction_live t on t.company_id = c.company_id
 group by c.company_id;
 
 create or replace view v_company_realized as
 select c.company_id,
-       coalesce(sum(t.amount) filter (where t.txn_type = 'realization'), 0) as realized
+       coalesce(sum(t.amount_cad) filter (where t.txn_type = 'realization'), 0) as realized
 from company c
 left join v_transaction_live t on t.company_id = c.company_id
 group by c.company_id;
@@ -944,7 +996,7 @@ returns numeric language sql stable as $$
         and vm.effective_date <= p_as_of
       order by vm.effective_date desc, vm.booked_at desc
       limit 1),
-    (select coalesce(sum(t.amount), 0)
+    (select coalesce(sum(t.amount_cad), 0)
        from v_transaction_live t
       where t.company_id = p_company_id
         and t.txn_type in ('investment','follow_on')
@@ -1056,7 +1108,7 @@ select r.investment_round_id,
                                                                         as outside_capital
 from investment_round r
 join lateral (
-    select coalesce(sum(t.amount),0) as our_invested
+    select coalesce(sum(t.amount_cad),0) as our_invested
       from v_transaction_live t
      where t.investment_round_id = r.investment_round_id
        and t.txn_type in ('investment','follow_on')) ours on true
@@ -1088,11 +1140,11 @@ select fi.fund_investment_id,
        end                                             as dpi
 from fund_investment fi
 left join lateral (
-    select sum(t.amount) as called from v_transaction_live t
+    select sum(t.amount_cad) as called from v_transaction_live t
      where t.fund_investment_id = fi.fund_investment_id
        and t.txn_type = 'capital_call') calls on true
 left join lateral (
-    select sum(t.amount) as distributions from v_transaction_live t
+    select sum(t.amount_cad) as distributions from v_transaction_live t
      where t.fund_investment_id = fi.fund_investment_id
        and t.txn_type = 'distribution') dists on true
 left join lateral (

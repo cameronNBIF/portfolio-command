@@ -27,7 +27,7 @@ These are settled architecture decisions. Do not work around them; if one seems 
 
 | Path | Contents |
 |---|---|
-| `docs/architecture-decisions.md` | 20 ADRs plus the decision log. **The authority for any "why is it like this" question.** |
+| `docs/architecture-decisions.md` | 30 ADRs plus the decision log. **The authority for any "why is it like this" question.** |
 | `docs/delivery-roadmap.md` | Phased build sequence, effort, exit criteria, risks |
 | `docs/schema.sql` | Postgres DDL: tables, views, period-labelling functions |
 | `docs/field-inventory.csv` | All 148 prototype fields → source system → target table and column |

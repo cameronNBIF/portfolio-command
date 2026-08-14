@@ -153,7 +153,16 @@ jobs:
       # the database, so nothing else covers it. These tests skip silently
       # without DATABASE_URL, which is exactly why they run here and not in the
       # no-services job.
+      #
+      # The two steps below are SEPARATE assertions and neither feeds the other.
+      # `import:fixture` proves the importer CLI runs end to end against a real
+      # database. The test suite then provisions and migrates its OWN database
+      # -- `<database>_test`, derived from DATABASE_URL -- and does its own load
+      # there, because the round trip truncates every root table and must never
+      # be pointed at a database anyone cares about. It wiped the development
+      # roster twice during A6 before that isolation existed.
+      - name: Importer CLI loads the fixture
+        run: npm run import:fixture
+
       - name: Contract round-trips through Postgres
-        run: |
-          npm run import:fixture
-          npm run test -w @portfolio-command/api
+        run: npm run test -w @portfolio-command/api

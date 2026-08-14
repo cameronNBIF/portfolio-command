@@ -20,6 +20,7 @@ import {
   fundMetrics,
   healthAlerts,
   isEvergreen,
+  hasCapitalBasis,
   signedPct,
 } from '@portfolio-command/metrics';
 
@@ -64,7 +65,11 @@ export function DashboardTab({ db, asOf }: { db: PortfolioExport; asOf: string }
         <Kpi
           label={evergreen ? 'Realized Proceeds' : 'Distributions'}
           value={fmt.m(m.distributions)}
-          sub={evergreen ? `Recycled - dry powder ${fmt.m(m.dryPowder)}` : 'Realized to date'}
+          sub={
+            evergreen
+              ? `Recycled - dry powder ${hasCapitalBasis(db) ? fmt.m(m.dryPowder) : '- (capital base not set)'}`
+              : 'Realized to date'
+          }
         />
         <Kpi
           label={`TVPI${evergreen ? ' (SI)' : ''}`}
