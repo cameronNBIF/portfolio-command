@@ -33,6 +33,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { loadEnv, requireDatabaseUrl } from './env.js';
+import { fundIdentity } from './fund-identity.js';
 
 // BEFORE any module-level process.env read below. See loadEnv's note.
 loadEnv();
@@ -203,24 +204,10 @@ const FIXTURE_ONLY_STAGES: { name: string; group: string }[] = [
  * Affinity roster before A6's financial spine exists -- without a fund row the
  * export contract has no valid document and every page throws.
  *
- * Two values are CONFIRMED and hardcoded: the vehicle is evergreen
- * (`docs/field-inventory.csv`) and the fiscal year starts in April (ADR-006).
- * Name and inception year are marked "Platform (user entry)" in that same
- * inventory, so they come from the environment and are NOT invented here. The
- * defaults are deliberately conspicuous -- a provisional fund name renders on
- * screen, which is the point.
- *
- * Financial fields stay NULL. A capital base nobody supplied would be a
- * fabricated board number, which is exactly what ADR-020 exists to prevent.
+ * MOVED TO `fund-identity.ts` at A8.2, unchanged, because `fixture:purge` has to
+ * restore exactly what this creates. The rationale for every field is there.
  */
-const FUND = {
-  name: process.env.FUND_NAME ?? 'NBIF — fund name not yet configured',
-  style: 'evergreen',
-  currency: 'CAD',
-  inceptionYear: Number(process.env.FUND_INCEPTION_YEAR) || null,
-  fiscalYearStartMonth: 4,
-  annualPlatformTarget: Number(process.env.FUND_ANNUAL_PLATFORM_TARGET) || null,
-} as const;
+const FUND = fundIdentity();
 
 const client = new pg.Client({ connectionString: requireDatabaseUrl() });
 await client.connect();
