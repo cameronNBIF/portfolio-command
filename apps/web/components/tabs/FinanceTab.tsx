@@ -19,7 +19,7 @@
  * longer how a typing error is fixed. Every change here is captured by a
  * database trigger with the actor, the reason and the complete prior row.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import type {
   LpNavRow,
