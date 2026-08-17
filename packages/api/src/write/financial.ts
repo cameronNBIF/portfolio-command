@@ -25,6 +25,7 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_WRITE_FINANCIAL, type Principal, requireRole } from '../auth/principal.js';
 import { ValidationError } from './errors.js';
+import { checkRestatement, date, money, optional, setSessionContext, text } from './session.js';
 
 /**
  * UNITS: THIS API SPEAKS DOLLARS, NOT $M.
@@ -45,11 +46,10 @@ import { ValidationError } from './errors.js';
  * this path. The export contract is unaffected -- it reads the same rows and
  * converts on the way out as it always has.
  *
- * MONEY IS A STRING END TO END, for the reason ADR-008 gives: a float never
- * represents stored dollars. What the user typed goes to `numeric` unmodified.
+ * The validators, the actor GUC and the restatement test moved to `session.ts`
+ * at A8, when `rounds.ts` became the second module writing to a trigger-backed
+ * table. Same rules, one copy.
  */
-const MONEY = /^\d{1,15}(\.\d{1,2})?$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export type FinancialTable =
   | 'transaction'
@@ -147,37 +147,10 @@ export interface FinancialWriteResult {
 }
 
 // --- validation -------------------------------------------------------------
-// Hand-written, matching `judgement.ts`. These messages are read by the Director
-// of Finance in a form, not by a developer in a stack trace, so they say what to
-// do rather than which constraint failed.
-
-function money(value: unknown, field: string, allowZero = false): string {
-  if (typeof value !== 'string' || !MONEY.test(value)) {
-    throw new ValidationError(
-      `"${field}" must be an amount in dollars with at most two decimal places, as text — for example "1250000.00". Got ${JSON.stringify(value)}.`,
-    );
-  }
-  if (!allowZero && Number(value) === 0) {
-    throw new ValidationError(`"${field}" must be greater than zero.`);
-  }
-  return value;
-}
-
-function date(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !DATE.test(value) || Number.isNaN(Date.parse(value))) {
-    throw new ValidationError(`"${field}" must be a real date as YYYY-MM-DD. Got ${JSON.stringify(value)}.`);
-  }
-  return value;
-}
-
-function text(value: unknown, field: string): string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new ValidationError(`"${field}" is required.`);
-  }
-  return value.trim();
-}
-
-const optional = <T>(value: T | null | undefined): T | null => (value ?? null);
+// The primitives are in `session.ts`. What stays here is table-specific: the
+// messages below are read by the Director of Finance in a form, not by a
+// developer in a stack trace, so they say what to do rather than which
+// constraint failed.
 
 /**
  * The four `transaction` check constraints, restated in TypeScript.
@@ -216,60 +189,6 @@ function validateTransaction(v: TransactionInput): void {
   if (currency === 'CAD' && v.fxRateToCad) {
     throw new ValidationError('"fxRateToCad" must be empty for a CAD transaction.');
   }
-}
-
-// --- session context --------------------------------------------------------
-
-/**
- * Names the actor for the capture trigger, which raises without it.
- *
- * `set_config(..., true)` rather than `SET LOCAL`: the local form takes no bind
- * parameters, so it would mean interpolating a uuid into SQL text. Same
- * transaction-scoped effect, no string building.
- */
-async function setSessionContext(
-  trx: Kysely<DB>,
-  principal: Principal,
-  reason: string | null,
-): Promise<void> {
-  await sql`select set_config('pc.actor_id', ${principal.userId}, true)`.execute(trx);
-  await sql`select set_config('pc.change_reason', ${reason ?? ''}, true)`.execute(trx);
-}
-
-/**
- * ADR-031 clause 5. An edit inside an issued period is permitted and must be
- * explained.
- *
- * Both dates are checked on an update, because moving a row's effective date
- * OUT of a frozen period restates that period just as surely as changing its
- * amount -- and checking only the submitted date would miss it.
- *
- * Returns whether this change restates, so the caller can report it back rather
- * than the UI having to work it out a second time.
- */
-async function checkRestatement(
-  trx: Kysely<DB>,
-  dates: (string | null)[],
-  reason: string | null,
-  what: string,
-): Promise<boolean> {
-  const { rows } = await sql<{ frozen: string | null }>`
-    select pc.latest_frozen_period_end()::text as frozen
-  `.execute(trx);
-  const frozen = rows[0]?.frozen ?? null;
-  if (!frozen) return false; // nothing issued to the board yet
-
-  const restates = dates.some((d) => d !== null && d <= frozen);
-  if (!restates) return false;
-
-  if (!reason || reason.trim().length < 10) {
-    throw new ValidationError(
-      `This ${what} falls on or before ${frozen}, a period already issued to the board. ` +
-        'Editing it restates a published figure, which is allowed but must be explained: ' +
-        'give a restatement reason of at least ten characters.',
-    );
-  }
-  return true;
 }
 
 /** The stored effective date of an existing row, or null if there is no such row. */
