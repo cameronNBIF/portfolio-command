@@ -206,6 +206,14 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
 
     // Rounds carry OUR cheque, summed from the live transactions tied to each
     // round. Unfiltered by design -- see property 2 above.
+    //
+    // "Unfiltered" means BY THE LEVERAGE PREDICATE, not by existence. A round
+    // with a missing or impossible total still ships, because ADR-021 puts that
+    // exclusion in packages/metrics; a SOFT-DELETED round is a row someone
+    // withdrew and must not. The distinction only became reachable at A8, when
+    // the ADR-012 capture form gave rounds a write path that can set
+    // deleted_at -- migration 0002 added the column and left every reader of
+    // this table, including this query, unaware of it.
     q<{
       company_id: string; round_date: Date | string; label: string; instrument: string | null;
       invested: string; post_money: string | null; ownership_after_pct: string | null;
@@ -224,6 +232,7 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
           select sum(amount_cad) as ours from v_transaction_live
            where investment_round_id = r.investment_round_id
              and txn_type in ('investment','follow_on')) t on true
+       where r.deleted_at is null
        order by r.company_id, r.round_date, r.investment_round_id`),
 
     // Newest first: metrics read kpis[0] as the current period.
