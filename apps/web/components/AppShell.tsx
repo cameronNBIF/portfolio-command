@@ -14,18 +14,23 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type TabId =
   | 'dashboard' | 'portfolio' | 'funds' | 'pipeline'
-  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance';
+  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose';
 
 /**
- * Label and order exactly as the prototype's `#mainnav` (:163-172), plus
- * Finance.
+ * Label and order exactly as the prototype's `#mainnav` (:163-172), plus the two
+ * entry tabs.
  *
- * FINANCE IS THE ONE ADDITION TO THE PROTOTYPE'S EIGHT, and it does not breach
+ * THE ENTRY TABS ARE ADDITIONS TO THE PROTOTYPE'S EIGHT, and they do not breach
  * ADR-014. That ADR freezes the *port*: the eight tabs below it are unchanged in
  * layout, terminology and behaviour. The prototype has no data entry anywhere —
- * every figure in it is a literal in a JavaScript object — so A7's entry
+ * every figure in it is a literal in a JavaScript object — so A7's and A8's entry
  * interfaces cannot be a port of anything and have to be new surface. Keeping
  * them off the eight is what protects the parity criterion.
+ *
+ * THE TWO ARE SEPARATE BECAUSE THEIR AUTHORS ARE. Finance records what we paid;
+ * Deal Close records the round we paid into. ADR-005 splits those by source of
+ * record and ADR-012 assigns the second to the deal lead, so one tab over both
+ * would mean one role gate over both, and the wider of the two would win.
  *
  * `roles` gates visibility. Absent means everyone.
  */
@@ -38,6 +43,9 @@ export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
   { id: 'memo', label: 'Memo Builder' },
   { id: 'reports', label: 'Reports' },
   { id: 'data', label: 'Data' },
+  // Matches CAN_CAPTURE_ROUND (ADR-012). Sits before Finance because a round is
+  // captured at close, which is upstream of the cheque being booked.
+  { id: 'dealclose', label: 'Deal Close', roles: ['vc', 'finance', 'admin'] },
   // Matches CAN_WRITE_FINANCIAL. A tab that appears for the VC team and then
   // refuses every action would be worse than one that is not offered.
   { id: 'finance', label: 'Finance', roles: ['finance', 'admin'] },

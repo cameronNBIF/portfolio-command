@@ -273,6 +273,52 @@ is in `docs/affinity-v2-field-map.csv`; endpoint mechanics in
 - Daniel's rule is preserved exactly: a round with a missing or invalid total is **excluded** from leverage, never imputed.
 - Historical rounds will have gaps that no form can fill. Coverage will be partial for backfilled history and should be reported as such (ADR-015).
 
+**Amended at A8, 17 August 2026 — built, and two questions this ADR left open
+answered.** Recorded in place; nothing above is reversed.
+
+- **Who may write it: `vc`, `finance` and `admin` (`CAN_CAPTURE_ROUND`).** This
+  ADR says "the deal lead will enter these", and two of the three target tables
+  are ADR-031 versioned tables sitting behind `CAN_WRITE_FINANCIAL`, which is
+  Finance and admin only. The tension is real and was resolved by following
+  ADR-005's rule rather than the table boundary: **our cheque is Finance's fact
+  and lives on `transaction`, which is unchanged and still finance-only**, while
+  what `investment_round`, `round_coinvestor` and `company_ownership` hold is the
+  shape of the round around that cheque — who else was in it, how much they put
+  in, what we ended up owning — which is the deal lead's, from the closing
+  documents they are the one holding. Finance keeps write access because A13
+  loads Finance's own historical rounds through this path. Leadership reads.
+- **Where the form lives: a tenth tab, `Deal Close`**, built on the A7 Finance
+  tab's pattern rather than inside the company drawer. The drawer is a ported
+  prototype surface that ADR-014 freezes; more to the point, this ADR's second
+  half is monitoring, and a per-company drawer has nowhere to put the
+  portfolio-wide chasing list that makes the coverage figure actionable.
+- **The single form is a single mutation, in one database transaction.** Not
+  three endpoints called in sequence. The failure mode of splitting it is silent:
+  a round total that saves without its co-investors moves the leverage KPI and
+  leaves the NB co-investment KPI behind, and no screen would report the
+  disagreement.
+- **A round total below our own cheque is accepted and flagged, never refused.**
+  This ADR's rule is that such a round is *excluded* from leverage, and excluded
+  is not the same as refused. Rejecting it at the form would push the deal lead
+  into either not recording the round or adjusting a figure to get past
+  validation, and both are worse than a captured round the metric declines to
+  use.
+- **Post-money is captured but is not a completeness field.** A null `post_money`
+  is legitimately "not applicable" on a convertible and "not known" on an equity
+  round, and the platform cannot tell those apart; counting it would report a
+  portfolio of notes as permanently incomplete, which is D-5's error in the other
+  direction. `round_total`, `nb_other` and `ownership_after_pct` are counted,
+  because all three are facts every round has whether or not anyone wrote them
+  down. `captured_at` separately records whether a deal lead has been through the
+  form at all, which is a different question from whether a field is filled in.
+- **Coverage is surfaced on the dashboard per this ADR, and the taper with it.**
+  The share of rounds carrying a total sits on the Leverage tile itself, beside
+  the number it qualifies; the detail — including per-year coverage, which
+  ADR-015 requires be reported rather than smoothed — is a card at the foot of
+  the tab, so every ported element stays where the prototype puts it (ADR-014).
+  Read from `v_mandate_completeness`, deliberately outside the frozen ADR-001
+  document, on the A5 `v_kpi_coverage` precedent.
+
 ---
 
 ## ADR-013 — Metric definitions are frozen at Daniel's implementations
@@ -1252,6 +1298,49 @@ accumulation.
 **Not decided here.** Whether restatements should additionally trigger a
 notification to the VC team lead. The list exists and is queryable; whether
 anyone is pushed at is an A9 alerts question, not a storage one.
+
+**Amended at A8, 17 August 2026 — a seventh table, and one narrowing of the
+generator exemption.** Recorded in place on the ADR-009 precedent; nothing above
+is reversed.
+
+- **`round_coinvestor` joins the versioned set** (migration 0003). It meets this
+  ADR's own test — a table holding facts that feed a board number — and was left
+  out of 0002 only because nothing could write to it: A6 generated those rows and
+  no interface touched them. A8 gives them an edit button, and the rule this ADR
+  exists to state is that the button and the guarantee ship together. The
+  `round_coinvestor_asof()` round trip is asserted directly, in
+  `packages/api/test/round-capture.test.ts`, for the same reason the A7 suite
+  asserts the transaction one.
+- **The trigger resolves an effective date from the parent round where a table
+  has none of its own.** A co-investor is dated by the round it was in. Without
+  this, an edit to a co-investor amount inside an already-issued period would
+  record `is_restatement = false` and stay out of `v_restatement_log` — silently,
+  on a mandate figure. Written as a fallback rather than a per-table branch: it
+  fires only when the existing five-column coalesce finds nothing, so
+  `transaction`, which carries both a `txn_date` and an `investment_round_id`,
+  is untouched.
+- **The generator exemption now covers `UPDATE`.** 0002 deliberately excluded it
+  and gave a reason — "the generator never issues one" — which has since stopped
+  being true: `generate/run.ts` links co-investors to LP positions in a second
+  pass with a bulk `UPDATE`, so every regeneration would write a version row per
+  linked co-investor describing a demo rebuild. The three conditions are
+  otherwise unchanged, and the property the exclusion was protecting survives
+  intact: a human editing a synthetic row during a demo carries their own actor
+  id and is versioned like anyone else.
+- **A defect from 0002 is fixed with it.** Column defaults are applied before a
+  `BEFORE` trigger runs, so the exempt path returned with `row_created_at` and
+  `row_updated_at` already set microseconds apart by two evaluations of the
+  volatile `clock_timestamp()`. 0002 flattened the pair for rows that existed
+  when it ran, which is why this had not been seen — it would have surfaced on
+  the next `npm run db:generate`, marking the entire synthetic dataset as having
+  been edited by someone.
+- **Soft delete reaches the round reads.** 0002 wired `deleted_at` into
+  `v_transaction_live` and `company_fmv_asof`, which covered every table it could
+  then delete from. `investment_round` and `company_ownership` gained the column
+  and no reader. Harmless while no write path could set it; a live defect the
+  moment A8 shipped the form that can. `v_round_leverage`,
+  `v_lp_capital_to_direct`, `v_mandate_completeness`, `company_current_asof` and
+  the ADR-001 export adapter's round query now all honour it.
 
 ---
 

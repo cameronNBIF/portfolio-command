@@ -48,6 +48,10 @@ const ACTION_LABEL: Record<string, string> = {
 const HIDDEN_FIELDS = new Set([
   'deleted_at', 'deleted_by', 'deleted_reason', 'is_synthetic',
   'batch_id', 'entered_by', 'prepared_by',
+  // Authorship bookkeeping on investment_round (A8), on the same footing as
+  // entered_by above: the panel already names who made every change, in the
+  // heading of every entry.
+  'captured_by', 'captured_at',
 ]);
 
 /** `txn_date` reads as a column name; "Date" reads as a field. */

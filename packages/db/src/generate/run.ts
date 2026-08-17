@@ -272,8 +272,8 @@ try {
 
       for (const co of r.coinvestors) {
         await client.query(
-          `insert into round_coinvestor (investment_round_id, investor_name, is_nb_based, amount)
-           values ($1,$2,$3,$4)`,
+          `insert into round_coinvestor (investment_round_id, investor_name, is_nb_based, amount, is_synthetic)
+           values ($1,$2,$3,$4,true)`,
           [roundId, co.name, co.isNb, co.amountCents === null ? null : toDollars(co.amountCents)],
         );
         bump('round_coinvestor');
@@ -283,8 +283,8 @@ try {
       // exact-match resolution (ADR-026) correctly refuses to link it.
       if (dirt.nearMissCoinvestor.has(f.companyId) && r.index === 0) {
         await client.query(
-          `insert into round_coinvestor (investment_round_id, investor_name, is_nb_based, amount)
-           values ($1,$2,true,$3)`,
+          `insert into round_coinvestor (investment_round_id, investor_name, is_nb_based, amount, is_synthetic)
+           values ($1,$2,true,$3,true)`,
           [roundId, NEAR_MISS_NAME, toDollars(25_000_00)],
         );
         bump('round_coinvestor');

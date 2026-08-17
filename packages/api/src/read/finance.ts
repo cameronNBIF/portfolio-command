@@ -33,6 +33,10 @@ const HISTORY_TABLES: Record<string, string> = {
   fund_distribution: 'fund_distribution_id',
   investment_round: 'investment_round_id',
   company_ownership: 'company_ownership_id',
+  // Joined the versioned set in migration 0003, when the ADR-012 capture form
+  // gave it a write path. Listed here so the History panel serves a corrected
+  // co-investor amount the same way it serves a corrected cheque.
+  round_coinvestor: 'round_coinvestor_id',
 };
 
 export interface TransactionRow {

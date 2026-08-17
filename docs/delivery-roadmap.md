@@ -152,6 +152,8 @@ Generated transactions, rounds, marks, ownership and LP activity, attached to th
 - Capture form: round total, co-investors with NB flag and amount, ownership, pro-rata, post-money
 - `v_mandate_completeness` surfaced on the dashboard
 
+**Done, 17 August 2026** — see the A8 entry in `BUILD-LOG.md` and the amendments to ADR-012 and ADR-031. The schema for all five fields had existed since A1, so the phase's real content was making three tables writable safely: `round_coinvestor` joined the ADR-031 versioned set in the same migration that gave it an edit button, and five reads that had gained a `deleted_at` column at A7 without any reader — including the ADR-001 export adapter's round query — were taught to honour it. The capture is **one mutation over three tables in one transaction**, because a round total that saves without its co-investors moves one mandate KPI and leaves the other behind silently. Coverage reads 84.7% on the real portfolio, with the ADR-015 taper visible by year rather than blended away. A7's outstanding investment-vehicle picker is closed with it.
+
 #### A9 · Alerts, health and watchlist
 - Alert feed from runway thresholds, risk flags, covenant status, government funding conditions
 - Health rating workflow with audit

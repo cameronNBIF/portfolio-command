@@ -19,13 +19,29 @@
  * longer how a typing error is fixed. Every change here is captured by a
  * database trigger with the actor, the reason and the complete prior row.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import type { LpNavRow, TransactionPage, ValuationMarkRow } from '@portfolio-command/api';
+import type {
+  LpNavRow,
+  ReferenceData,
+  TransactionPage,
+  ValuationMarkRow,
+} from '@portfolio-command/api';
 import type { PortfolioExport } from '@portfolio-command/contract';
 
 import { useApp } from '../AppShell';
 import { Card, Kpi, KpiRow, Pill, ViewHeader } from '../ui';
+// The form scaffolding moved to `entry.tsx` at A8 so the Deal Close tab could
+// share it. Unchanged from A7; only its address is different.
+import {
+  Field,
+  FormGrid,
+  Notice,
+  ReasonField,
+  RowFlags,
+  useRowState,
+  type Draft,
+} from '../entry';
 import {
   DIRECT_TXN_TYPES,
   FinanceApiError,
@@ -37,6 +53,8 @@ import {
   mutate,
   type FinancialTableName,
 } from '../../lib/finance-api';
+// ADR-030's vehicle list, served by the A8 reference route.
+import { fetchReference } from '../../lib/rounds-api';
 
 type Surface = 'transactions' | 'marks' | 'lp';
 
@@ -45,9 +63,6 @@ const SURFACES: { id: Surface; label: string }[] = [
   { id: 'marks', label: 'Valuation Marks' },
   { id: 'lp', label: 'LP Activity' },
 ];
-
-/** A form's working values. Everything is a string because every input is. */
-type Draft = Record<string, string>;
 
 export function FinanceTab({ db }: { db: PortfolioExport }) {
   const [surface, setSurface] = useState<Surface>('transactions');
@@ -78,28 +93,8 @@ export function FinanceTab({ db }: { db: PortfolioExport }) {
 }
 
 // ---------------------------------------------------------------------------
-// Shared pieces
+// Pieces specific to this tab. The generic form scaffolding is in `entry.tsx`.
 // ---------------------------------------------------------------------------
-
-function Field({
-  label, children, hint,
-}: { label: string; children: React.ReactNode; hint?: string }) {
-  return (
-    <label className="field" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <span className="small" style={{ fontWeight: 600 }}>{label}</span>
-      {children}
-      {hint && <span className="hint">{hint}</span>}
-    </label>
-  );
-}
-
-function FormGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-      {children}
-    </div>
-  );
-}
 
 /**
  * The row-level actions, identical across all three surfaces.
@@ -159,75 +154,13 @@ function RowActions({
   );
 }
 
-/**
- * The reason box, shown on every edit form.
- *
- * Optional in general and mandatory for a restatement, which the API decides
- * rather than this form — the frozen period boundary lives in the database and
- * a copy of it here would be a copy that goes stale. So the field is always
- * offered, and if the server comes back asking for one, its sentence explains
- * why in terms of the actual period.
- */
-function ReasonField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <Field
-      label="Reason for this change"
-      hint="Recorded against your name. Required when the row falls inside a period already reported to the board."
-    >
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} />
-    </Field>
-  );
-}
-
-function useRowState<T>(load: () => Promise<T>): {
-  data: T | null; error: string | null; reload: () => void; notice: string | null;
-  setNotice: (s: string | null) => void;
-} {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    load()
-      .then((d) => live && (setData(d), setError(null)))
-      .catch((e: Error) => live && setError(e.message));
-    return () => { live = false; };
-    // `load` is rebuilt by the caller when its filters change, which is the
-    // signal to refetch; `tick` is the explicit "something was written" signal.
-  }, [load, tick]);
-
-  return { data, error, notice, setNotice, reload: () => setTick((t) => t + 1) };
-}
-
-function Notice({ text, onDismiss }: { text: string | null; onDismiss: () => void }) {
-  if (!text) return null;
-  return (
-    <div className="alertrow" style={{ marginBottom: 10 }}>
-      <span style={{ flex: 1 }}>{text}</span>
-      <button className="btn ghost sm" onClick={onDismiss}>Dismiss</button>
-    </div>
-  );
-}
-
-/** The marker on a row that has been changed since it was entered. */
-function RowFlags({ edited, deleted, synthetic }: { edited: boolean; deleted: boolean; synthetic: boolean }) {
-  return (
-    <>
-      {deleted && <Pill tone="red">Deleted</Pill>}
-      {edited && !deleted && <Pill tone="yellow">Edited</Pill>}
-      {synthetic && <Pill tone="gray">Synthetic</Pill>}
-    </>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Transactions
 // ---------------------------------------------------------------------------
 
 /**
- * `investmentRoundId` and `investmentVehicleId` are carried but not edited.
+ * `investmentRoundId` is carried but not edited; `investmentVehicleId` is now
+ * editable (A8).
  *
  * The API takes a COMPLETE row on an update rather than a patch, deliberately —
  * a patch cannot tell "leave this alone" from "clear this". The cost of that
@@ -236,8 +169,15 @@ function RowFlags({ edited, deleted, synthetic }: { edited: boolean; deleted: bo
  * to its round. So every column the update writes is round-tripped here, whether
  * or not the form draws an input for it.
  *
- * Both are shown read-only below rather than hidden. A field the form can
- * destroy should at least be a field the user can see.
+ * THE VEHICLE PICKER CLOSES AN A7 ITEM. It shipped read-only because
+ * `ref_investment_vehicle` was not exposed through any endpoint, and ADR-030
+ * makes the vehicle an attribute of the transaction that Finance should own.
+ * A8's capture form needed the same list, so the reference route now exists and
+ * this field can be what ADR-030 says it is.
+ *
+ * The round link stays read-only: which round a cheque belongs to is a deal
+ * capture decision, not a Finance correction, and it is set on the Deal Close
+ * tab.
  */
 const EMPTY_TXN: Draft = {
   txnDate: '', txnType: 'investment', companyId: '', fundInvestmentId: '',
@@ -262,6 +202,10 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
     [companyId, txnType, includeDeleted],
   );
   const { data, error, reload, notice, setNotice } = useRowState<TransactionPage>(load);
+
+  // Loaded once; the reference lists do not change during a session.
+  const loadReference = useCallback(() => fetchReference(), []);
+  const { data: reference } = useRowState<ReferenceData>(loadReference);
 
   const companies = useMemo(
     () => [...db.companies].sort((a, b) => a.name.localeCompare(b.name)),
@@ -423,6 +367,27 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                   setEditing({ ...editing, draft: { ...editing.draft, sourceDocument: e.target.value } })}
               />
             </Field>
+            {/* ADR-030. Null is "unrecorded", never a default: two roster
+                companies genuinely have no vehicle attribution, and a default
+                would attribute $3.7M of real deployment to a guess. */}
+            <Field
+              label="Investment vehicle"
+              hint="Which vehicle this dollar was deployed from. Leave blank if unrecorded."
+            >
+              <select
+                value={editing.draft['investmentVehicleId'] ?? ''}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    draft: { ...editing.draft, investmentVehicleId: e.target.value },
+                  })}
+              >
+                <option value="">Not recorded</option>
+                {(reference?.investmentVehicles ?? []).map((v) => (
+                  <option key={v.id} value={String(v.id)}>{v.code} — {v.name}</option>
+                ))}
+              </select>
+            </Field>
             <Field label="Note">
               <input
                 type="text"
@@ -436,12 +401,11 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
             />
           </FormGrid>
 
-          {editing.id && (editing.draft['investmentRoundId'] || editing.draft['investmentVehicleId']) && (
+          {editing.id && editing.draft['investmentRoundId'] && (
             <div className="hint" style={{ marginTop: 10 }}>
-              Linked to round <span className="mono">#{editing.draft['investmentRoundId'] || '—'}</span>
-              {editing.draft['vehicleName'] && <> and deployed from <b>{editing.draft['vehicleName']}</b></>}.
-              Both are preserved by this edit. Changing either is a deal-capture action, not a
-              correction — see the round on the company drawer.
+              Linked to round <span className="mono">#{editing.draft['investmentRoundId']}</span>, which
+              this edit preserves. Which round a cheque belongs to is a deal-capture decision rather
+              than a Finance correction — it is set on the Deal Close tab.
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

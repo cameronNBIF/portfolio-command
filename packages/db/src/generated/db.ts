@@ -606,11 +606,23 @@ export interface ReserveAllocation {
 
 export interface RoundCoinvestor {
   amount: Numeric | null;
+  /**
+   * ADR-031 soft delete. A co-investor removed from a round leaves v_lp_capital_to_direct and the NB co-investment aggregate, and stays restorable.
+   */
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   fund_investment_id: string | null;
   investment_round_id: Int8;
   investor_name: string;
   is_nb_based: Generated<boolean>;
+  /**
+   * ADR-020. Added at A8; the A6 generator had been writing these rows without it, so a co-investor was the one generated financial row that could not be identified as generated. Backfilled from the parent round.
+   */
+  is_synthetic: Generated<boolean>;
   round_coinvestor_id: Generated<Int8>;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
 }
 
 export interface TermSheet {
@@ -800,7 +812,19 @@ export interface VMandateCompleteness {
   missing_ownership: Int8 | null;
   missing_round_total: Int8 | null;
   pct_leverage_coverage: Numeric | null;
+  rounds_captured: Int8 | null;
+  rounds_synthetic: Int8 | null;
   rounds_total: Int8 | null;
+}
+
+export interface VMandateCompletenessByYear {
+  captured: Int8 | null;
+  pct_leverage_coverage: Numeric | null;
+  round_year: number | null;
+  rounds_total: Int8 | null;
+  with_nb_other: Int8 | null;
+  with_ownership: Int8 | null;
+  with_round_total: Int8 | null;
 }
 
 export interface VRestatementLog {
@@ -916,6 +940,7 @@ export interface DB {
   v_lp_capital_to_direct: VLpCapitalToDirect;
   v_lp_position_current: VLpPositionCurrent;
   v_mandate_completeness: VMandateCompleteness;
+  v_mandate_completeness_by_year: VMandateCompletenessByYear;
   v_restatement_log: VRestatementLog;
   v_round_leverage: VRoundLeverage;
   v_synthetic_data_status: VSyntheticDataStatus;

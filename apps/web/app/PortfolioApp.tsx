@@ -13,7 +13,7 @@
  * `db` and `asOf` now arrive as props from the server component in `page.tsx`,
  * which reads them through `packages/api`.
  */
-import type { KpiCoverageRow } from '@portfolio-command/api';
+import type { KpiCoverageRow, MandateCompleteness } from '@portfolio-command/api';
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { fmt, fundMetrics, isEvergreen } from '@portfolio-command/metrics';
 
@@ -24,6 +24,7 @@ import { FinancialHistoryDrawer } from '../components/drawers/FinancialHistoryDr
 import { FundInvestmentDrawer } from '../components/drawers/FundInvestmentDrawer';
 import { DashboardTab } from '../components/tabs/DashboardTab';
 import { DataTab } from '../components/tabs/DataTab';
+import { DealCloseTab } from '../components/tabs/DealCloseTab';
 import { FinanceTab } from '../components/tabs/FinanceTab';
 import { FundsTab } from '../components/tabs/FundsTab';
 import { PipelineTab } from '../components/tabs/PipelineTab';
@@ -79,10 +80,12 @@ function FundTag({ db, asOf }: PortfolioProps) {
   );
 }
 
-function Tab({ tab, db, asOf, kpiCoverage }: PortfolioProps & { tab: TabId; kpiCoverage: KpiCoverageRow[] }) {
+function Tab({
+  tab, db, asOf, kpiCoverage, mandate,
+}: PortfolioProps & { tab: TabId; kpiCoverage: KpiCoverageRow[]; mandate: MandateCompleteness }) {
   switch (tab) {
     case 'dashboard':
-      return <DashboardTab db={db} asOf={asOf} />;
+      return <DashboardTab db={db} asOf={asOf} mandate={mandate} />;
     case 'portfolio':
       return <PortfolioTab db={db} />;
     case 'funds':
@@ -97,6 +100,10 @@ function Tab({ tab, db, asOf, kpiCoverage }: PortfolioProps & { tab: TabId; kpiC
       return <ReportsTab db={db} asOf={asOf} />;
     case 'data':
       return <DataTab db={db} asOf={asOf} kpiCoverage={kpiCoverage} />;
+    case 'dealclose':
+      // ADR-012's capture form (A8). Role-gated in the nav and re-checked by the
+      // API on every write, like Finance below.
+      return <DealCloseTab db={db} />;
     case 'finance':
       // Role-gated in the nav; the API enforces it again on every write, so a
       // hand-constructed request gains nothing.
@@ -110,8 +117,13 @@ export function PortfolioApp({
   db,
   asOf,
   kpiCoverage,
+  mandate,
   role,
-}: PortfolioProps & { kpiCoverage: KpiCoverageRow[]; role: string }) {
+}: PortfolioProps & {
+  kpiCoverage: KpiCoverageRow[];
+  mandate: MandateCompleteness;
+  role: string;
+}) {
   return (
     <EditableProvider db={db}>
       <AppShell
@@ -123,7 +135,9 @@ export function PortfolioApp({
         // rather than a build-time flag someone can forget to flip.
         containsSynthetic={db.meta.demo}
       >
-        {(tab: TabId) => <Tab tab={tab} db={db} asOf={asOf} kpiCoverage={kpiCoverage} />}
+        {(tab: TabId) => (
+          <Tab tab={tab} db={db} asOf={asOf} kpiCoverage={kpiCoverage} mandate={mandate} />
+        )}
       </AppShell>
     </EditableProvider>
   );

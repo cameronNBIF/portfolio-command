@@ -28,6 +28,58 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-17 · A8 · Deal-close capture, and the soft delete 0002 left half wired
+
+**A8 exit criteria — met.** *"Capture form: round total, co-investors with NB flag and amount, ownership, pro-rata, post-money. `v_mandate_completeness` surfaced on the dashboard."* Both, on the real portfolio. The phase turned out to be less about the form than about the three things that had to be true before the form was safe to ship.
+
+**The schema was already there, and that was the trap.** `investment_round.round_total`, `nb_other`, `post_money`, `ownership_after_pct`, the whole `round_coinvestor` table and `company_ownership.pro_rata_rights` have existed since A1, and `v_mandate_completeness` since 0001 — unread by anything. So A8 looked like UI work. What it actually was: giving three tables a write path, two of which had a reproducibility guarantee and one of which did not.
+
+**Decided — three questions ADR-012 left open, all raised before building.**
+
+- **`CAN_CAPTURE_ROUND` is `vc`, `finance`, `admin`** (your call). ADR-012 says the deal lead; `investment_round` and `company_ownership` are ADR-031 versioned tables behind `CAN_WRITE_FINANCIAL`, which is finance-only. Resolved by ADR-005's rule rather than the table boundary: **our cheque is Finance's fact and stays on `transaction`, still finance-only**; the shape of the round around it — who else was in, for how much, what we ended up owning — is the deal lead's, from closing documents they hold. Finance keeps access because A13 loads its own history through this path.
+- **A tenth tab, `Deal Close`**, on A7's pattern rather than inside the company drawer (your call). The drawer is a ported surface ADR-014 freezes, and more practically ADR-012's second half is monitoring — a per-company drawer has nowhere to put the chasing list that makes a coverage figure actionable.
+- **`round_coinvestor` joins the ADR-031 versioned set** (your call, migration 0003). It meets ADR-031's own test and was left out of 0002 only because nothing could write to it. Shipping the edit button without the guarantee would have put NB co-investment and `v_lp_capital_to_direct` — two mandate figures — outside the property the whole of A7 was priced on.
+
+**Built**
+- **`packages/db/migrations/0003_round_capture.sql`** — `round_coinvestor` gains `is_synthetic` and the lifecycle block, the capture trigger and `round_coinvestor_asof()`; two amendments to the trigger; four reads taught to honour `deleted_at`; `v_mandate_completeness` corrected and extended, plus `v_mandate_completeness_by_year`.
+- **`packages/api/src/write/rounds.ts`** — ADR-012's "single deal-close form" made literal: **one mutation, one transaction, three tables.** Not three endpoints called in sequence, because that fails silently — a round total saved without its co-investors moves the leverage KPI and leaves the NB one behind, and no screen would say so.
+- **`packages/api/src/write/session.ts`** — the actor GUC, the restatement test and the money/date validators, extracted from `financial.ts` when `rounds.ts` became the second module writing to a trigger-backed table. Same rules, one copy.
+- **`packages/api/src/read/rounds.ts`** — rounds with their co-investors in one query, per-round completeness and exclusion flags, the coverage scalars and the by-year taper, and the reference lists.
+- **`/api/v1/rounds`** (GET + POST, with `?completeness=` and `?reference=`).
+- **A tenth tab, `Deal Close`**, and **`apps/web/components/entry.tsx`** — A7's form scaffolding extracted so the two entry surfaces cannot drift into looking like two products.
+- **The dashboard's mandate surface**: the coverage qualifier on the Leverage tile, and a `Mandate Capture Coverage` card at the foot.
+- **`packages/api/test/round-capture.test.ts`** — nine tests, including the one this phase is priced on: capture an NB co-investor amount, correct it, reconstruct as of before, assert the published figure returns.
+
+**Three defects found on the way in, none of them A8's own**
+- **Nothing honoured `deleted_at` on `investment_round` or `company_ownership`.** 0002 added the columns and wired the reads for the two tables it could then delete from. `v_round_leverage`, `v_lp_capital_to_direct`, `v_mandate_completeness`, `company_current_asof` and **the ADR-001 export adapter's round query** all read deleted rows. Latent while no write path could set the column — and live the moment this phase shipped the form that can.
+- **Every freshly generated row would have claimed to have been edited.** A7 fixed this for rows existing at migration time by flattening `row_created_at`/`row_updated_at`. It did not fix the ongoing path: column defaults are applied *before* a `BEFORE` trigger runs, so the generator-exemption branch returns with the pair already set microseconds apart by two evaluations of the volatile `clock_timestamp()`. It would have surfaced on the next `npm run db:generate` — the whole synthetic dataset wearing an "Edited" pill. Verified fixed: 302 co-investors, zero flagged.
+- **`round_coinvestor` carried no `is_synthetic`**, though ADR-020 requires every generated financial row to. Backfilled from the parent round; the generator now sets it.
+
+**Changed**
+- **The generator exemption now covers `UPDATE`.** 0002 excluded it and said why — "the generator never issues one" — which stopped being true when A6 added the second-pass co-investor→LP link. The property it protected survives: a human editing a synthetic row in a demo carries their own actor id and is versioned. Verified: `financial_row_version` reads **0** after a full regeneration.
+- **The trigger inherits an effective date from the parent round** where a table has none of its own. `round_coinvestor` is dated by its round; without this an edit inside an issued period would record `is_restatement = false` and stay out of `v_restatement_log`. Written as a fallback, so `transaction` — which has both a `txn_date` and an `investment_round_id` — is untouched.
+- **Post-money is captured but is not a completeness field.** A null is legitimately "not applicable" on a convertible and "not known" on equity, and the platform cannot tell them apart; counting it would report a portfolio of notes as permanently incomplete, which is D-5's error inverted. `captured_at` separately answers "has a deal lead opened this at all", which is the different question.
+- **A round total below our own cheque is accepted and flagged, never refused.** ADR-012 says such a round is *excluded* from leverage; excluded is not refused. Rejecting it would push the deal lead into not recording the round, or into adjusting a figure to get past the form.
+- **A7's outstanding "no investment-vehicle picker" item is closed.** ADR-030 makes the vehicle an attribute of the transaction and Finance should own it; it shipped read-only because the reference list was behind no endpoint. A8 needed the same list, so the picker is now live on the transaction form. The round link stays read-only — which round a cheque belongs to is a capture decision, not a Finance correction.
+
+**Verified** — **386 tests pass**, up from 371. The 202 golden masters and the ADR-001 round trip are untouched: **no board number moved**. Then in the browser, against the real roster:
+- Dashboard reproduces every A6 figure exactly — $47.2M invested, $42.0M FMV, 75 active / 7 exited, TVPI 0.89x, leverage 5.9:1, FMV growth +5.6% — so the five new `deleted_at` predicates moved nothing.
+- **Leverage now reads `5.9 : 1 · From 150 of 177 rounds (84.7% captured)`**, and the taper is visible on the card: 2009–2015 runs 0–100% on tiny counts, 2018 onward settles at 85–93%. That is ADR-015's shape, reported rather than smoothed.
+- **A real capture end to end over HTTP**: filled in a Climative round that had never carried a total. One request wrote the round, two co-investors and the ownership row; coverage moved **84.7% → 85.3%**, missing totals 27 → 26; capital attracted **$245.0M → $247.0M** and NB co-investment **$31.6M → $32.4M**, both by exactly the captured amounts; **invested cost stayed at $47.2M**, because a capture writes no transaction. The History panel showed the four-field diff with the actor and the reason.
+- `v_lp_capital_to_direct` still reads **$40.66M across 15 positions**, the A6 figure.
+- No console errors.
+
+**Outstanding**
+- **A-9 still stands, and now covers this form too.** The A7 entry screens have still not been walked through with the Director of Finance, and the capture form has not been walked through with the VC team lead. ADR-012 records D-4 as accepted in principle; the form built against it is a proposal to walk through, not a finished spec.
+- **The dev database was found reset to the fixture mid-session and I could not reproduce it.** 70 companies instead of 82, after a verified good `db:reset`. A marker row planted in the dev database survived a full `npm test`, so the A6 test-database isolation is working and the round-trip test is not the cause. Restored by `db:reset`; flagged rather than closed, because an unexplained wipe of the working database is exactly the thing A6 spent a session fixing.
+- **`round_coinvestor` has no `entered_by`.** Every other financial table does. The version store's `create` entry names the actor, which is the same information by another route, so this is a consistency gap rather than a hole.
+- **The Climative round now carries a genuine, non-synthetic capture** on a synthetic round in the dev database. `db:generate` clears it by cascade; harmless, and worth knowing before wondering where it came from.
+- **`v_mandate_completeness` counts synthetic rounds** — it reports the count separately but does not exclude them. Correct while the ADR-020 banner is up and the whole dataset is generated; worth revisiting at A13 when the mix is real.
+- **No screen yet shows the co-investor set beside the `nb_other` field it disagrees with**, except inside the capture form. The two are separate captures and the metric uses `nb_other`; the form shows the gap, the dashboard does not.
+- Carried from A7: `fund_distribution` still has no UI surface; rows predating 0002 carry no `create` entry. Carried longer: `FundInvestment.womenSeniorGP` cannot express "not reported"; `organic +$-4.2M` on the dashboard; `ytdPlatformsClosed` reads 0 against Reports' 12; `fund.capital_base` and four other fund facts still NULL; Entra unconfigured; deploy not wired (A0).
+
+---
+
 ## 2026-08-17 · A7 · Finance entry interfaces, and ADR-018 reversed
 
 **A7 exit criteria — met.** Transaction, valuation-mark and LP NAV entry, with filters, running totals, and a change history on every row. The phase opened with a decision that changed what it was building.
