@@ -28,6 +28,35 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-17 · A8.1 · The thing that kept wiping the development database
+
+**Closes the item A8 left open.** It was `npm run import:fixture`, and it had been hiding behind a much more plausible suspect for two phases.
+
+**What was actually happening.** `importContract` truncates eight root tables with `cascade` before it loads. That is correct for what it asserts — the ADR-001 contract reproducing itself out of an empty schema — and the round-trip test needs it. But `importContract` is also what the **CLI** calls, against `DATABASE_URL` itself, which locally is the database someone is working in. Running it took the real roster, five years of Visible history and the whole A6 financial spine, and said nothing about having done so.
+
+**Why it took so long to find, which is the part worth recording.** A6 hit this twice, diagnosed it as the round-trip *test*, and built `<database>_test` isolation to fix it. That diagnosis was right about the mechanism and incomplete about the entry points: the isolation covered the test path and left the CLI path issuing the identical truncate one directory away. So every subsequent investigation started from "is the test suite leaking?", and the answer was always no — correctly. A marker row planted in the dev database survived a full `npm test` twice, once with the real roster present. The suspect had an alibi, and it kept its alibi while the database kept being wiped.
+
+**Verified, both directions:**
+- `npm run import:fixture` against the real roster now **refuses**, naming what it would destroy: 82 companies synced from Affinity, 999 KPI rows, 282 transactions, 177 rounds.
+- Against a fixture-only or empty database it **proceeds silently**, which is the case CI runs and the case a developer runs daily.
+- `npm test` with the real roster present leaves 82 companies / 999 KPIs / 302 co-investors untouched. The A6 isolation was working all along.
+
+**Built**
+- **The guard, on the CLI rather than the library.** One trigger — `company.affinity_org_id is not null` — because it is the only exact discriminator: the importer never writes it, the sync always does. `--force` overrides and announces what it is overwriting.
+- **The CLI now prints its target database before touching anything.** "Which database did that just run against" was the single hardest question to answer while this was undiagnosed.
+- **`packages/api/test/import-guard.test.ts`** — three tests, driving the real CLI end to end. A guard nothing exercises is a guard someone deletes in a refactor.
+
+**Decided — one trigger, not three.** The first version probed three signals and two of them were false positives that only showed up against the real database: `company_kpi.source_system = 'visible'` fires on fixture data because the column defaults to `visible`, and `transaction.is_synthetic` fires because the fixture genuinely *is* synthetic and sets the flag exactly as ADR-020 requires. It refused to load a fixture over a fixture. **A guard that fires on the normal path is worse than no guard**, because it gets routed around with `--force` out of habit and then does not fire on the abnormal one. The three probes collapsed to one exact signal, with the rest reported as consequences rather than used as triggers. Both false positives are now pinned by a test.
+
+**Also built — `0004_transaction_round_index.sql`, on measurement rather than instinct.** `transaction` carried three indexes and none on `investment_round_id`, so the per-round lateral in the ADR-001 export adapter and in `readRounds` sequential-scanned the whole table once per round — on `page.tsx`, which is `force-dynamic` because board numbers must never come from a cache. Measured on the A6 dataset: 889 buffers unindexed against 360 indexed, both under a millisecond. **It buys nothing today and that is stated in the migration.** It goes in for the shape: the work is O(rounds × transactions) and only the constant is small, and A13 loads Finance's full history since inception. On the smaller reference fixture the planner correctly ignores the index entirely, which is the right call at three pages.
+
+**Outstanding**
+- **The CLI is guarded; `importContract` itself is not, deliberately.** The library truncates on request because the round-trip test needs exactly that. Any *future* caller of it inherits the old hazard, and the guard would have to be repeated. Acceptable at two callers; worth revisiting if a third appears.
+- **`db:generate` and `db:seed` were reviewed and need no guard.** The generator's deletes are scoped by `is_synthetic` or by system-principal authorship and it never truncates a root table; the seed is idempotent and asserts as much in CI. `db:reset` is destructive and says so in its name.
+- **I could not attribute the final instance.** The mechanism is proven and fixed, and I observed it wiping the database directly. Who invoked it at 17:16 is not something I can see from here, and I have not invented a cause for it.
+
+---
+
 ## 2026-08-17 · A8 · Deal-close capture, and the soft delete 0002 left half wired
 
 **A8 exit criteria — met.** *"Capture form: round total, co-investors with NB flag and amount, ownership, pro-rata, post-money. `v_mandate_completeness` surfaced on the dashboard."* Both, on the real portfolio. The phase turned out to be less about the form than about the three things that had to be true before the form was safe to ship.
@@ -71,7 +100,7 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 **Outstanding**
 - **A-9 still stands, and now covers this form too.** The A7 entry screens have still not been walked through with the Director of Finance, and the capture form has not been walked through with the VC team lead. ADR-012 records D-4 as accepted in principle; the form built against it is a proposal to walk through, not a finished spec.
-- **The dev database was found reset to the fixture mid-session and I could not reproduce it.** 70 companies instead of 82, after a verified good `db:reset`. A marker row planted in the dev database survived a full `npm test`, so the A6 test-database isolation is working and the round-trip test is not the cause. Restored by `db:reset`; flagged rather than closed, because an unexplained wipe of the working database is exactly the thing A6 spent a session fixing.
+- ~~**The dev database was found reset to the fixture mid-session and I could not reproduce it.**~~ — **found and fixed, same day. See the entry below.**
 - **`round_coinvestor` has no `entered_by`.** Every other financial table does. The version store's `create` entry names the actor, which is the same information by another route, so this is a consistency gap rather than a hole.
 - **The Climative round now carries a genuine, non-synthetic capture** on a synthetic round in the dev database. `db:generate` clears it by cascade; harmless, and worth knowing before wondering where it came from.
 - **`v_mandate_completeness` counts synthetic rounds** — it reports the count separately but does not exclude them. Correct while the ADR-020 banner is up and the whole dataset is generated; worth revisiting at A13 when the mix is real.
