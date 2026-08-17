@@ -23,6 +23,7 @@ import {
   CAN_READ,
   db,
   readKpiCoverage,
+  readMandateCompleteness,
   requireRole,
   resolveAsOf,
   resolvePrincipal,
@@ -45,12 +46,23 @@ export default async function Home() {
   const doc = await buildExport(db(), { asOf });
 
   // Read alongside the document, not inside it. Coverage is a statement about
-  // the data rather than part of it, and the ADR-001 shape is frozen (A5).
-  const kpiCoverage = await readKpiCoverage(db());
+  // the data rather than part of it, and the ADR-001 shape is frozen (A5, A8).
+  const [kpiCoverage, mandate] = await Promise.all([
+    readKpiCoverage(db()),
+    readMandateCompleteness(db()),
+  ]);
 
   // The role decides whether the Finance tab is offered (A7). Passed as a
   // string rather than the whole principal: the client needs to know what this
   // user may do, not who they are, and the write path re-checks it server-side
   // on every mutation regardless.
-  return <PortfolioApp db={doc} asOf={asOf} kpiCoverage={kpiCoverage} role={principal.role} />;
+  return (
+    <PortfolioApp
+      db={doc}
+      asOf={asOf}
+      kpiCoverage={kpiCoverage}
+      mandate={mandate}
+      role={principal.role}
+    />
+  );
 }
