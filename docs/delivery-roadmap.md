@@ -142,9 +142,11 @@ Generated transactions, rounds, marks, ownership and LP activity, attached to th
 #### A7 · Finance entry interfaces
 **Walk the workflow through with the Director of Finance before building it** (ADR-020, condition 4).
 
-- Transaction entry, table view with filters, **Reverse and Correct rather than Edit** (ADR-018)
+- Transaction entry, table view with filters, **Edit, Delete and Restore over a versioned store** (ADR-031, superseding ADR-018's Reverse and Correct)
 - Valuation mark entry, Finance role only, entry as sign-off (ADR-007)
-- LP cashflow and NAV entry; running totals net of reversals
+- LP cashflow and NAV entry; running totals net of deletions and reversals
+
+**Done, 17 August 2026**, with ADR-018 reversed on the way in — see the ADR-031 entry in `BUILD-LOG.md`. The exit condition the phase actually has to meet moved with it: it is no longer "Finance cannot change a row" but "a figure the board has already seen can still be reproduced after Finance changes a row", which `packages/api/test/financial-versioning.test.ts` asserts directly.
 
 #### A8 · Deal-close capture and mandate completeness
 - Capture form: round total, co-investors with NB flag and amount, ownership, pro-rata, post-money

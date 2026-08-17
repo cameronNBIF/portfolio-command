@@ -361,7 +361,7 @@ is in `docs/affinity-v2-field-map.csv`; endpoint mechanics in
 
 ## ADR-018 — Financial records are append-only; corrections are reversals or supersessions
 
-**Status:** Accepted
+**Status:** Superseded by ADR-031 (17 August 2026). The reproducibility requirement below survives intact and is the constraint ADR-031 had to satisfy by another mechanism; the append-only interface does not. The judgement/financial split this ADR draws is unchanged and still governs `packages/api/src/write/judgement.ts`.
 
 **Context.** After launch, Finance maintains transactions, valuation marks and LP cashflows directly in the platform. The natural interface design — and the one proposed — is a table view with in-place editing behind a confirmation prompt. For a financial registry that is the wrong default. Editing a transaction in place makes every previously issued board report irreproducible, and it quietly breaks the "what did we report then" property that the frozen NAV snapshots in ADR-007 depend on. A confirmation dialog protects against accident; it does not protect against history changing underneath a published number.
 
@@ -1129,6 +1129,129 @@ merely a blank tile — see the consequences below.
   ($243M) sit *below* the real Crunchbase funding ($460M) for the 55 companies
   that carry it, so the figure is conservative rather than inflated. It remains
   a dial, not a finding.
+
+---
+
+## ADR-031 — Financial records are editable in place, over a versioned store that keeps history reproducible
+
+**Status:** Accepted (17 August 2026). Supersedes ADR-018.
+
+**Context.** ADR-018 made `transaction`, `valuation_mark` and the LP cashflow
+set append-only: an error was voided by a dated reversal or superseded by a new
+mark, and the Finance interface was to offer **Correct** and **Reverse** rather
+than **Edit**. A7 is the phase that builds that interface, and the requirement
+was revisited before it was built rather than after.
+
+**The objection is about who operates this, and it is a good one.** Reversal
+discipline is borrowed from double-entry accounting systems, where it is
+mandatory because the ledger is the statutory record and a reversing entry is
+itself an accounting event with a period. This platform is not a general ledger.
+It is a portfolio registry of roughly 280 transactions across 82 companies,
+maintained by a Finance team whose entire working practice is Excel, where every
+cell is editable and a mistake is fixed by retyping it. Presenting that team
+with a registry in which a same-session typo must be corrected by booking a
+compensating negative row — and in which the table then shows three rows where
+one cheque was written — asks them to learn an accounting formalism in order to
+fix a fat-fingered digit. The predictable failure mode is not that they learn
+it. It is that entry migrates back to a spreadsheet and the platform stops being
+the registry ADR-011 says it is.
+
+**What ADR-018 was actually protecting was never the interface.** Re-read its
+context: the stated harm is that "editing a transaction in place makes every
+previously issued board report irreproducible", and that a confirmation dialog
+"does not protect against history changing underneath a published number". That
+is a claim about the *storage model*, not about the *verb on the button*.
+Append-only is one way to keep every past state of the data retrievable. It is
+not the only one, and it is the one that puts the entire cost on the operator.
+
+**Decision.** Financial rows become **editable and deletable in place**, and the
+reproducibility property is preserved underneath by versioning rather than by
+accumulation.
+
+1. **The base tables hold current state.** `transaction`, `valuation_mark`,
+   `investment_round`, `company_ownership`, `fund_distribution` and
+   `fund_investment_nav` continue to hold exactly one row per fact, and that row
+   is what every existing view, aggregate and metric reads. **No metric, view or
+   golden master changes as a consequence of this ADR** — which is the property
+   that made the change affordable at A7 rather than a rewrite.
+
+2. **Every mutation writes the prior row image to `financial_row_version`**, in
+   full, as `jsonb`, with the interval it was true for, the actor, and a reason.
+   Capture is by **database trigger, not by application code.** An `UPDATE`
+   issued from psql at 9pm by someone who has never read this file is versioned
+   identically to one issued through the API. This is the difference between a
+   guarantee and a convention, and it is the whole basis on which the append-only
+   requirement was safe to drop.
+
+3. **The actor is mandatory at the database level.** The trigger reads a session
+   variable, `pc.actor_id`, and **raises** if it is unset. A financial row cannot
+   be modified anonymously by any route, including a direct connection. ADR-005
+   already keeps roles in `app_user` rather than in Entra claims precisely so
+   that "who was allowed" and "who did it" cannot drift apart; this extends the
+   same property to writes that bypass the application entirely.
+
+4. **History is queryable, not merely retained.** `transaction_asof(t)`,
+   `valuation_mark_asof(t)` and their siblings return each table as it stood at
+   any past instant, reconstructed from the base row and the version images.
+   Reproducing a superseded board pack is a query with a timestamp in it. This
+   is the clause that discharges ADR-018's requirement, and it is deliberately
+   built in A7 alongside the edit interface rather than deferred to A11 — a
+   reconstruction path that does not exist yet is a reproducibility guarantee
+   that does not exist yet.
+
+5. **Editing inside an issued period warns and demands a reason.**
+   `fund_nav_snapshot.frozen_at` marks the periods actually published to the
+   board (ADR-007). An edit to a row whose effective date falls on or before the
+   latest frozen `period_end` is permitted, but the form states that it restates
+   a published figure, requires a restatement reason, and flags the version
+   record. Every number that moved after publication is therefore a list, not an
+   archaeology exercise. Finance is not blocked — the VC team lead, not the
+   database, decides whether a restatement is acceptable.
+
+6. **Deletion is soft.** `deleted_at`, `deleted_by` and `deleted_reason` remove a
+   row from every view and every total while leaving it retrievable and
+   restorable. A row booked against the wrong company gets deleted and re-entered,
+   which is what the operator will do anyway; the alternative is editing it into
+   an unrelated fact and leaving a version chain that reads as nonsense.
+
+7. **Reversal survives where it is genuinely the right tool, and only there.**
+   `reverses_transaction_id`, `voided_by_transaction_id` and the mark supersession
+   chain are retained, because a clawback, a rescinded distribution or a
+   renegotiated tranche is a real economic event with its own date and belongs in
+   the register as a second row. What is withdrawn is the requirement to use that
+   mechanism for **data-entry errors**, which are not economic events and were
+   never well served by being recorded as though they were. `batch_id` wholesale
+   rollback is untouched and remains load-bearing for A13.
+
+**Consequences.**
+
+- **Finance gets the interface their working practice implies**, which is the
+  substance of the change and the reason it was raised.
+- **The reproducibility property is preserved but its cost moves.** Under
+  append-only, "what did we report then" was free — the rows were still there
+  and a dated filter answered it. It is now a reconstruction, which means it is
+  code, which means it can have bugs that silence itself. The A7 test suite
+  therefore asserts the round trip directly: mutate a row, reconstruct as of
+  before the mutation, assert the original figures return.
+- **A published number can now move, where previously it could not.** This is a
+  real reduction in guarantee and should be stated plainly rather than absorbed.
+  Clause 5 makes each instance visible and attributable; it does not make it
+  impossible. That is the trade taken, with the operator's agreement, and the
+  mitigation is a list someone reads rather than a constraint that holds by
+  itself.
+- **The `financial_row_version` table grows without bound and is never pruned.**
+  At this transaction volume that is immaterial for the platform's lifetime.
+  Saying so here means a future reader does not have to rediscover that it was
+  considered.
+- **`is_synthetic` and the ADR-020 banner are unaffected.** Versions inherit the
+  flag with the row image; a synthetic row edited in a demo is still synthetic.
+- **A13 is slightly cheaper.** The port's exception path can now correct a
+  mis-loaded row by editing it, rather than by reversing and rebooking, and
+  `batch_id` rollback remains available for the wholesale case.
+
+**Not decided here.** Whether restatements should additionally trigger a
+notification to the VC team lead. The list exists and is queryable; whether
+anyone is pushed at is an A9 alerts question, not a storage one.
 
 ---
 
