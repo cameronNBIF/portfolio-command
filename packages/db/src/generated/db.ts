@@ -227,11 +227,16 @@ export interface CompanyOwnership {
   as_of_date: Timestamp;
   company_id: string;
   company_ownership_id: Generated<Int8>;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   entered_by: string;
   fully_diluted: Generated<boolean>;
   is_synthetic: Generated<boolean>;
   ownership_pct: Numeric;
   pro_rata_rights: Generated<boolean>;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
   source_document: string | null;
 }
 
@@ -301,6 +306,26 @@ export interface DealGate {
   status: Generated<string>;
 }
 
+export interface FinancialRowVersion {
+  action: string;
+  change_reason: string | null;
+  changed_by: string;
+  financial_row_version_id: Generated<Int8>;
+  is_restatement: Generated<boolean>;
+  is_synthetic: Generated<boolean>;
+  record_id: string;
+  /**
+   * The whole row, not a diff. A diff is cheaper to store and useless to reconstruct from when a column is added later. For action=create this is the row as first entered; for every other action it is the row as it was BEFORE the change.
+   */
+  row_image: Json;
+  table_name: string;
+  valid_from: Timestamp;
+  /**
+   * For action=create this equals valid_from: a creation is an instant, not an interval. The reconstruction in section 5 uses a half-open predicate, so create rows are correctly invisible to it.
+   */
+  valid_to: Timestamp;
+}
+
 export interface Fund {
   annual_followon_budget: Numeric | null;
   annual_platform_target: number | null;
@@ -333,12 +358,17 @@ export interface FundDistribution {
    * The contract's distributions[].company, verbatim. On the reference dataset two of four rows resolve to no company: "Generated exits" is an aggregate, and "Solvine" does not match the roster's "Solvine (exited)". Both are legitimate states for historical fund-level realizations, not import errors.
    */
   company_label: string;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   distribution_date: Timestamp;
   entered_by: string;
   fund_distribution_id: Generated<Int8>;
   fund_id: number;
   is_synthetic: Generated<boolean>;
   note: string | null;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
 }
 
 export interface FundInvestment {
@@ -364,11 +394,16 @@ export interface FundInvestment {
 
 export interface FundInvestmentNav {
   as_of_date: Timestamp;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   entered_by: string;
   fund_investment_id: string;
   fund_investment_nav_id: Generated<Int8>;
   is_synthetic: Generated<boolean>;
   nav: Numeric;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
   source_document: string | null;
   /**
    * Tracking the gap between as_of_date and receipt makes LP NAV staleness explicit on the Funds tab.
@@ -391,6 +426,9 @@ export interface InvestmentRound {
   captured_at: Timestamp | null;
   captured_by: string | null;
   company_id: string;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   instrument_id: number;
   investment_round_id: Generated<Int8>;
   investment_vehicle_id: number | null;
@@ -409,6 +447,8 @@ export interface InvestmentRound {
    * Full round size including all investors. DRIVES THE LEVERAGE MANDATE KPI. Exists in no upstream system - entered by the deal lead at close.
    */
   round_total: Numeric | null;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
   source_document: string | null;
 }
 
@@ -601,6 +641,12 @@ export interface Transaction {
   booked_at: Generated<Timestamp>;
   company_id: string | null;
   currency: Generated<string>;
+  /**
+   * ADR-031 soft delete. A row booked against the wrong company is deleted and re-entered rather than edited into an unrelated fact. Excluded from v_transaction_live and therefore from every aggregate.
+   */
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   entered_by: string;
   fund_investment_id: string | null;
   fx_rate_to_cad: Numeric | null;
@@ -609,6 +655,8 @@ export interface Transaction {
   is_synthetic: Generated<boolean>;
   note: string | null;
   reverses_transaction_id: Int8 | null;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
   source_document: string | null;
   transaction_id: Generated<Int8>;
   txn_date: Timestamp;
@@ -622,6 +670,9 @@ export interface ValuationMark {
   booked_at: Generated<Timestamp>;
   company_id: string;
   currency: Generated<string>;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
   effective_date: Timestamp;
   fmv: Numeric;
   is_synthetic: Generated<boolean>;
@@ -635,6 +686,8 @@ export interface ValuationMark {
    * Not optional. This is what a board or auditor reads when they challenge a number.
    */
   rationale: string;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
   source_document: string | null;
   status: Generated<string>;
   supersedes_id: Int8 | null;
@@ -687,6 +740,21 @@ export interface VDealStageHistory {
   stage_rank: number | null;
 }
 
+export interface VFinancialChangeLog {
+  action: string | null;
+  change_reason: string | null;
+  changed_at: Timestamp | null;
+  changed_by_email: string | null;
+  changed_by_name: string | null;
+  financial_row_version_id: Int8 | null;
+  image_effective_from: Timestamp | null;
+  is_restatement: boolean | null;
+  is_synthetic: boolean | null;
+  record_id: string | null;
+  row_image: Json | null;
+  table_name: string | null;
+}
+
 export interface VKpiCoverage {
   cash_balance: Int8 | null;
   companies_reporting: Int8 | null;
@@ -733,6 +801,21 @@ export interface VMandateCompleteness {
   missing_round_total: Int8 | null;
   pct_leverage_coverage: Numeric | null;
   rounds_total: Int8 | null;
+}
+
+export interface VRestatementLog {
+  action: string | null;
+  change_reason: string | null;
+  changed_at: Timestamp | null;
+  changed_by_email: string | null;
+  changed_by_name: string | null;
+  financial_row_version_id: Int8 | null;
+  image_effective_from: Timestamp | null;
+  is_restatement: boolean | null;
+  is_synthetic: boolean | null;
+  record_id: string | null;
+  row_image: Json | null;
+  table_name: string | null;
 }
 
 export interface VRoundLeverage {
@@ -800,6 +883,7 @@ export interface DB {
   company_task: CompanyTask;
   company_threshold: CompanyThreshold;
   deal_gate: DealGate;
+  financial_row_version: FinancialRowVersion;
   fund: Fund;
   fund_distribution: FundDistribution;
   fund_investment: FundInvestment;
@@ -827,10 +911,12 @@ export interface DB {
   v_company_invested: VCompanyInvested;
   v_company_realized: VCompanyRealized;
   v_deal_stage_history: VDealStageHistory;
+  v_financial_change_log: VFinancialChangeLog;
   v_kpi_coverage: VKpiCoverage;
   v_lp_capital_to_direct: VLpCapitalToDirect;
   v_lp_position_current: VLpPositionCurrent;
   v_mandate_completeness: VMandateCompleteness;
+  v_restatement_log: VRestatementLog;
   v_round_leverage: VRoundLeverage;
   v_synthetic_data_status: VSyntheticDataStatus;
   v_transaction_live: VTransactionLive;
