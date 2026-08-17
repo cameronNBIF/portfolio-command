@@ -5,9 +5,10 @@
  * drives. Financial rows are unreachable from here by construction, not by
  * convention -- see the note on `JudgementEdit`.
  *
- * There is deliberately no `PATCH /transactions` or `PUT /marks` beside this.
- * Financial entry arrives at A7 with Correct and Reverse actions, and an Edit
- * endpoint that existed first would be the wrong habit to build against.
+ * Financial rows are edited through `/api/v1/financial` (A7, ADR-031), over a
+ * versioned store with trigger-enforced history. The split between the two
+ * endpoints is the ADR-018 fact/judgement boundary, which ADR-031 left intact:
+ * what changed is the interface offered over facts, not which rows are facts.
  */
 import { applyJudgementEdit, db, type JudgementEdit } from '@portfolio-command/api';
 
