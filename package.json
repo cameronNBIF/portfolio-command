@@ -17,6 +17,7 @@
     "db:generate": "tsx packages/db/src/generate/run.ts",
     "db:types": "kysely-codegen --dialect postgres --default-schema pc --include-pattern \"pc.*\" --out-file packages/db/src/generated/db.ts",
     "import:fixture": "npm run import:contract -w @portfolio-command/api",
+    "fixture:purge": "tsx packages/api/src/import/purge-cli.ts",
     "affinity:probe": "tsx functions/src/affinity/probe.ts",
     "affinity:vocab": "tsx functions/src/affinity/vocabularies.ts",
     "visible:probe": "tsx functions/src/visible/probe.ts",
