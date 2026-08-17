@@ -78,6 +78,28 @@ export const CAN_EDIT_JUDGEMENT: readonly Role[] = ['vc', 'admin'];
  */
 export const CAN_WRITE_FINANCIAL: readonly Role[] = ['finance', 'admin'];
 
+/**
+ * Who may capture the deal-close mandate fields -- round total, co-investors
+ * with their NB flag and amounts, ownership after the round, pro-rata rights
+ * and post-money (ADR-012, A8).
+ *
+ * WHY THIS IS NOT `CAN_WRITE_FINANCIAL`, THOUGH IT WRITES TO TWO OF THE SAME
+ * ADR-031 VERSIONED TABLES. The split follows the source of record, exactly as
+ * it does above and in `CAN_EDIT_JUDGEMENT`. Our cheque is Finance's fact and
+ * lives on `transaction`, which is unchanged and still finance-only. What
+ * `investment_round`, `round_coinvestor` and `company_ownership` hold is the
+ * shape of the round around that cheque -- who else was in it, how much they
+ * put in, what we ended up owning -- and ADR-012 assigns exactly that to the
+ * deal lead, at close, from the closing documents they are the one holding.
+ *
+ * Finance keeps write access because A13 loads Finance's own historical rounds
+ * through this path, and a backfill that cannot be corrected by the person
+ * running it is a backfill that stalls.
+ *
+ * Leadership is excluded, per ADR-005: leadership reads.
+ */
+export const CAN_CAPTURE_ROUND: readonly Role[] = ['vc', 'finance', 'admin'];
+
 export function requireRole(principal: Principal, allowed: readonly Role[]): void {
   if (!allowed.includes(principal.role)) throw new ForbiddenError(allowed, principal.role);
 }

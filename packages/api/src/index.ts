@@ -12,6 +12,17 @@ export { periodOf, toCalendarLabel, type QuarterPeriod } from './periods.js';
 
 export { buildExport, resolveAsOf, type ExportOptions } from './read/export.js';
 export { readKpiCoverage, type KpiCoverageRow } from './read/kpi-coverage.js';
+export {
+  readRounds,
+  readMandateCompleteness,
+  readReferenceData,
+  type RoundRow,
+  type RoundFilters,
+  type RoundPage,
+  type CoinvestorRow,
+  type MandateCompleteness,
+  type ReferenceData,
+} from './read/rounds.js';
 export { importContract, asOfDate, type ImportResult, type ImportWarning } from './import/import-contract.js';
 
 export {
@@ -23,6 +34,7 @@ export {
   CAN_READ,
   CAN_EDIT_JUDGEMENT,
   CAN_WRITE_FINANCIAL,
+  CAN_CAPTURE_ROUND,
   type Principal,
   type Role,
 } from './auth/principal.js';
@@ -59,3 +71,14 @@ export {
   type LpNavInput,
   type FundDistributionInput,
 } from './write/financial.js';
+
+// ADR-012, A8. The deal-close capture: one mutation, three tables, written by
+// the deal lead rather than by Finance (CAN_CAPTURE_ROUND).
+export {
+  applyRoundMutation,
+  type RoundMutation,
+  type RoundCaptureInput,
+  type CoinvestorInput,
+  type OwnershipInput,
+  type RoundWriteResult,
+} from './write/rounds.js';
