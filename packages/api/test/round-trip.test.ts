@@ -39,6 +39,7 @@ import { buildExport } from '../src/read/export.js';
 import { readKpiCoverage } from '../src/read/kpi-coverage.js';
 import { periodOf, toCalendarLabel } from '../src/periods.js';
 import { toDollars, toMillions } from '../src/units.js';
+import { assertTestDatabase } from './use-test-db.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p: string) => readFileSync(path.resolve(here, p), 'utf8');
@@ -60,6 +61,7 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
   let actual: PortfolioExport;
 
   beforeAll(async () => {
+    assertTestDatabase();
     const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
     await client.connect();
     try {

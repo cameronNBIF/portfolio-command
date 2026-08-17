@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "import:contract": "tsx src/import/cli.ts",
+    "purge:contract": "tsx src/import/purge-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },

@@ -28,6 +28,70 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-17 · A8.2 · The demo database serves NBIF only, and the thing that kept wiping it is finally named
+
+**Why this session happened.** A platform demonstration to Daniel is coming, and the dashboard was serving **152 companies — 70 of them the prototype's fictional roster**, with nothing on any screen saying which were which. Solvine, Cobalt Harbor and Vantara Systems sat beside Introhive, Soricimed and Beauceron Security, and the fund at the top of every board-facing screen read **"Ridgeline Direct Investments", in USD, on a $400M capital base**.
+
+**Nothing was broken.** This is the state `import:fixture` and `affinity:sync` produce *when both are correct*. The importer truncates and replaces, so a fixture load into an empty database is clean; the sync INSERTS, and its id allocator deliberately skips `C001-C070` so "a roster loaded beside the reference fixture cannot collide". Each command did exactly what it says. What did not exist was the inverse — a way to take the fixture back out of a database that had since been synced — so the two correct commands composed into a portfolio that was 46% fiction.
+
+### The wipes: attributed, four days late
+
+A8.1 closed with *"I could not attribute the final instance."* It is attributable now, and it was still running.
+
+```
+node vitest.mjs run -w packages/api      started 13 Aug 15:45, still alive 17 Aug
+```
+
+**`-w` is vitest's `--watch` flag, not npm's workspace flag.** The command reads as "run the tests in packages/api" and means "watch the whole repository, filtering to paths matching `packages/api`". Executed from the repo root, where there is no `vitest.config.ts`, so **`setupFiles` never loaded and the `<database>_test` redirect never applied** — every re-run, on every file change, for four days, went at `portfolio_command` and truncated it. It wiped the database twice during this session alone, once while I was mid-investigation, which is what exposed it: `audit_log` carried an `__import__` row stamped 60 seconds after a command I had not run.
+
+This also explains A8.1's marker-row alibi. `npm test` was innocent every time it was tested, because `npm test` is not what was doing it.
+
+**Killed.** If tests are ever wanted in watch mode: `npm test -w @portfolio-command/api -- --watch`, or `npx vitest --root packages/api`. Never `vitest -w <path>` from the root.
+
+### Built
+
+- **`npm run fixture:purge`** (`packages/api/src/import/purge-fixture.ts`, `purge-cli.ts`) — the inverse of `import:fixture`. Removes only rows it can prove the fixture wrote, on three exact discriminators rather than heuristics: `company.affinity_org_id is null` (the same signal A8.1's guard reads, and exact for the same reason — two writers, one always sets it), `pipeline_deal.affinity_row_id is null`, and **the import's own batch id, recovered from the `__import__` ledger row the importer already writes to `audit_log`**. `--dry` reports and rolls back.
+- **The fund-level rows are the half that would have been missed.** LP cashflows and fund distributions hang off the fund, not off a company, so removing the roster leaves them behind — **$47.5M of fictional realizations sitting in the fund's DPI**, plus nine NAV-history quarters on the dashboard chart. NAV snapshots are matched on the whole `(period_end, nav, cumulative_cost)` triple to the cent, so a figure the generator computed cannot be mistaken for one the fixture asserted, and a **frozen** snapshot is never touched.
+- **It refuses to touch two things** and says so: a company without an Affinity id that holds a financial row which is not synthetic, and one named by a fund distribution outside the import batches. Neither is reachable today; both are what a hand-entered holding would look like, and eating one silently would be a worse bug than the one this fixes.
+- **`packages/db/src/fund-identity.ts`** — the fund row's configuration, extracted from `seed.ts` unchanged. Two commands now create that row and they must agree; a purge that restored a different name than the seed creates would be a silent divergence between a rebuilt database and a purged one. Financial fields are deliberately absent from it: the purge sets `capital_base`, `committed`, `called`, fee drag, the two policy strings and the follow-on budget back to NULL rather than carrying the fixture's figures forward under NBIF's name (ADR-020).
+- **`assertTestDatabase()`** in `use-test-db.ts`, called by `fixture-purge`, `round-trip` and `import-guard` immediately before they connect. **A setup file cannot defend against its own absence** — the redirect above it is correct and has been verified repeatedly, and the database was destroyed anyway because the file never ran. This fires however the redirect comes to be missing, and turns a wiped database into a failed assertion. Verified by pointing the round-trip suite at `portfolio_command` on purpose: it refused, and the 70 rows in front of it were untouched.
+- **`packages/api/test/fixture-purge.test.ts`** — ten tests over the exact mixed state the command exists for: fixture imported, real roster inserted beside it, a hand-entered company carrying a real transaction, a fund distribution nobody imported. Both halves are asserted, because *"the fixture is gone"* is worthless if the answer to *"and is the roster still there?"* is no.
+
+### Changed
+
+- **`import:fixture` and `fixture:purge` at the repo root now invoke `tsx` directly**, as `db:generate` and `affinity:sync` already did. The nested `npm run … -w @portfolio-command/api` form **silently ate every flag**: `npm run fixture:purge -- --dry` reached npm as `--dry-run` (npm warned and expanded it) and the CLI ran a *committing* purge. By the same mechanism **`npm run import:fixture -- --force` has never worked** — npm consumed `--force` as its own flag and the documented recovery path was a no-op. Only the guard test caught nothing, because it spawns the CLI directly.
+
+### Verified — the demo database
+
+Rebuilt in place rather than through `db:reset`: purge, then `affinity:sync`, `visible:sync`, `db:generate`. Same end state, without dropping the volume.
+
+| | |
+|---|---|
+| companies | **82, every one carrying an `affinity_org_id`** |
+| pipeline deals | **350, every one carrying an `affinity_row_id`** |
+| KPI rows | **999, all `source_system = 'visible'`** |
+| transactions | 282, all `is_synthetic` |
+| fund | **NBIF, CAD, inception 2003, capital base blank** |
+| fixture rows | **0** |
+
+On screen: 75 active / 7 exited, no fixture name anywhere in the DOM on Dashboard, Portfolio or Pipeline, no console errors, and the ADR-020 synthetic banner still on every screen — the financial spine is still generated, and the demo must keep saying so.
+
+Company ids reallocated from `C001` because the purge ran before the sync, so the fixture no longer occupied the first seventy. Per-company synthetic histories are re-rolled as a consequence (the A6 generator seeds on `company_id`); the control totals are unchanged, being reconciled to Affinity's own FMV and total-investment figures.
+
+### Decided
+
+- **The fixture stays in the repository and stays loadable.** ADR-020 makes it the development dataset and the round trip is asserted against it; the problem was never that it exists, only that it had no way out of a database. `import:fixture` is unchanged and `demo.json` is untouched.
+- **A purge, not a read-path filter.** Hiding the rows behind a `where` clause in the export adapter would have left the fund's DPI, NAV history and leverage denominators reading fictional figures, since those aggregate rows the filter would not have reached.
+
+### Outstanding
+
+- **Nothing enforces "one roster per database".** `affinity:sync` will happily insert beside a fixture again — that is its documented behaviour and the id allocator supports it deliberately. The purge is the cure, not a prevention. A warning in the sync's summary when `company.affinity_org_id is null` rows are present would be about four lines, and is not written.
+- **`fund.capital_base` is NULL and renders blank on the dashboard** ("capital base not set", "Recycled — dry powder —"). That is honest and it is what the seed intends, but it is a visible gap in a demo. It needs a real figure from Finance, not a restored fixture one.
+- **`company.visible_company_id` is never populated** — the Visible sync matches on website and stores KPIs without recording the profile id. Harmless, and it makes that column useless as a discriminator; noted because the purge checks it and gets nothing from it.
+- Carried: the A8.1 note that `importContract` itself is unguarded by design, and the `npm audit` dev-tooling findings.
+
+---
+
 ## 2026-08-17 · A8.1 · The thing that kept wiping the development database
 
 **Closes the item A8 left open.** It was `npm run import:fixture`, and it had been hiding behind a much more plausible suspect for two phases.

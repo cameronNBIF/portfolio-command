@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./env": "./src/env.ts",
+    "./fund-identity": "./src/fund-identity.ts",
     "./generated": "./src/generated/db.ts"
   },
   "scripts": {

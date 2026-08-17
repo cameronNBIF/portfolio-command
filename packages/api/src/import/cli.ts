@@ -109,6 +109,9 @@ try {
       console.error('\nIf you meant to do it:');
       console.error('  npm run db:reset                     rebuild everything from scratch');
       console.error('  npm run import:fixture -- --force    overwrite, then re-sync by hand\n');
+      console.error('If a fixture is already loaded BESIDE this roster and you want it gone:');
+      console.error('  npm run fixture:purge -- --dry       show what would be removed');
+      console.error('  npm run fixture:purge                remove it, leaving the roster\n');
       process.exit(1);
     }
 
