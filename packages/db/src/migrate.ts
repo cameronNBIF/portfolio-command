@@ -1,6 +1,8 @@
 /**
- * Plain-SQL migration runner. Forward-only, deliberately (ADR-018 ethos:
- * a bad migration is corrected by the next one, not rolled back).
+ * Plain-SQL migration runner. Forward-only, deliberately: a bad migration is
+ * corrected by the next one, not rolled back. Note that this is the schema's
+ * own discipline and is unaffected by ADR-031 -- that ADR made FINANCIAL ROWS
+ * editable, not migrations.
  *
  * - Applies packages/db/migrations/NNNN_name.sql in filename order.
  * - Each migration runs in one transaction.

@@ -30,7 +30,7 @@
  * 4. **It is idempotent and it deletes only its own rows.** Generated rows are
  *    identified by `is_synthetic` where that column exists and by authorship
  *    against the system principal where it does not, so an allocation a person
- *    edited through the ADR-018 judgement path survives a regeneration.
+ *    edited through the judgement path survives a regeneration.
  *
  * 5. **Every financial row carries `is_synthetic` (ADR-020).** That is what
  *    drives `v_synthetic_data_status.contains_synthetic`, and with it the
@@ -95,6 +95,17 @@ await client.connect();
 // SESSION level, not `set local`: the report runs after the commit, and a
 // `set local` would have expired with the transaction that set it.
 await client.query('set search_path = pc, public');
+
+// ADR-031. The version-capture trigger raises unless the session names an
+// actor, so the generator names itself. Session level for the same reason as
+// the search_path above, and it must be set before the clear-down below
+// issues its first DELETE.
+//
+// This is also the value the trigger's one exemption keys on: a DELETE of a
+// synthetic row by THIS user is not versioned, because regenerating the demo
+// dataset is not a financial edit and would otherwise write thousands of
+// version rows per run. Nothing else is exempt -- see migration 0002.
+await client.query(`set pc.actor_id = '${SYSTEM_USER}'`);
 
 const counts: Record<string, number> = {};
 const bump = (k: string, n = 1) => (counts[k] = (counts[k] ?? 0) + n);
@@ -195,7 +206,7 @@ try {
   // --- clear previously generated rows ------------------------------------
   // Scoped, never a blanket truncate: `is_synthetic` where the column exists,
   // authorship against the system principal where it does not, so a human edit
-  // through the ADR-018 judgement path survives a regeneration.
+  // through the judgement path survives a regeneration.
   const clear = async (sql: string, label: string) => {
     const r = await client.query(sql);
     if (r.rowCount) cleared[label] = r.rowCount;
@@ -311,7 +322,9 @@ try {
       bump('transaction');
     }
 
-    // --- the duplicate cheque, and the reversal that voids it (ADR-018) ---
+    // --- the duplicate cheque, and the reversal that voids it ---
+    // The pre-ADR-031 correction shape. Today Finance would soft-delete this;
+    // the reversal path stays exercised because historical data still uses it.
     const dup = dirt.duplicates.find((d) => d.companyId === f.companyId);
     if (dup) {
       const t = plan.transactions[dup.transactionIndex]!;
@@ -326,7 +339,7 @@ try {
       await client.query(
         `update transaction
             set voided_by_transaction_id = $1, voided_at = now(),
-                voided_reason = 'Duplicate of an earlier booking; reversed under ADR-018.'
+                voided_reason = 'Duplicate of an earlier booking; reversed. Pre-ADR-031 correction shape.'
           where transaction_id = $2`,
         [revId, dupId],
       );
