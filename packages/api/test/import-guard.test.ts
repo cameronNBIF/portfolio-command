@@ -29,6 +29,7 @@ import { config } from 'dotenv';
 import { sql } from 'kysely';
 
 import { closeDb, db } from '../src/db.js';
+import { assertTestDatabase } from './use-test-db.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -62,6 +63,9 @@ async function runCli(args: string[] = []): Promise<{ code: number; out: string 
 
 describe.skipIf(!hasDb)('the fixture importer guards the real roster', () => {
   beforeEach(async () => {
+    // The --force case truncates eight root tables, and this suite spawns the
+    // CLI, so the child inherits whatever this process is pointed at.
+    assertTestDatabase();
     await sql`delete from pc.company where company_id = ${COMPANY}`.execute(db());
   });
 
