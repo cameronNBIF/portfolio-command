@@ -19,8 +19,12 @@
  *    a defect that quietly moved it would destroy the only assertion that can
  *    catch a real generator bug. The duplicate cheque is the interesting case:
  *    it is booked AND reversed, so `v_transaction_live` excludes both and the
- *    total still reconciles -- which is precisely the ADR-018 correction path
- *    working, demonstrated rather than described.
+ *    total still reconciles. ADR-031 has since made a duplicate cheque a soft
+ *    DELETE rather than a reversal -- a keying error is not an economic event --
+ *    but the reversal columns remain (ADR-031 clause 7) and A13 will load fifteen
+ *    years of history that predates the change. So this defect is deliberately
+ *    kept: it is the shape legacy data arrives in, and the exclusion path it
+ *    exercises has to keep working after the interface stopped producing it.
  *
  * Some of the roadmap's list needed no fabrication at all, and that is worth
  * recording rather than papering over:
@@ -62,7 +66,7 @@ export interface DirtPlan {
   defects: Defect[];
   /** Company ids whose first round carries a USD tranche. */
   usdTranche: Set<string>;
-  /** Company ids getting a duplicate cheque plus its ADR-018 reversal. */
+  /** Company ids getting a duplicate cheque plus its reversal (the pre-ADR-031 shape). */
   duplicates: DuplicatePair[];
   /** Company ids getting a valuation mark dated before the first investment. */
   markBeforeInvestment: Set<string>;
@@ -141,8 +145,9 @@ export function planDirt(
   const dup = target(
     TARGETS.duplicate,
     'duplicate cheque, reversed',
-    'A follow-on booked twice, then voided by a dated reversal (ADR-018). Both rows ' +
-      'are excluded by v_transaction_live, so the control total still reconciles.',
+    'A follow-on booked twice, then voided by a dated reversal -- the pre-ADR-031 ' +
+      'correction shape, kept because A13 loads history that predates the change. ' +
+      'Both rows are excluded by v_transaction_live, so the control total reconciles.',
   );
   if (dup) {
     const plan = plans.get(dup)!;

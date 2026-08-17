@@ -3,12 +3,13 @@
 /**
  * In-memory edits to JUDGEMENT fields.
  *
- * ADR-018 draws the line this provider sits on. Financial rows -- transactions,
- * valuation marks, LP cashflows -- are append-only and are corrected by
- * reversal or supersession, never edited; nothing here touches them. Records
- * that represent judgement rather than fact -- diligence gates, reserve
- * allocations, health, flags, milestones -- are freely editable with an audit
- * trail, and these are two of those.
+ * ADR-018 drew the line this provider sits on, and ADR-031 left the line where
+ * it was while changing what happens on the other side of it. Financial rows --
+ * transactions, valuation marks, LP cashflows -- are now editable too, but over
+ * a versioned store, through `/api/v1/financial` and the Finance tab; nothing
+ * here touches them. Records that represent judgement rather than fact --
+ * diligence gates, reserve allocations, health, flags, milestones -- are what
+ * this provider carries, and these are two of those.
  *
  * A2 has no persistence: edits live for the session, exactly as the prototype
  * behaved before "Save locally". A3 replaces this with API writes that land in

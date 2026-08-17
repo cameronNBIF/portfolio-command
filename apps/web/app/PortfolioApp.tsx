@@ -20,9 +20,11 @@ import { fmt, fundMetrics, isEvergreen } from '@portfolio-command/metrics';
 import { AppShell, NotYetPorted, TABS, useApp, type TabId } from '../components/AppShell';
 import { CompanyDrawer } from '../components/drawers/CompanyDrawer';
 import { DealDrawer } from '../components/drawers/DealDrawer';
+import { FinancialHistoryDrawer } from '../components/drawers/FinancialHistoryDrawer';
 import { FundInvestmentDrawer } from '../components/drawers/FundInvestmentDrawer';
 import { DashboardTab } from '../components/tabs/DashboardTab';
 import { DataTab } from '../components/tabs/DataTab';
+import { FinanceTab } from '../components/tabs/FinanceTab';
 import { FundsTab } from '../components/tabs/FundsTab';
 import { PipelineTab } from '../components/tabs/PipelineTab';
 import { MemoTab } from '../components/tabs/MemoTab';
@@ -59,6 +61,9 @@ function DrawerContent({ db, asOf }: PortfolioProps) {
     const deal = pipeline.find((d) => d.id === drawer.id);
     return deal ? <DealDrawer deal={deal} /> : null;
   }
+  if (drawer.kind === 'financial-history') {
+    return <FinancialHistoryDrawer table={drawer.table} id={drawer.id} />;
+  }
   return null;
 }
 
@@ -92,6 +97,10 @@ function Tab({ tab, db, asOf, kpiCoverage }: PortfolioProps & { tab: TabId; kpiC
       return <ReportsTab db={db} asOf={asOf} />;
     case 'data':
       return <DataTab db={db} asOf={asOf} kpiCoverage={kpiCoverage} />;
+    case 'finance':
+      // Role-gated in the nav; the API enforces it again on every write, so a
+      // hand-constructed request gains nothing.
+      return <FinanceTab db={db} />;
     default:
       return <NotYetPorted tab={TABS.find((t) => t.id === tab)?.label ?? tab} />;
   }
@@ -101,10 +110,12 @@ export function PortfolioApp({
   db,
   asOf,
   kpiCoverage,
-}: PortfolioProps & { kpiCoverage: KpiCoverageRow[] }) {
+  role,
+}: PortfolioProps & { kpiCoverage: KpiCoverageRow[]; role: string }) {
   return (
     <EditableProvider db={db}>
       <AppShell
+        role={role}
         fundTag={<FundTag db={db} asOf={asOf} />}
         drawerContent={<DrawerContent db={db} asOf={asOf} />}
         // ADR-020: driven by v_synthetic_data_status through the contract's

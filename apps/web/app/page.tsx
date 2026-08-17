@@ -48,5 +48,9 @@ export default async function Home() {
   // the data rather than part of it, and the ADR-001 shape is frozen (A5).
   const kpiCoverage = await readKpiCoverage(db());
 
-  return <PortfolioApp db={doc} asOf={asOf} kpiCoverage={kpiCoverage} />;
+  // The role decides whether the Finance tab is offered (A7). Passed as a
+  // string rather than the whole principal: the client needs to know what this
+  // user may do, not who they are, and the write path re-checks it server-side
+  // on every mutation regardless.
+  return <PortfolioApp db={doc} asOf={asOf} kpiCoverage={kpiCoverage} role={principal.role} />;
 }

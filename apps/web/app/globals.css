@@ -105,6 +105,20 @@ table.dt tbody tr.click { cursor: pointer; }
 .fbar input[type=text]:focus, .fbar select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 .fbar .count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
 
+/* ---------- Finance entry forms (A7) ----------
+   The prototype has no data entry, so nothing here ports from it. These rules
+   reuse the existing tokens rather than introducing a second look: .field
+   inputs are already styled above, and this only adds what a form needs that a
+   filter bar does not. */
+.field input[type=date], .field input[type=text], .field select, .field textarea { width: 100%; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: 2px solid var(--accent-soft); border-color: var(--accent);
+}
+.field textarea { resize: vertical; font-family: var(--font); }
+/* A financial amount is read digit by digit against a source document, so it
+   gets tabular figures the way the KPI tiles and table numerics do. */
+.field input[inputmode=decimal] { font-variant-numeric: tabular-nums; }
+
 /* ---------- Charts ---------- */
 .chartbox { position: relative; height: 240px; }
 .chartbox.tall { height: 300px; }

@@ -28,6 +28,52 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-17 · A7 · Finance entry interfaces, and ADR-018 reversed
+
+**A7 exit criteria — met.** Transaction, valuation-mark and LP NAV entry, with filters, running totals, and a change history on every row. The phase opened with a decision that changed what it was building.
+
+**Decided — ADR-018 is superseded by ADR-031. Financial rows are editable.**
+
+Raised by the operator before the interface was built rather than after: Finance works in Excel, where every cell is editable, and ADR-018 would have handed them a registry in which a same-session typo must be fixed by booking a compensating negative row. The predictable failure is not that they learn the formalism — it is that entry migrates back to a spreadsheet and the platform stops being the registry ADR-011 says it is.
+
+**What ADR-018 was actually protecting was the storage model, not the button.** Its own context says the harm is that editing "makes every previously issued board report irreproducible". Append-only is one way to keep every past state retrievable; it is not the only one, and it is the one that puts the whole cost on the operator. So the requirement survives and the mechanism changed:
+
+- Base tables hold current state and are edited in place. **No view, metric or golden master changed** — that is what made this affordable at A7 rather than a rewrite, and the 250 metrics tests plus the round-trip suite assert it.
+- Every mutation writes the prior row image to **`financial_row_version`, by database trigger**. An `UPDATE` typed into psql at 9pm is captured identically to one through the API. This is the whole basis on which dropping append-only was safe: a convention can be bypassed, a trigger cannot.
+- The trigger **raises unless the session sets `pc.actor_id`**. No financial row can be modified anonymously by any route.
+- `<table>_asof(timestamptz)` reconstructs any of the six tables as it stood at a past instant. Built now, not deferred to A11: a reconstruction path that does not exist yet is a reproducibility guarantee that does not exist yet.
+- Editing inside a frozen `fund_nav_snapshot` period is permitted, flagged, and requires a restatement reason. `v_restatement_log` is the list.
+- Deletion is soft; `deleted_at` removes a row from every view and total and is restorable.
+- Reversal survives for genuine economic events (a clawback is a real dated fact). What is withdrawn is the obligation to use it for typing errors.
+
+**Built**
+- **`packages/db/migrations/0002_financial_row_versioning.sql`** — the lifecycle columns on six tables, `financial_row_version`, `current_actor_id()`, the capture trigger, six `*_asof()` functions generated from one template, `v_financial_change_log` and `v_restatement_log`.
+- **`packages/api/src/write/financial.ts`** — create/update/delete/restore for transactions, marks, LP NAV and fund distributions. Role gate, actor GUC, restatement detection, and the four `transaction` check constraints restated in TypeScript so Finance reads a sentence instead of a constraint name.
+- **`packages/api/src/read/finance.ts`** — the three listings, running totals net of deletions, and a per-row history with a server-computed field-level diff.
+- **`/api/v1/financial`** (GET + POST) and **`/api/v1/financial/history`**.
+- **A ninth tab, `Finance`**, role-gated to `finance` and `admin`, with a **History** panel in the existing drawer.
+- **`packages/api/test/financial-versioning.test.ts`** — six tests, including the round trip ADR-031 is priced on: mutate, reconstruct as of before, assert the original figures return.
+
+**Changed**
+- **The API speaks dollars, not `$M`.** A deliberate divergence from ADR-001, which governs the export contract — this is a new internal entry API whose only caller is a form the Director of Finance types into. Asking them to express $5,000,000 as `5` would invent the exact class of error `units.ts` exists to prevent, on the one path where the figure has not yet been checked against anything. Money stays a string end to end.
+- **`importContract` now names an actor.** The trigger found it on the first test run — a real write path that never identified itself. Exactly what the trigger is for.
+- **`v_transaction_live` has an explicit column list** where 0001 had `select *`. Forced by `create or replace view` refusing to widen a view, and worth keeping: a future column addition can no longer silently reshape a view the export reads from.
+- **`packages/api` tests run one file at a time.** `round-trip.test.ts` truncates every root table; run concurrently with the new suite it interleaved and the *golden-master assertion* failed. An alarm that means "a board number moved" must not cry wolf on a scheduling race.
+- `ValidationError` moved to `write/errors.ts` — having `financial.ts` import it from `judgement.ts` implied a relationship ADR-018 spent an ADR establishing does not exist.
+
+**Two bugs the verification caught, both worth recording because neither would have shown up in a test I thought to write first:**
+- **The edit form silently nulled `investment_round_id`.** The API takes a complete row on update rather than a patch (a patch cannot distinguish "leave alone" from "clear"), and the form supplied only the fields it drew — so an amount correction destroyed a transaction's link to its round. Found by reading the History panel's own diff on the first real edit. The form now round-trips every column it writes and shows the preserved ones.
+- **Every pre-existing row claimed to have been edited.** `clock_timestamp()` is volatile and evaluated per column, so `row_created_at` and `row_updated_at` landed microseconds apart on the four tables without a `booked_at` to backfill from, and the UI's "edited" pill keys on `row_updated_at > row_created_at`. The migration now flattens the pair explicitly.
+
+**Outstanding**
+- **A-9 still stands: walk the workflow through with the Director of Finance before this is relied on.** ADR-020 condition 4 asks for it *before* building, and it has not happened — the interface was built to the roadmap's description. Treat the current forms as a proposal to walk through, not a finished spec.
+- **No investment-vehicle picker on the transaction form.** ADR-030 makes the vehicle an attribute of the transaction and Finance should own it, but the reference list is not exposed through any endpoint yet. Currently preserved on edit, never set. Needs a small reference-data route; naturally belongs with A8's capture form.
+- **`fund_distribution` has a write path but no UI surface.** The ADR-025 exception table is still empty and still the exception; wiring a screen to it before A13 resolves the double-count would invite someone to populate it.
+- **Rows created before this migration carry no `create` entry** in their history, only their edits. Immaterial for synthetic data, and A13 loads real history after this point, so the real portfolio will be complete from creation.
+- The A13 note in the roadmap should be revisited: the port's exception path can now correct a mis-loaded row by editing it rather than reversing and rebooking, which makes that phase slightly cheaper than budgeted.
+
+---
+
 ## 2026-08-14 · A6 · Synthetic financial dataset on the real roster — reconciled to Affinity's own totals
 
 **A6 exit criteria — met.** *"A full, messy, realistic dataset attached to the real roster and reconciling to the control totals the VC team already knows; the banner works; the platform is demonstrable end to end on it."* The criterion was restated this session when B2 was withdrawn — see the decision below.

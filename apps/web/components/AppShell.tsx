@@ -12,10 +12,24 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-export type TabId = 'dashboard' | 'portfolio' | 'funds' | 'pipeline' | 'modeling' | 'memo' | 'reports' | 'data';
+export type TabId =
+  | 'dashboard' | 'portfolio' | 'funds' | 'pipeline'
+  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance';
 
-/** Label and order exactly as the prototype's `#mainnav` (:163-172). */
-export const TABS: { id: TabId; label: string }[] = [
+/**
+ * Label and order exactly as the prototype's `#mainnav` (:163-172), plus
+ * Finance.
+ *
+ * FINANCE IS THE ONE ADDITION TO THE PROTOTYPE'S EIGHT, and it does not breach
+ * ADR-014. That ADR freezes the *port*: the eight tabs below it are unchanged in
+ * layout, terminology and behaviour. The prototype has no data entry anywhere —
+ * every figure in it is a literal in a JavaScript object — so A7's entry
+ * interfaces cannot be a port of anything and have to be new surface. Keeping
+ * them off the eight is what protects the parity criterion.
+ *
+ * `roles` gates visibility. Absent means everyone.
+ */
+export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'funds', label: 'Funds' },
@@ -24,6 +38,9 @@ export const TABS: { id: TabId; label: string }[] = [
   { id: 'memo', label: 'Memo Builder' },
   { id: 'reports', label: 'Reports' },
   { id: 'data', label: 'Data' },
+  // Matches CAN_WRITE_FINANCIAL. A tab that appears for the VC team and then
+  // refuses every action would be worse than one that is not offered.
+  { id: 'finance', label: 'Finance', roles: ['finance', 'admin'] },
 ];
 
 /** What the drawer is currently showing. Null means closed. */
@@ -31,6 +48,8 @@ export type DrawerTarget =
   | { kind: 'company'; id: string }
   | { kind: 'deal'; id: string }
   | { kind: 'lp'; id: string }
+  /** One financial row's change history (ADR-031). */
+  | { kind: 'financial-history'; table: string; id: string }
   | null;
 
 interface AppState {
@@ -61,10 +80,13 @@ export function AppShell({
   fundTag,
   drawerContent,
   containsSynthetic,
+  role,
   children,
 }: {
   /** The header's right-hand summary line. */
   fundTag: ReactNode;
+  /** The caller's role, from `app_user` (ADR-005). Gates which tabs are shown. */
+  role: string;
   /** Rendered inside `#drawer` when a target is set. */
   drawerContent: ReactNode;
   /**
@@ -117,6 +139,11 @@ export function AppShell({
     return () => document.body.classList.remove('drawer-open');
   }, [drawer]);
 
+  const visibleTabs = useMemo(
+    () => TABS.filter((t) => !t.roles || t.roles.includes(role)),
+    [role],
+  );
+
   const value = useMemo<AppState>(
     () => ({ tab, setTab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, setMemoTarget, openMemoFor, toast }),
     [tab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, openMemoFor, toast],
@@ -136,7 +163,7 @@ export function AppShell({
             PORTFOLIO<span>COMMAND</span>
           </div>
           <nav id="mainnav">
-            {TABS.map((t) => (
+            {visibleTabs.map((t) => (
               <button key={t.id} className={t.id === tab ? 'active' : undefined} onClick={() => setTab(t.id)}>
                 {t.label}
               </button>

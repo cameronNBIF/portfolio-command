@@ -28,5 +28,34 @@ export {
 } from './auth/principal.js';
 export { resolvePrincipal, authMode, type AuthMode } from './auth/resolve.js';
 
+export {
+  readTransactions,
+  readValuationMarks,
+  readLpNav,
+  readRowHistory,
+  readRestatements,
+  type TransactionRow,
+  type TransactionFilters,
+  type TransactionPage,
+  type ValuationMarkRow,
+  type LpNavRow,
+  type ChangeLogEntry,
+} from './read/finance.js';
+
 export { recordAudit, type AuditEntry } from './write/audit.js';
+export { ValidationError } from './write/errors.js';
 export { applyJudgementEdit, type JudgementEdit } from './write/judgement.js';
+
+// ADR-031. Financial rows are editable over a versioned store; ADR-018's
+// append-only interface is superseded. Version capture is a database trigger,
+// not anything exported here.
+export {
+  applyFinancialMutation,
+  type FinancialMutation,
+  type FinancialTable,
+  type FinancialWriteResult,
+  type TransactionInput,
+  type ValuationMarkInput,
+  type LpNavInput,
+  type FundDistributionInput,
+} from './write/financial.js';

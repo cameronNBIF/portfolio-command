@@ -94,6 +94,17 @@ export async function importContract(
   const counts: Record<string, number> = {};
   const bump = (k: string, n = 1) => (counts[k] = (counts[k] ?? 0) + n);
 
+  // ADR-031. This function writes transactions, rounds, marks and ownership,
+  // so the version-capture trigger requires it to say who is writing. It is the
+  // same identity every `entered_by` below already uses -- the importer is not
+  // a person and has never pretended to be one.
+  //
+  // Session scope, not `set local`: the caller owns the transaction here
+  // (round-trip.test.ts and import/cli.ts both issue their own BEGIN), and a
+  // `set local` set inside a transaction we did not open would be discarded at
+  // a COMMIT we do not control.
+  await client.query(`select set_config('pc.actor_id', $1, false)`, [SYSTEM_USER_ID]);
+
   const asOf = asOfDate(doc);
   const { rows: batchRows } = await client.query<{ batch_id: string }>(
     'select gen_random_uuid() as batch_id',

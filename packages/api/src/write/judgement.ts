@@ -29,6 +29,7 @@ import type { DB } from '@portfolio-command/db/generated';
 import { CAN_EDIT_JUDGEMENT, type Principal, requireRole } from '../auth/principal.js';
 import { toDollars } from '../units.js';
 import { recordAudit } from './audit.js';
+import { ValidationError } from './errors.js';
 
 /**
  * A judgement edit. The discriminated union is the allow-list: a financial
@@ -46,12 +47,8 @@ const MEMO_SECTIONS = [
   'traction', 'terms', 'captable', 'risks', 'returns', 'reco',
 ] as const;
 
-export class ValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
+// Re-exported from its original home here so existing importers are unaffected.
+export { ValidationError } from './errors.js';
 
 /**
  * Applies one judgement edit and audits it.
