@@ -1344,6 +1344,153 @@ is reversed.
 
 ---
 
+## ADR-032 — Alert thresholds inherit from a fund-level policy; risk flags carry a controlled vocabulary; alerts can be acknowledged
+
+**Status:** Accepted (18 August 2026). Extends ADR-013 and ADR-009 without superseding either.
+
+**Context.** A9 was specified as "alert feed, health rating workflow, watchlist".
+Three of those four words survived contact with the code.
+
+The alert feed existed and was frozen. `healthAlerts()` is a verbatim port and
+its output is asserted by a golden-master fixture. What it lacked was any way to
+*configure* it: `company_threshold` held a per-company runway floor, nullable
+with no default, and 68 of the reference fixture's 70 companies carried a
+`maxBurnMult` that **no code has ever read**. A company nobody had configured was
+silently unwatched, and there was nowhere in the platform to say "our runway
+threshold is twelve months".
+
+Risk flags were worse. `company_risk_flag` has existed since A1 with
+`raised_at` / `cleared_at` / `raised_by`, and the only writers were the fixture
+importer and the A6 generator. No API, no UI, no audit trail. And the frozen
+alert code de-duplicated flags against the runway alert **by regex on the flag's
+display text** — `!/Runway/i.test(f)` — which is a defensible shortcut when one
+person authors the flags in a JSON file and a trap the moment a form exists.
+
+**The health workflow is the word that did not survive.** Affinity is the system
+of record for the Risk Assessment that drives health (ADR-009), the sync is
+one-way, and the VC team maintains the rating there as part of their existing
+practice. There is no workflow for this platform to own. Building an edit box
+would create a rating that disagrees with itself across two systems, and the
+next nightly sync would silently win the disagreement. **A9 surfaces provenance
+instead** — the grade, who set it, when — and offers no way to change it.
+`docs/delivery-roadmap.md` is amended accordingly.
+
+### Decision
+
+1. **A fund-level `fund_alert_policy` supplies defaults that any company can
+   override.** Effective-dated, for the same reason `company_state` is: a
+   watchlist appears in the board pack, ADR-031 exists so an issued pack stays
+   reproducible, and a policy that silently rewrote itself would put a company on
+   last quarter's watchlist that was never on it. Setting a policy supersedes the
+   current row rather than updating it. The export reads the policy **as at the
+   requested date**, never the current one.
+
+2. **Three threshold states, and conflating any two of them breaks something.**
+
+   | State | Meaning |
+   |---|---|
+   | absent | inherit the fund policy |
+   | `0` | **disabled** — the company opts out, and the policy does not resurrect it |
+   | `n > 0` | the company's own threshold, overriding the policy |
+
+   `0` is the inherited contract meaning of `thresholds.minRunwayMo` and it is
+   the **only escape hatch from a portfolio-wide default**. Every layer tests it
+   with an explicit null/empty check rather than truthiness, because `0` is falsy
+   and is precisely the value that must survive.
+
+3. **Four metrics join runway**: burn multiple, cash floor, quarter-over-quarter
+   revenue decline, and NRR. The burn multiple is **quarterly net burn ÷
+   quarterly net new revenue** — the definition the stored 1.5 / 2 / 3 thresholds
+   plainly came from — and it is silent when revenue is flat or falling, because
+   that company has no meaningful multiple and is described by the
+   revenue-decline alert instead.
+
+4. **Risk flags gain `ref_risk_flag_category`, and the category declares which
+   metric alert it stands in for.** This replaces regex-on-display-text
+   de-duplication with a stated relationship. The regex survives exactly once, in
+   a one-time backfill, which is the right place for an interpretation of legacy
+   text. `flag_text` is still stored verbatim and still what the contract
+   serialises — the ADR-026 pattern, identical to `company.sector_label` beside
+   `sector_id`.
+
+   **Suppression also becomes conditional.** The prototype dropped a matching
+   flag whether or not the metric had fired, so a runway flag on a healthy
+   company was invisible everywhere. Measured before changing: all 20 runway
+   flags in the reference fixture sit on companies that also breach, so there are
+   no orphans and the fixture's output is unchanged.
+
+5. **Alerts can be acknowledged, with a reason and an expiry.** An alert feed
+   that cannot be answered becomes wallpaper — a company knowingly at four months
+   of runway during a bridge sits red at the top of the dashboard for a quarter,
+   everyone learns to scroll past it, and the one alert that mattered is scrolled
+   past with it. An acknowledgement is never a delete: the breach is still
+   derived and still shown on the company. It lapses three ways — the date
+   passes, someone revokes it, or **the reading moves materially past where it
+   was signed off**, because knowing about four months of runway is not consent
+   to ignore two.
+
+6. **Nothing about a breach is stored** (ADR-002). A breach is a function of a
+   KPI row and a threshold and is recomputed every time. Only the human judgement
+   about one is persisted, keyed on the alert's *subject* rather than its value,
+   so a nightly Visible refresh does not silently orphan an acknowledgement.
+
+7. **The contract goes to `schemaVersion` 3**, adding `alertPolicy`, three
+   `Thresholds` fields, `riskFlagDetail`, `acknowledgements`, `Kpi.nrr` and three
+   health-provenance fields. **Every addition is optional**, which is not
+   politeness to old consumers — it is what lets `docs/reference/demo.json` stay
+   frozen at 1 (ADR-022) while remaining a document the metrics package reads.
+
+### What this cost the golden master, exactly
+
+**Four alerts, and they are enumerated in the test rather than absorbed into the
+fixture.**
+
+Every A9 addition is gated on data a schemaVersion 1 document does not carry, so
+`healthAlerts(demo.json)` is inert on all of them. The single exception is
+`maxBurnMult`, which the fixture has always held and nothing has ever read.
+Giving it a rule adds four alerts — C001, C002, C008, C009 — and the diff was
+measured before the code was written and asserted after:
+
+| | |
+|---|---|
+| alerts | 39 → 43 |
+| added | 4, all burn multiple |
+| removed | 0 |
+| severity changes on surviving alerts | 0 |
+| relative order of the 39 pre-existing alerts | preserved exactly |
+
+**The fixture was not recaptured, because it cannot be.** `capture.ts` produces
+it by running the *committed prototype* over `demo.json`, and `verify:fixtures
+--check` compares the committed file against that same output — naming
+hand-editing as the one thing ADR-013 exists to prevent. A fixture carrying
+burn-multiple alerts would fail its own verifier forever. `golden-master.json` is
+a **recording of the prototype**, not a record of what this package currently
+does, and it stays one. The divergence lives in `golden-master.test.ts` as four
+lines of data someone has to delete on purpose.
+
+This is deliberately *not* ADR-024, which was rejected. ADR-024 proposed
+permitting divergences where the prototype's behaviour is an implementation
+accident. This is a new rule the prototype never had, added on an explicit
+decision, with its full effect enumerated.
+
+### Consequences
+
+- A company with no threshold of its own is now watched. On the development
+  roster, setting the 12-month policy moved the watchlist from 95 alerts to 107 —
+  twelve companies that nobody had configured and nothing had been watching.
+- `healthAlerts()` gains an optional second argument. Called without it, it does
+  no acknowledgement filtering, which is the pre-A9 behaviour and what keeps the
+  frozen fixture producing frozen figures.
+- A ninth tab, role-gated to `vc` and `admin`, on the same reasoning that put
+  Deal Close and Finance outside the ported eight (ADR-014): the prototype has no
+  alert configuration at all, so this cannot be a port of anything.
+- `company_threshold.min_runway_months` and `max_burn_multiple` change meaning
+  from *no alert* to *inherit the policy*. Indistinguishable until a policy row
+  exists, which is why migration 0005 inserts none — the behaviour change lands
+  when someone sets a policy, deliberately, not as a side effect of migrating.
+
+---
+
 ## Decisions requiring the VC team lead
 
 **All settled as of 28 July 2026.** No architecture or data decision remains open.

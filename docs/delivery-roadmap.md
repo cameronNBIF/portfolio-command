@@ -156,8 +156,22 @@ Generated transactions, rounds, marks, ownership and LP activity, attached to th
 
 #### A9 · Alerts, health and watchlist
 - Alert feed from runway thresholds, risk flags, covenant status, government funding conditions
-- Health rating workflow with audit
+- ~~Health rating workflow with audit~~ — **amended 18 August 2026, see ADR-032.** There is no
+  workflow for this platform to own: Affinity is the system of record for the Risk Assessment that
+  drives health (ADR-009), the sync is one-way, and the VC team maintains the rating there. An edit
+  box here would create a rating that disagrees with itself across two systems and the next nightly
+  sync would silently win. **Replaced by health provenance** — the grade, who set it, when — shown on
+  the company drawer, read-only, with the reason stated on screen.
 - Deliberately exercised against the synthetic edge cases from A6
+
+**Done, 18 August 2026** — see the A9 entry in `BUILD-LOG.md` and ADR-032. The phase turned out to be
+three surfaces rather than one: a **fund-level alert policy** that per-company thresholds inherit from
+(there was previously nowhere to say "our runway threshold is 12 months", and a company nobody had
+configured was silently unwatched); a **controlled vocabulary for risk flags**, which replaces
+de-duplicating them by regex on their display text; and **time-boxed acknowledgements**, because an
+alert feed that cannot be answered becomes wallpaper. Four metrics joined runway. The contract went to
+`schemaVersion` 3 and the golden master moved by exactly four alerts, enumerated in the test rather
+than absorbed into the fixture.
 
 #### A10 · Memo builder
 - Auto-prefill from company or deal data, versioning, structured decision field, Markdown and PDF export

@@ -28,6 +28,74 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-18 · A9 · Alerts, health and watchlist — three surfaces, and one word in the spec that did not survive
+
+**The phase as written was "alert feed, health rating workflow, watchlist".** The feed existed and was frozen. The watchlist existed. **The health workflow should not be built at all**, and the reason is a decision already in the ADRs.
+
+Affinity is the system of record for the Risk Assessment that drives health (ADR-009), the sync runs one way, and the VC team maintains the rating there as part of how they already work. There is no workflow for this platform to own. An edit box here would produce a rating that disagrees with itself across two systems, and the next nightly sync would silently win the argument. `docs/delivery-roadmap.md` is amended and the line is struck through rather than deleted, because "we considered it and here is why not" is worth more than a line that was quietly never done.
+
+**What A9 actually needed was configuration, and there was none.** `company_threshold` held a per-company runway floor. A company nobody had configured was silently unwatched, and there was nowhere in the platform to record that the runway threshold is twelve months. Setting that one policy on the development roster took the watchlist **from 95 alerts to 107** — twelve companies that nothing had been watching.
+
+### Built
+
+- **`fund_alert_policy`** — portfolio-wide thresholds that any company inherits unless it sets its own. **Effective-dated**, for the same reason `company_state` is: a watchlist goes in the board pack and ADR-031 exists so an issued pack reproduces. Setting a policy closes the current row and opens a new one; the export reads the policy **as at the reporting date**, never the current one.
+- **Three threshold states, kept distinct at every layer.** Absent means inherit, `0` means **disabled**, `n` means override. `0` is the inherited contract meaning of `minRunwayMo` and **the only escape hatch from a portfolio-wide default** — so every layer tests it with an explicit null check rather than truthiness, because `0` is falsy and is exactly the value that must survive. There is a test whose whole job is that one property.
+- **Four metrics joined runway**: burn multiple, cash floor, quarter-over-quarter revenue decline, NRR.
+- **`ref_risk_flag_category`** — fourteen categories, each declaring which derived metric alert it stands in for. `company_risk_flag` has existed since A1 and nothing but the fixture importer and the A6 generator could ever write to it: no API, no UI, no audit trail. It has all three now.
+- **`alert_acknowledgement`** — a time-boxed, reasoned judgement that an alert is understood and accepted. It lapses three ways: the date passes, someone revokes it, or **the reading moves materially past where it was signed off**. Never a delete — the breach is still derived and still shown on the company.
+- **A ninth tab, role-gated to `vc` and `admin`**, on the same reasoning that put Deal Close and Finance outside the ported eight (ADR-014). The Dashboard feed is unchanged in shape and stays the board-facing port.
+- **Health provenance on the drawer** — grade, who set it, when — read-only, **with the reason stated on screen**, because a greyed-out field with no explanation reads as a missing feature rather than a deliberate one.
+
+### The regex, and why it had to go
+
+`healthAlerts()` de-duplicated risk flags against the runway alert **by regex on the flag's display text** — `!/Runway/i.test(f)`. That is a fine shortcut when one person authors the flags in a JSON file. It is a trap the moment a form exists: "Runway getting tight" vanishes from the feed with nothing on screen saying it was suppressed, and "Cash under 3 months" duplicates the alert it meant to annotate.
+
+The category declares the relationship now. **The regex survives exactly once**, in a one-time backfill, which is the right place for an interpretation of legacy text — and it lives in a SQL function with two callers, the backfill and the fixture importer, rather than a TypeScript copy that would drift from the SQL one the first time either was edited.
+
+**The backfill was wrong on its first run and the database said so.** "Hiring plan behind schedule" landed in `revenue`, claimed by the pattern on the word "plan" before the team pattern got a look. Six rows. A hiring problem filed under revenue is a category nobody trusts again after they spot one, so `team` now precedes `revenue` and the short tokens carry word boundaries — without them `doe` matches "does" and `board` matches "onboarding", which is the exact failure mode the vocabulary exists to remove, reintroduced in the backfill. All nine distinct strings now classify correctly with nothing falling through to `other`.
+
+**Suppression also became conditional, and it was free.** The prototype dropped a matching flag whether or not the metric had fired, so a runway flag on a company comfortably above its threshold was invisible everywhere. Measured before changing it: all twenty runway flags in the reference fixture sit on companies that also breach, so there are no orphans and the fixture output is unchanged. Confirmed live afterwards — before the policy was set, Soricimed showed its "Runway below policy" flag and no runway alert; after, the alert appeared and the flag correctly stepped aside.
+
+### What it cost the golden master: four alerts, and not one more
+
+Every A9 addition is gated on data a schemaVersion 1 document does not carry — `alertPolicy`, the new threshold fields, a `nrr` reading, an `asOf` for acknowledgements — so `healthAlerts(demo.json)` is inert on all of them. **One exception**: `maxBurnMult` has been in the contract since v1, sits on 68 of the fixture's 70 companies, and the prototype **stored it and never computed anything with it**.
+
+Measured before the code was written, asserted after:
+
+| | |
+|---|---|
+| alerts | 39 → 43 |
+| added | 4, all burn multiple (C001, C002, C008, C009) |
+| removed | 0 |
+| severity changes on surviving alerts | 0 |
+| relative order of the 39 pre-existing alerts | preserved exactly |
+
+**The fixture was not recaptured, because it cannot be.** `capture.ts` produces it by running the *committed prototype* over `demo.json`, and `verify:fixtures --check` compares the committed file against that same output — its error message names hand-editing as the one thing ADR-013 exists to prevent. A fixture carrying burn-multiple alerts would fail its own verifier forever. `golden-master.json` is a **recording of the prototype**, not a record of what the metrics package currently does, and it stays one: `verify:fixtures` still reports 39 alerts and still passes. The divergence lives in `golden-master.test.ts` as four lines of data someone has to delete on purpose.
+
+### Decided
+
+- **Burn multiple is quarterly net burn ÷ quarterly net new revenue**, which is where the stored 1.5 / 2 / 3 thresholds plainly come from. It is **silent when revenue is flat or falling** — that is the definition, not defensive coding. The denominator goes to zero and the ratio to infinity, which would park every struggling company at the top of the feed behind a meaningless number; that company is described by the revenue-decline alert instead.
+- **Revenue decline is quarter over quarter**, on the period actual (D-2). Noisier than year over year and far faster, which is what an alert is for. The acknowledge-with-reason path is what absorbs a seasonal quarter.
+- **A breach is never stored** (ADR-002). Only the judgement about one, keyed on the alert's *subject* rather than its value, so a nightly Visible refresh does not silently orphan an acknowledgement.
+- **The flag vocabulary is seeded by migration 0005 rather than `seed.ts`**, against the convention, because the migration's own backfill runs in the same transaction and cannot classify against an empty table.
+- **`docs/schema.sql` is untouched, and that is the convention rather than an omission.** `packages/db/test/migration-parity.test.ts` asserts it is a *verbatim* copy of migration 0001 — it is the A1 design document, not a living picture of the current schema, and 0002 and 0003 are absent from it for the same reason 0005 is. Discovered by breaking it: A9's DDL was written into `schema.sql` first, on the assumption it tracked every migration, and the parity test said otherwise.
+
+### Verified
+
+- **88 API tests, 252 metrics tests, all green**; lint and typecheck clean. 38 tests are new, and the three carrying the most weight are: an explicit `0` escapes the fund policy, a flag suppresses the metric its **category** declares rather than the one its **text** mentions, and a materially worse reading re-fires an alert before its acknowledgement expires.
+- **End to end in the browser**, not just in tests: set the 12-month policy through the UI, watched the feed go 95 → 107 with `policy` and `company` provenance pills distinguishing the source of every threshold, raised a flag on Soricimed and confirmed the row, its composed display string (`Runway — Bridge under negotiation`), its resolved category and its `audit_log` entry in Postgres. The test flag was then removed; the audit row stays, which is what an audit log is for.
+- **`docs/schema.sql` loads clean into an empty database**, checked by loading it.
+
+### Outstanding
+
+- **The 12-month policy is set in the development database** and is a real NBIF figure, so it stays. The other four metrics are deliberately unset — cash floor, burn multiple, revenue decline and NRR have no agreed portfolio-wide number yet, and inventing one would put companies on a watchlist on the strength of a figure nobody chose. **That is a conversation with the VC team, not a default.**
+- **`RISK_FLAG_CATEGORIES` in `alerts-api.ts` mirrors the database vocabulary** so the picker needs no round trip. The write path resolves against the real table and refuses an unknown code, so this list cannot invent a category — but it can go stale and show one option fewer than exists. Visible and harmless; worth an endpoint if the vocabulary ever starts moving.
+- **Acknowledgements are not surfaced in the board pack.** A11 builds the Reports PDF and the watchlist in it currently filters on health colour rather than reading the alert feed. An alert that has been acknowledged with a reason is exactly the kind of thing a board wants to see stated rather than hidden, and that is an A11 decision.
+- **Nothing re-fires an acknowledgement on a *threshold* change.** The trip wire watches the reading, not the policy: tightening the runway floor from 12 to 15 does not disturb an acknowledgement signed under the old one. Arguably correct — the judgement was about the company, not the number — but it is not a decision anyone has actually made.
+- Carried from A8.2: nothing enforces "one roster per database"; `fund.capital_base` is still NULL and renders blank on the dashboard; `company.visible_company_id` is still never populated.
+
+---
+
 ## 2026-08-17 · A8.2 · The demo database serves NBIF only, and the thing that kept wiping it is finally named
 
 **Why this session happened.** A platform demonstration to Daniel is coming, and the dashboard was serving **152 companies — 70 of them the prototype's fictional roster**, with nothing on any screen saying which were which. Solvine, Cobalt Harbor and Vantara Systems sat beside Introhive, Soricimed and Beauceron Security, and the fund at the top of every board-facing screen read **"Ridgeline Direct Investments", in USD, on a $400M capital base**.
