@@ -51,7 +51,11 @@ export function DashboardTab({
   const { openCompany } = useApp();
 
   const m = fundMetrics(db, { asOf });
-  const alerts = healthAlerts(db);
+  // `asOf` is passed so acknowledgements are honoured here too (A9). Without a
+  // date the metrics package cannot tell a live acknowledgement from an expired
+  // one and returns everything -- which would leave the board-facing feed
+  // shouting about an alert the VC team has already answered.
+  const alerts = healthAlerts(db, { asOf });
   const active = activeCompanies(db.companies);
   const evergreen = isEvergreen(db);
   const diversity = diversityWithCoverage(db, {});

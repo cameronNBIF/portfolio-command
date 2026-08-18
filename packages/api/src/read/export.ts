@@ -30,11 +30,13 @@
  * the wrong shape to leave behind.
  */
 import type {
+  AlertAcknowledgement,
   Company,
   FundInvestment,
   Kpi,
   PipelineDeal,
   PortfolioExport,
+  RiskFlagDetail,
   Round,
   ValuationMark,
 } from '@portfolio-command/contract';
@@ -163,6 +165,9 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     memoRows,
     funnelGroupRows,
     syntheticRows,
+    policyRows,
+    healthRows,
+    ackRows,
   ] = await Promise.all([
     q<{
       fund_id: number; name: string; style: string; reporting_currency: string;
@@ -195,13 +200,33 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     }>(sql`select company_id, instrument_label, fte_at_entry, ceo_name, description
              from company order by company_id`),
 
-    q<{ company_id: string; flag_text: string }>(
-      sql`select company_id, flag_text from company_risk_flag
-           where cleared_at is null order by company_id, company_risk_flag_id`,
+    // ORDER IS THE JOIN between `riskFlags` and `riskFlagDetail`: the contract
+    // pairs them by position, so both arrays are built from this one result in
+    // this one order. Do not sort either of them downstream.
+    q<{
+      company_risk_flag_id: string; company_id: string; flag_text: string;
+      category: string; category_label: string; note: string | null;
+      severity: string | null; raised_at: Date | string; raised_by_name: string;
+    }>(
+      sql`select f.company_risk_flag_id, f.company_id, f.flag_text,
+                 c.code as category, c.name as category_label,
+                 f.note, f.severity, f.raised_at, u.display_name as raised_by_name
+            from company_risk_flag f
+            join ref_risk_flag_category c
+              on c.risk_flag_category_id = f.risk_flag_category_id
+            join app_user u on u.user_id = f.raised_by
+           where f.cleared_at is null
+           order by f.company_id, f.company_risk_flag_id`,
     ),
 
-    q<{ company_id: string; min_runway_months: number | null; max_burn_multiple: string | null }>(
-      sql`select company_id, min_runway_months, max_burn_multiple from company_threshold`,
+    q<{
+      company_id: string; min_runway_months: number | null; max_burn_multiple: string | null;
+      min_cash_balance: string | null; max_revenue_decline_pct: string | null;
+      min_nrr_pct: string | null;
+    }>(
+      sql`select company_id, min_runway_months, max_burn_multiple, min_cash_balance,
+                 max_revenue_decline_pct, min_nrr_pct
+            from company_threshold`,
     ),
 
     // Rounds carry OUR cheque, summed from the live transactions tied to each
@@ -244,8 +269,9 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
       // other numeric (ADR-008) and they need toNumber, not a bare `?? 0`.
       fte: string | null; fte_nb: string | null; women_csuite: number | null;
       csuite_size: number | null;
+      net_revenue_retention: string | null;
     }>(sql`select company_id, period_end, revenue, monthly_burn, cash_balance, runway_months,
-                  fte, fte_nb, women_csuite, csuite_size
+                  fte, fte_nb, women_csuite, csuite_size, net_revenue_retention
              from company_kpi order by company_id, period_end desc`),
 
     q<{
@@ -356,12 +382,73 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
        order by g.sort_order`),
 
     q<{ contains_synthetic: boolean }>(sql`select contains_synthetic from v_synthetic_data_status`),
+
+    // The alert policy AS AT `asOf`, not the one in force today. An export is
+    // how a board pack is produced, ADR-031 exists so an issued pack stays
+    // reproducible, and a watchlist reprinted against this quarter's policy
+    // would show companies that were never on last quarter's. This is the
+    // reason fund_alert_policy is effective-dated at all, so it would be a
+    // waste to then read it through v_fund_alert_policy_current.
+    q<{
+      min_runway_months: number | null; max_burn_multiple: string | null;
+      min_cash_balance: string | null; max_revenue_decline_pct: string | null;
+      min_nrr_pct: string | null; effective_from: Date | string;
+      set_by_name: string; note: string | null;
+    }>(
+      sql`select p.min_runway_months, p.max_burn_multiple, p.min_cash_balance,
+                 p.max_revenue_decline_pct, p.min_nrr_pct, p.effective_from,
+                 u.display_name as set_by_name, p.note
+            from fund_alert_policy p
+            join app_user u on u.user_id = p.set_by
+           where p.effective_from <= ${asOf}::date
+             and (p.effective_to is null or p.effective_to > ${asOf}::date)
+           order by p.effective_from desc, p.fund_alert_policy_id desc
+           limit 1`,
+    ),
+
+    /* Health PROVENANCE, as at the reporting date.
+       `company_current_asof` already supplies the health colour itself; this
+       supplies the row that set it, so a screen can say "B Grade, from the
+       Affinity sync, 14 Feb 2026" rather than presenting a rating with no
+       author. `distinct on` takes the state row in force at asOf, matching how
+       the colour beside it was resolved. */
+    q<{
+      company_id: string; risk_grade: string | null;
+      set_at: Date | string; set_by_name: string;
+    }>(
+      sql`select distinct on (cs.company_id)
+                 cs.company_id, cs.risk_grade, cs.set_at, u.display_name as set_by_name
+            from company_state cs
+            join app_user u on u.user_id = cs.set_by
+           where cs.effective_from <= ${asOf}::date
+           order by cs.company_id, cs.effective_from desc, cs.company_state_id desc`,
+    ),
+
+    // Live acknowledgements only. An expired one is not filtered here -- the
+    // metrics package compares `until_date` against its own asOf and is the
+    // single place that decides (ADR-021) -- but a REVOKED one is gone for
+    // good and has no business in the contract.
+    q<{
+      company_id: string; alert_key: string; reason: string;
+      until_date: Date | string; acknowledged_value: string | null;
+      acknowledged_by_name: string; acknowledged_at: Date | string;
+    }>(
+      sql`select a.company_id, a.alert_key, a.reason, a.until_date,
+                 a.acknowledged_value, u.display_name as acknowledged_by_name,
+                 a.acknowledged_at
+            from alert_acknowledgement a
+            join app_user u on u.user_id = a.acknowledged_by
+           where a.revoked_at is null
+           order by a.company_id, a.alert_acknowledgement_id`,
+    ),
   ]);
 
   const fundRow = fundRows[0];
   if (!fundRow) throw new Error('No fund row. Run the reference seed and an import first.');
 
   const flags = groupBy(flagRows, (r) => r.company_id);
+  const acks = groupBy(ackRows, (r) => r.company_id);
+  const healthState = new Map(healthRows.map((r) => [r.company_id, r]));
   const rounds = groupBy(roundRows, (r) => r.company_id);
   const kpis = groupBy(kpiRows, (r) => r.company_id);
   const marks = groupBy(markRows, (r) => r.company_id);
@@ -406,11 +493,48 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     withOptional(company, 'exitDate', asDate(c.exit_date));
     withOptional(company, 'exitType', c.exit_type);
 
+    // Health provenance. Absent where a company has no state row at all, which
+    // is a company nobody has ever graded -- distinct from one graded ACC.
+    const state = healthState.get(c.company_id);
+    withOptional(company, 'riskGrade', state?.risk_grade);
+    withOptional(company, 'healthSetBy', state?.set_by_name);
+    withOptional(company, 'healthSetAt', asDate(state?.set_at ?? null));
+
     Object.assign(company, {
       ceo: detail?.ceo_name ?? '',
       hq: [c.hq_city, c.hq_region].filter(Boolean).join(', '),
       desc: detail?.description ?? '',
+      // TWO ARRAYS FROM ONE ORDERED RESULT. The contract pairs them by index
+      // (ADR-026: verbatim string for the contract, resolved key for logic),
+      // so they are mapped from the same list in the same pass. Splitting the
+      // source of either one is how they come to disagree.
       riskFlags: (flags.get(c.company_id) ?? []).map((f) => f.flag_text),
+      riskFlagDetail: (flags.get(c.company_id) ?? []).map(
+        (f): RiskFlagDetail => ({
+          id: Number(f.company_risk_flag_id),
+          category: f.category,
+          categoryLabel: f.category_label,
+          note: f.note,
+          severity: (f.severity as 'red' | 'yellow' | null) ?? null,
+          raisedAt: asDate(f.raised_at)!,
+          raisedBy: f.raised_by_name,
+        }),
+      ),
+      acknowledgements: (acks.get(c.company_id) ?? []).map(
+        (a): AlertAcknowledgement => ({
+          alertKey: a.alert_key,
+          reason: a.reason,
+          untilDate: asDate(a.until_date)!,
+          // $M like every other money field. `null` for the metrics with no
+          // numeric subject, and for cash -- which IS money -- the conversion
+          // has to happen here, in the one place that does it (ADR-001).
+          value: a.alert_key === 'metric:cash-balance'
+            ? toMillions(a.acknowledged_value)
+            : toNumber(a.acknowledged_value),
+          by: a.acknowledged_by_name,
+          at: asDate(a.acknowledged_at)!,
+        }),
+      ),
       proRata: c.pro_rata_rights ?? false,
       reservesAllocated: reserve ? toMillions(reserve.allocated) : 0,
       reservesDeployed: reserve ? toMillions(reserve.deployed) : 0,
@@ -426,12 +550,19 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
           burn: toMillions(k.monthly_burn) ?? 0,
           cash: toMillions(k.cash_balance) ?? 0,
           runwayMo: toNumber(k.runway_months) ?? 0,
+          nrr: toNumber(k.net_revenue_retention),
         }),
       ),
+      // ABSENT, NOT NULL, and the difference decides a watchlist: absent means
+      // "inherit the fund policy", 0 means "disabled, deliberately". A null
+      // here would collapse the two (see Thresholds in the contract).
       thresholds: (() => {
         const t = {};
         withOptional(t, 'minRunwayMo', threshold?.min_runway_months);
         withOptional(t, 'maxBurnMult', toNumber(threshold?.max_burn_multiple ?? null));
+        withOptional(t, 'minCashBalance', toMillions(threshold?.min_cash_balance ?? null));
+        withOptional(t, 'maxRevenueDeclinePct', toNumber(threshold?.max_revenue_decline_pct ?? null));
+        withOptional(t, 'minNrrPct', toNumber(threshold?.min_nrr_pct ?? null));
         return t;
       })(),
       rounds: (rounds.get(c.company_id) ?? []).map((r): Round => ({
@@ -613,11 +744,29 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
       showOnBoard: g.show_on_board,
       stages: g.stages,
     })),
+    // Null when no policy has ever been set, which is the state a fresh
+    // database is in and is NOT the same as a policy of zeroes. A consumer
+    // that finds this absent reads per-company thresholds alone.
+    alertPolicy: policyRows[0]
+      ? {
+          minRunwayMo: policyRows[0].min_runway_months,
+          maxBurnMult: toNumber(policyRows[0].max_burn_multiple),
+          minCashBalance: toMillions(policyRows[0].min_cash_balance),
+          maxRevenueDeclinePct: toNumber(policyRows[0].max_revenue_decline_pct),
+          minNrrPct: toNumber(policyRows[0].min_nrr_pct),
+          effectiveFrom: asDate(policyRows[0].effective_from)!,
+          setBy: policyRows[0].set_by_name,
+          note: policyRows[0].note,
+        }
+      : null,
     meta: {
-      // 2, not 1: funnelGroups is new. The reference fixture stays at 1 -- it
-      // is the prototype's own boot state and re-exporting it would invalidate
-      // every golden-master fixture (ADR-022) -- so the two legitimately differ.
-      schemaVersion: 2,
+      // 3, not 2: alertPolicy, three more Thresholds fields, riskFlagDetail,
+      // acknowledgements and Kpi.nrr (A9, ADR-032). The reference fixture
+      // stays at 1 -- it is the prototype's own boot state and re-exporting it
+      // would invalidate every golden-master fixture (ADR-022) -- so the two
+      // legitimately differ, and every addition since 1 is optional precisely
+      // so that they can.
+      schemaVersion: 3,
       // The prototype's localStorage save stamp. The platform generates an
       // export on demand and has nothing to report here; A11's board PDF
       // carries its own as-at date, which is the stamp that matters (ADR-007).

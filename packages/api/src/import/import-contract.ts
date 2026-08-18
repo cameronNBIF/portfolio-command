@@ -230,18 +230,55 @@ export async function importContract(
       ],
     );
 
-    for (const flag of c.riskFlags) {
+    /* Risk flags carry a category from A9 on, and a schemaVersion 1 document
+       has none -- `demo.json` holds bare display strings. `riskFlagDetail` is
+       used when the document supplies it (schemaVersion 3, which is what this
+       platform exports), and otherwise the category is resolved from the text
+       by `classify_risk_flag_category`.
+
+       THE CLASSIFIER IS CALLED IN SQL RATHER THAN REIMPLEMENTED HERE. It is
+       the same function migration 0005 backfilled with, so a fixture loaded
+       today lands in the same categories as the rows that were already in the
+       table. A TypeScript copy would be a second definition of the vocabulary
+       and would drift from the first one the moment either was edited. */
+    for (const [i, flag] of c.riskFlags.entries()) {
+      const category = c.riskFlagDetail?.[i]?.category ?? null;
       await client.query(
-        `insert into company_risk_flag (company_id, flag_text, raised_by) values ($1,$2,$3)`,
-        [c.id, flag, SYSTEM_USER_ID],
+        `insert into company_risk_flag
+           (company_id, flag_text, note, severity, risk_flag_category_id, raised_by)
+         values ($1, $2, $3, $4,
+                 coalesce(
+                   (select risk_flag_category_id from ref_risk_flag_category where code = $5),
+                   classify_risk_flag_category($2)),
+                 $6)`,
+        [
+          c.id,
+          flag,
+          c.riskFlagDetail?.[i]?.note ?? null,
+          c.riskFlagDetail?.[i]?.severity ?? null,
+          category,
+          SYSTEM_USER_ID,
+        ],
       );
       bump('company_risk_flag');
     }
 
     await client.query(
-      `insert into company_threshold (company_id, min_runway_months, max_burn_multiple, updated_by)
-       values ($1,$2,$3,$4)`,
-      [c.id, c.thresholds.minRunwayMo ?? null, c.thresholds.maxBurnMult ?? null, SYSTEM_USER_ID],
+      `insert into company_threshold
+         (company_id, min_runway_months, max_burn_multiple, min_cash_balance,
+          max_revenue_decline_pct, min_nrr_pct, updated_by)
+       values ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        c.id,
+        c.thresholds.minRunwayMo ?? null,
+        c.thresholds.maxBurnMult ?? null,
+        // $M in the contract, dollars in the database (ADR-001). The other
+        // four are counts, multiples and percentages and cross no boundary.
+        c.thresholds.minCashBalance != null ? toDollars(c.thresholds.minCashBalance) : null,
+        c.thresholds.maxRevenueDeclinePct ?? null,
+        c.thresholds.minNrrPct ?? null,
+        SYSTEM_USER_ID,
+      ],
     );
 
     if (c.exited) {
@@ -416,8 +453,8 @@ export async function importContract(
       await client.query(
         `insert into company_kpi (company_id, period_start, period_end, revenue, monthly_burn,
                                   cash_balance, runway_months, fte, fte_nb, women_csuite,
-                                  csuite_size, source_system)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'visible')`,
+                                  csuite_size, net_revenue_retention, source_system)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'visible')`,
         [
           c.id,
           periodStart,
@@ -430,6 +467,9 @@ export async function importContract(
           c.fteNB,
           c.womenCSuite ?? null,
           c.cSuiteSize ?? null,
+          // Absent below schemaVersion 3. Null rather than 0: an unreported
+          // retention figure is not a retention of nothing (D-5).
+          toNumeric(k.nrr ?? null),
         ],
       );
       bump('company_kpi');
