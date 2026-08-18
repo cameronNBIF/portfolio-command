@@ -92,13 +92,78 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
     expect(actual.fund).toEqual(fixture.fund);
   });
 
+  /**
+   * The schemaVersion 3 additions, stripped before comparison and asserted
+   * separately below.
+   *
+   * `riskFlagDetail` and `acknowledgements` are A9 fields with no counterpart
+   * in a schemaVersion 1 fixture, and `kpis[].nrr` is a column that has been in
+   * the schema since A1 and only reached the contract at 3. Each is removed by
+   * name -- never by a loose filter -- so a field appearing here that nobody
+   * accounted for still fails the comparison, which is the whole point of it.
+   */
+  const withoutV3 = (c: (typeof actual.companies)[number]) => {
+    const rest = { ...c, kpis: c.kpis.map((k) => ({ ...k })) };
+    delete rest.riskFlagDetail;
+    delete rest.acknowledgements;
+    for (const k of rest.kpis) delete k.nrr;
+    return rest;
+  };
+
   test('every company reproduces exactly', () => {
     expect(actual.companies).toHaveLength(fixture.companies.length);
     // Per company rather than one array comparison: a single failing field on
     // C037 should name C037, not print seventy companies of diff.
     for (const [i, expected] of fixture.companies.entries()) {
-      expect(actual.companies[i], `company ${expected.id} (${expected.name})`).toEqual(expected);
+      expect(withoutV3(actual.companies[i]!), `company ${expected.id} (${expected.name})`).toEqual(expected);
     }
+  });
+
+  /**
+   * A9. The fixture's flags are bare strings; the importer resolves each one to
+   * a category through `classify_risk_flag_category`, the same function
+   * migration 0005 backfilled the existing table with.
+   *
+   * THE PAIRING IS THE ASSERTION. The contract joins `riskFlags` to
+   * `riskFlagDetail` by position, so a detail array of the right length holding
+   * the wrong company's flags would satisfy a count check and corrupt every
+   * alert. Text is compared entry by entry.
+   */
+  test('risk flags gain a category without losing their display string', () => {
+    let checked = 0;
+    for (const c of actual.companies) {
+      expect(c.riskFlagDetail ?? []).toHaveLength(c.riskFlags.length);
+      for (const [i, text] of c.riskFlags.entries()) {
+        const detail = c.riskFlagDetail![i]!;
+        expect(detail.category, `${c.id} flag ${i}`).toBeTruthy();
+        // The display string is preserved verbatim (ADR-026) -- the category is
+        // resolved beside it, never derived back into it.
+        expect(text).toBe(fixture.companies.find((f) => f.id === c.id)!.riskFlags[i]);
+        checked++;
+      }
+    }
+    // A guard on the guard: if the importer silently stopped writing flags,
+    // every loop above would pass vacuously.
+    expect(checked).toBeGreaterThan(0);
+
+    // Nothing in the fixture should land in 'other'. All fifteen of its
+    // distinct strings are covered by the classifier, and a new one appearing
+    // there is a vocabulary gap worth being told about.
+    const uncategorised = actual.companies.flatMap((c) =>
+      (c.riskFlagDetail ?? []).filter((d) => d.category === 'other').map((d) => `${c.id}: ${d.categoryLabel}`),
+    );
+    expect(uncategorised).toEqual([]);
+  });
+
+  /**
+   * The fixture sets no policy and acknowledges nothing, and that is the state
+   * that keeps the golden master intact -- `healthAlerts()` reads the policy
+   * only when it is present. If an import ever invented one, this is what
+   * notices.
+   */
+  test('a schemaVersion 1 document produces no alert policy and no acknowledgements', () => {
+    expect(actual.alertPolicy).toBeNull();
+    for (const c of actual.companies) expect(c.acknowledgements ?? []).toEqual([]);
   });
 
   test('pipeline reproduces exactly', () => {
@@ -113,11 +178,11 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
     expect(actual.memos).toEqual(fixture.memos);
   });
 
-  test('meta carries schemaVersion 2 and flags synthetic data', () => {
-    // The API emits 2; the fixture is 1 and stays that way. demo.json is the
+  test('meta carries schemaVersion 3 and flags synthetic data', () => {
+    // The API emits 3; the fixture is 1 and stays that way. demo.json is the
     // prototype's own boot state and re-exporting it would invalidate every
     // golden-master fixture (ADR-022), so the two legitimately differ here.
-    expect(actual.meta.schemaVersion).toBe(2);
+    expect(actual.meta.schemaVersion).toBe(3);
     // ADR-020: the banner is driven by this, and every imported row is flagged.
     expect(actual.meta.demo).toBe(true);
   });
@@ -184,14 +249,17 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
     expect(latest.fields.find((f) => f.label === 'NRR')!.reported).toBe(0);
   });
 
-  test('the whole document reproduces, savedAt and the v2 addition aside', () => {
+  test('the whole document reproduces, savedAt and the v2/v3 additions aside', () => {
     // savedAt is a wall-clock stamp and normalised out of contract comparison
-    // per ADR-022. funnelGroups is the schemaVersion 2 addition and has no
-    // fixture counterpart; it is asserted above. EVERYTHING ELSE MUST MATCH --
-    // that exactness is what proves the storage layer moved no board number,
-    // so this comparison is narrowed by exactly one known key and no more.
-    const rest = { ...actual };
+    // per ADR-022. funnelGroups is the schemaVersion 2 addition and alertPolicy
+    // the schemaVersion 3 one; neither has a fixture counterpart and both are
+    // asserted above, as are the per-company v3 fields `withoutV3` removes.
+    // EVERYTHING ELSE MUST MATCH -- that exactness is what proves the storage
+    // layer moved no board number, so this comparison is narrowed by exactly
+    // the known additions and no more.
+    const rest = { ...actual, companies: actual.companies.map(withoutV3) };
     delete rest.funnelGroups;
+    delete rest.alertPolicy;
     expect({ ...rest, meta: { ...actual.meta, savedAt: null, schemaVersion: 1 as const } }).toEqual({
       ...fixture,
       meta: { ...fixture.meta, savedAt: null },

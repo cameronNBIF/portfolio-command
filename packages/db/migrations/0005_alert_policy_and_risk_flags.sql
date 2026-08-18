@@ -123,12 +123,23 @@ comment on column pc.company_risk_flag.cleared_reason is
   'Why the flag was lowered. Required by the write path when cleared_at is set: a flag that disappears without a reason is indistinguishable from one raised by mistake, and the board pack shows both.';
 
 -- ---------------------------------------------------------------------
--- 3. BACKFILL: the regex runs once, here, and then never again
+-- 3. CLASSIFYING LEGACY DISPLAY TEXT
 --
--- Fifteen distinct strings in the reference fixture, plus whatever the
--- A6 generator has written. Anything unmatched lands on 'other', which
--- is honest -- inventing a category for a string nobody wrote against a
--- vocabulary would be worse than admitting we do not know.
+-- A FUNCTION RATHER THAN AN INLINE UPDATE, because there are two callers
+-- and they must not drift. The backfill below is one. The ADR-001 fixture
+-- importer is the other: `demo.json` is schemaVersion 1, its flags are
+-- bare strings with no category behind them, and the column is NOT NULL
+-- from here on. An importer carrying its own copy of this mapping in
+-- TypeScript would be a second definition of the vocabulary, and the two
+-- would disagree the first time either was touched.
+--
+-- This is the LAST regex in the risk-flag path. Everything raised through
+-- the A9 form picks its category explicitly; this reads data written
+-- before there was anything to pick.
+--
+-- Anything unmatched lands on 'other', which is honest -- inventing a
+-- category for a string nobody wrote against a vocabulary would be worse
+-- than admitting we do not know.
 --
 -- ORDER MATTERS, and it was wrong the first time this was written.
 --
@@ -148,25 +159,33 @@ comment on column pc.company_risk_flag.cleared_reason is
 -- this whole table exists to remove, reintroduced in the backfill.
 -- ---------------------------------------------------------------------
 
-update pc.company_risk_flag f
-   set risk_flag_category_id = c.risk_flag_category_id
-  from pc.ref_risk_flag_category c
- where c.code = case
-   when f.flag_text ~* 'runway|cash (bal|under|below)'         then 'runway'
-   when f.flag_text ~* 'covenant'                              then 'covenant'
-   when f.flag_text ~* 'burn|margin|cost base'                 then 'burn'
-   when f.flag_text ~* 'down.?round|financing|bridge|dilution' then 'financing'
-   when f.flag_text ~* 'concentration|customer|\ydod\y|\ydoe\y' then 'customer-concentration'
-   when f.flag_text ~* 'key.?person|\yceo\y|founder|departure' then 'key-person'
-   when f.flag_text ~* 'hiring|\yteam\y|scaling|process maturity' then 'team'
-   when f.flag_text ~* 'revenue|pipeline|plan|milestone|slip'  then 'revenue'
-   when f.flag_text ~* 'competit|market'                       then 'market'
-   when f.flag_text ~* 'clinical|technical|product'            then 'product'
-   when f.flag_text ~* 'governance|\yboard\y'                  then 'governance'
-   when f.flag_text ~* 'legal|regulat|complian'                then 'legal-regulatory'
-   else 'other'
- end
-   and f.risk_flag_category_id is null;
+create function classify_risk_flag_category(flag_text text) returns int
+language sql stable as $$
+  select c.risk_flag_category_id
+    from pc.ref_risk_flag_category c
+   where c.code = case
+     when $1 ~* 'runway|cash (bal|under|below)'            then 'runway'
+     when $1 ~* 'covenant'                                 then 'covenant'
+     when $1 ~* 'burn|margin|cost base'                    then 'burn'
+     when $1 ~* 'down.?round|financing|bridge|dilution'    then 'financing'
+     when $1 ~* 'concentration|customer|\ydod\y|\ydoe\y'   then 'customer-concentration'
+     when $1 ~* 'key.?person|\yceo\y|founder|departure'    then 'key-person'
+     when $1 ~* 'hiring|\yteam\y|scaling|process maturity' then 'team'
+     when $1 ~* 'revenue|pipeline|plan|milestone|slip'     then 'revenue'
+     when $1 ~* 'competit|market'                          then 'market'
+     when $1 ~* 'clinical|technical|product'               then 'product'
+     when $1 ~* 'governance|\yboard\y'                     then 'governance'
+     when $1 ~* 'legal|regulat|complian'                   then 'legal-regulatory'
+     else 'other'
+   end
+$$;
+
+comment on function classify_risk_flag_category(text) is
+  'A9. Maps a legacy free-text risk flag onto the controlled vocabulary. Two callers -- the backfill in migration 0005 and the ADR-001 fixture importer, which loads schemaVersion 1 documents whose flags have no category. Not used by the A9 form, which picks a category explicitly.';
+
+update pc.company_risk_flag
+   set risk_flag_category_id = classify_risk_flag_category(flag_text)
+ where risk_flag_category_id is null;
 
 alter table pc.company_risk_flag
   alter column risk_flag_category_id set not null;
