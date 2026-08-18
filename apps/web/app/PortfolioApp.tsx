@@ -22,6 +22,7 @@ import { CompanyDrawer } from '../components/drawers/CompanyDrawer';
 import { DealDrawer } from '../components/drawers/DealDrawer';
 import { FinancialHistoryDrawer } from '../components/drawers/FinancialHistoryDrawer';
 import { FundInvestmentDrawer } from '../components/drawers/FundInvestmentDrawer';
+import { AlertsTab } from '../components/tabs/AlertsTab';
 import { DashboardTab } from '../components/tabs/DashboardTab';
 import { DataTab } from '../components/tabs/DataTab';
 import { DealCloseTab } from '../components/tabs/DealCloseTab';
@@ -51,7 +52,7 @@ function DrawerContent({ db, asOf }: PortfolioProps) {
 
   if (drawer.kind === 'company') {
     const company = db.companies.find((c) => c.id === drawer.id);
-    return company ? <CompanyDrawer company={company} /> : null;
+    return company ? <CompanyDrawer company={company} policy={db.alertPolicy} /> : null;
   }
   if (drawer.kind === 'lp') {
     const position = db.fundInvestments.find((f) => f.id === drawer.id);
@@ -100,6 +101,8 @@ function Tab({
       return <ReportsTab db={db} asOf={asOf} />;
     case 'data':
       return <DataTab db={db} asOf={asOf} kpiCoverage={kpiCoverage} />;
+    case 'alerts':
+      return <AlertsTab db={db} asOf={asOf} />;
     case 'dealclose':
       // ADR-012's capture form (A8). Role-gated in the nav and re-checked by the
       // API on every write, like Finance below.

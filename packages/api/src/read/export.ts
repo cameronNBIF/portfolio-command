@@ -166,6 +166,7 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     funnelGroupRows,
     syntheticRows,
     policyRows,
+    healthRows,
     ackRows,
   ] = await Promise.all([
     q<{
@@ -405,6 +406,24 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
            limit 1`,
     ),
 
+    /* Health PROVENANCE, as at the reporting date.
+       `company_current_asof` already supplies the health colour itself; this
+       supplies the row that set it, so a screen can say "B Grade, from the
+       Affinity sync, 14 Feb 2026" rather than presenting a rating with no
+       author. `distinct on` takes the state row in force at asOf, matching how
+       the colour beside it was resolved. */
+    q<{
+      company_id: string; risk_grade: string | null;
+      set_at: Date | string; set_by_name: string;
+    }>(
+      sql`select distinct on (cs.company_id)
+                 cs.company_id, cs.risk_grade, cs.set_at, u.display_name as set_by_name
+            from company_state cs
+            join app_user u on u.user_id = cs.set_by
+           where cs.effective_from <= ${asOf}::date
+           order by cs.company_id, cs.effective_from desc, cs.company_state_id desc`,
+    ),
+
     // Live acknowledgements only. An expired one is not filtered here -- the
     // metrics package compares `until_date` against its own asOf and is the
     // single place that decides (ADR-021) -- but a REVOKED one is gone for
@@ -429,6 +448,7 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
 
   const flags = groupBy(flagRows, (r) => r.company_id);
   const acks = groupBy(ackRows, (r) => r.company_id);
+  const healthState = new Map(healthRows.map((r) => [r.company_id, r]));
   const rounds = groupBy(roundRows, (r) => r.company_id);
   const kpis = groupBy(kpiRows, (r) => r.company_id);
   const marks = groupBy(markRows, (r) => r.company_id);
@@ -472,6 +492,13 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     // Absent, not null, when the company has not exited.
     withOptional(company, 'exitDate', asDate(c.exit_date));
     withOptional(company, 'exitType', c.exit_type);
+
+    // Health provenance. Absent where a company has no state row at all, which
+    // is a company nobody has ever graded -- distinct from one graded ACC.
+    const state = healthState.get(c.company_id);
+    withOptional(company, 'riskGrade', state?.risk_grade);
+    withOptional(company, 'healthSetBy', state?.set_by_name);
+    withOptional(company, 'healthSetAt', asDate(state?.set_at ?? null));
 
     Object.assign(company, {
       ceo: detail?.ceo_name ?? '',

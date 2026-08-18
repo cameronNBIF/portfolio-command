@@ -14,7 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type TabId =
   | 'dashboard' | 'portfolio' | 'funds' | 'pipeline'
-  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose';
+  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose' | 'alerts';
 
 /**
  * Label and order exactly as the prototype's `#mainnav` (:163-172), plus the two
@@ -43,6 +43,10 @@ export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
   { id: 'memo', label: 'Memo Builder' },
   { id: 'reports', label: 'Reports' },
   { id: 'data', label: 'Data' },
+  // A9. Matches CAN_EDIT_JUDGEMENT: the people who own the judgement records
+  // this tab configures are the ones who see it. Leadership reads the board
+  // feed on the Dashboard, which is unchanged and needs no gate.
+  { id: 'alerts', label: 'Alerts', roles: ['vc', 'admin'] },
   // Matches CAN_CAPTURE_ROUND (ADR-012). Sits before Finance because a round is
   // captured at close, which is upstream of the cheque being booked.
   { id: 'dealclose', label: 'Deal Close', roles: ['vc', 'finance', 'admin'] },
@@ -74,6 +78,16 @@ interface AppState {
   /** Closes the drawer, switches to the Memo Builder and targets an entity. */
   openMemoFor: (id: string) => void;
   toast: (message: string) => void;
+  /**
+   * The caller's role (ADR-005).
+   *
+   * Exposed on the context because the DRAWER needs it and the drawer is not a
+   * tab — it opens over any of them, so it cannot inherit a gate from the
+   * navigation the way Finance and Deal Close do. Every write it offers is
+   * re-checked server-side regardless; this only decides whether an control
+   * that would be refused is offered at all.
+   */
+  role: string;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -153,8 +167,8 @@ export function AppShell({
   );
 
   const value = useMemo<AppState>(
-    () => ({ tab, setTab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, setMemoTarget, openMemoFor, toast }),
-    [tab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, openMemoFor, toast],
+    () => ({ tab, setTab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, setMemoTarget, openMemoFor, toast, role }),
+    [tab, drawer, openDrawer, closeDrawer, openCompany, memoTarget, openMemoFor, toast, role],
   );
 
   return (

@@ -286,6 +286,21 @@ export interface Company {
   stage: string;
   vintage: number;
   health: 'green' | 'yellow' | 'red' | string;
+  /**
+   * Affinity's Risk Assessment grade behind `health`, added at schemaVersion 3.
+   * A / B / C map to green / yellow / red; ACC marks an accelerator investment
+   * and carries no risk grade (ADR-009).
+   *
+   * WITH `healthSetBy` AND `healthSetAt`, THIS IS THE WHOLE OF WHAT THE
+   * PLATFORM OFFERS ON HEALTH. Affinity is the system of record, the sync is
+   * one-way, and the VC team maintains the rating there. Showing who set it and
+   * when is the useful thing the platform can do; offering an edit box would
+   * create a rating that disagrees with itself across two systems.
+   */
+  riskGrade?: string | null;
+  healthSetBy?: string | null;
+  /** `YYYY-MM-DD`. */
+  healthSetAt?: string | null;
   instrument: string;
   ownershipPct: number;
   /** All $M. Derived from transactions under ADR-002; scalars here are the serialised result. */

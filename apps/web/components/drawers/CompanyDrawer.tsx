@@ -6,15 +6,29 @@
  * Section order and content are the prototype's: position summary, risk flags,
  * KPI history, round history, reserves, governance, milestones, covenants,
  * government funding, mark history, open tasks (ADR-014).
+ *
+ * A9 ADDS THREE SECTIONS AND MOVES NONE. Health provenance and alert thresholds
+ * sit either side of the risk flags, which is where a reader already looks for
+ * why a company is on the watchlist; the ported order below them is untouched.
+ * Their markup lives in `CompanyRiskSections` because it carries forms, and
+ * this file is a port that should stay readable as one.
  */
-import type { Company } from '@portfolio-command/contract';
+import type { AlertPolicy, Company } from '@portfolio-command/contract';
 import { fmt, moic } from '@portfolio-command/metrics';
 
 import { CONVENTION_NOTE } from '../../lib/quarters';
 import { DrawerBody, DrawerHeader, useApp } from '../AppShell';
 import { DrawerSection, Kv, KvGrid, Pill, Progress, moicClass } from '../ui';
+import { HealthSection, RiskFlagSection, ThresholdSection } from './CompanyRiskSections';
 
-export function CompanyDrawer({ company: c }: { company: Company }) {
+export function CompanyDrawer({
+  company: c,
+  policy,
+}: {
+  company: Company;
+  /** The fund-wide alert policy, for showing which thresholds are inherited. */
+  policy?: AlertPolicy | null;
+}) {
   const { openMemoFor } = useApp();
   const mo = moic(c);
   const k = c.kpis && c.kpis[0];
@@ -71,17 +85,11 @@ export function CompanyDrawer({ company: c }: { company: Company }) {
           </KvGrid>
         </DrawerSection>
 
-        {(c.riskFlags || []).length > 0 && (
-          <DrawerSection title="Risk Flags">
-            <div className="badgebar">
-              {c.riskFlags.map((f, i) => (
-                <Pill key={i} tone={c.health === 'red' ? 'red' : 'yellow'}>
-                  {f}
-                </Pill>
-              ))}
-            </div>
-          </DrawerSection>
-        )}
+        <HealthSection company={c} />
+
+        <RiskFlagSection company={c} />
+
+        <ThresholdSection company={c} policy={policy} />
 
         {k && (
           <DrawerSection title={`KPIs (latest: ${k.period})`}>

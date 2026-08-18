@@ -96,19 +96,38 @@ describe.skipIf(!hasDb)('ADR-001 contract round trip', () => {
    * The schemaVersion 3 additions, stripped before comparison and asserted
    * separately below.
    *
-   * `riskFlagDetail` and `acknowledgements` are A9 fields with no counterpart
-   * in a schemaVersion 1 fixture, and `kpis[].nrr` is a column that has been in
-   * the schema since A1 and only reached the contract at 3. Each is removed by
-   * name -- never by a loose filter -- so a field appearing here that nobody
-   * accounted for still fails the comparison, which is the whole point of it.
+   * `riskFlagDetail`, `acknowledgements` and the three health-provenance fields
+   * are A9 additions with no counterpart in a schemaVersion 1 fixture, and
+   * `kpis[].nrr` is a column that has been in the schema since A1 and only
+   * reached the contract at 3. Each is removed by name -- never by a loose
+   * filter -- so a field appearing here that nobody accounted for still fails
+   * the comparison, which is the whole point of it.
    */
   const withoutV3 = (c: (typeof actual.companies)[number]) => {
     const rest = { ...c, kpis: c.kpis.map((k) => ({ ...k })) };
     delete rest.riskFlagDetail;
     delete rest.acknowledgements;
+    delete rest.riskGrade;
+    delete rest.healthSetBy;
+    delete rest.healthSetAt;
     for (const k of rest.kpis) delete k.nrr;
     return rest;
   };
+
+  /**
+   * A9. Affinity owns the rating (ADR-009); the platform shows who set it and
+   * when, and offers no way to change it. The importer writes company_state as
+   * the system principal, so the fixture's provenance names that principal --
+   * which is the honest answer for a rating that came from a JSON file.
+   */
+  test('health carries provenance, so a rating is never shown without an author', () => {
+    const graded = actual.companies.filter((c) => c.health !== '');
+    expect(graded.length).toBeGreaterThan(0);
+    for (const c of graded) {
+      expect(c.healthSetBy, `${c.id} health author`).toBeTruthy();
+      expect(c.healthSetAt, `${c.id} health date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
 
   test('every company reproduces exactly', () => {
     expect(actual.companies).toHaveLength(fixture.companies.length);
