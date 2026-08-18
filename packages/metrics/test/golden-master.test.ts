@@ -269,24 +269,79 @@ describe('per-company metrics', () => {
   }
 });
 
+/**
+ * THE ONE PLACE A9 DIVERGES FROM THE PROTOTYPE, ASSERTED RATHER THAN ABSORBED.
+ *
+ * `maxBurnMult` has been in the contract since v1 and sits on 68 of the
+ * fixture's 70 companies. The prototype stored it and never computed anything
+ * with it. ADR-032 gives it a rule -- quarterly net burn over quarterly net new
+ * revenue -- and on this fixture that rule fires four times.
+ *
+ * WHY THE FIXTURE WAS NOT SIMPLY RECAPTURED WITH THE FOUR IN IT. It cannot be.
+ * `capture.ts` produces the fixture by running the COMMITTED PROTOTYPE over the
+ * committed demo.json, and the prototype has no burn-multiple rule, so a
+ * recapture yields the same 39 it always did. `verify:fixtures --check`
+ * compares the committed file against that same prototype output and names
+ * hand-editing as the thing ADR-013 exists to prevent. The fixture is a
+ * RECORDING OF THE PROTOTYPE, not a record of what this package currently does,
+ * and it stays that way.
+ *
+ * So the divergence lives here, in full, as data. Four lines that someone has
+ * to delete on purpose. The tests below assert both halves: that removing these
+ * reproduces the prototype's 39 alerts exactly, in order, and that these are
+ * the only additions. A fifth alert appearing anywhere fails the second test;
+ * one of the 39 changing or moving fails the first.
+ */
+const A9_BURN_MULTIPLE_ADDITIONS = [
+  { companyId: 'C002', sev: 'red', text: 'Burn multiple 14.0x (threshold 1.5x)' },
+  { companyId: 'C009', sev: 'red', text: 'Burn multiple 5.3x (threshold 1.5x)' },
+  { companyId: 'C001', sev: 'yellow', text: 'Burn multiple 1.9x (threshold 1.5x)' },
+  { companyId: 'C008', sev: 'yellow', text: 'Burn multiple 1.6x (threshold 1.5x)' },
+];
+
 describe('healthAlerts', () => {
   const alerts = healthAlerts(demo);
+  const flat = (xs: typeof alerts) => xs.map((a) => ({ companyId: a.company.id, sev: a.sev, text: a.text }));
 
-  it('produces the same number of alerts', () => {
-    expect(alerts).toHaveLength(golden.healthAlerts.length);
+  const isA9 = (a: (typeof alerts)[number]) => a.metric === 'burn-multiple';
+  const inherited = alerts.filter((a) => !isA9(a));
+  const added = alerts.filter(isA9);
+
+  it('still produces every prototype alert, and only those, once A9 additions are set aside', () => {
+    expect(flat(inherited)).toHaveLength(golden.healthAlerts.length);
   });
 
-  it('produces the same alerts IN THE SAME ORDER', () => {
+  it('still produces the prototype alerts IN THE SAME ORDER', () => {
     // Order is part of the output. The comparator is two-valued and leans on
     // sort stability for everything else; a different sort would reorder ties
     // and change what the dashboard's top-14 slice shows.
-    expect(alerts.map((a) => ({ companyId: a.company.id, sev: a.sev, text: a.text }))).toEqual(golden.healthAlerts);
+    expect(flat(inherited)).toEqual(golden.healthAlerts);
+  });
+
+  it('adds exactly the four burn-multiple alerts ADR-032 accounts for', () => {
+    // Sorted, because the two-valued comparator interleaves these with the
+    // inherited alerts and their absolute positions are not the assertion --
+    // their existence and their count are.
+    const by = (a: { companyId: string }, b: { companyId: string }) => a.companyId.localeCompare(b.companyId);
+    expect(flat(added).sort(by)).toEqual([...A9_BURN_MULTIPLE_ADDITIONS].sort(by));
   });
 
   it('sorts every red alert ahead of every yellow one', () => {
     const firstYellow = alerts.findIndex((a) => a.sev === 'yellow');
     if (firstYellow === -1) return;
     expect(alerts.slice(firstYellow).every((a) => a.sev === 'yellow')).toBe(true);
+  });
+
+  /**
+   * The fallback that makes all of the above possible. Everything else A9
+   * added -- policy inheritance, the cash floor, revenue decline, NRR,
+   * acknowledgements -- is gated on fields a schemaVersion 1 document does not
+   * carry. If any of them ever acquires a hardcoded default, this test is what
+   * notices, because the fixture would gain alerts nobody accounted for.
+   */
+  it('reads no fund policy from a schemaVersion 1 document', () => {
+    expect(demo.alertPolicy).toBeUndefined();
+    expect(alerts.some((a) => a.thresholdFrom === 'policy')).toBe(false);
   });
 });
 

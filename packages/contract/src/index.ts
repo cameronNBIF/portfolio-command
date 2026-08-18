@@ -15,8 +15,12 @@
  *     fiscal or calendar -- is chosen per endpoint and stated on screen
  *     (ADR-006, D-6). Nothing here keys, joins or sorts on one.
  *
- * `schemaVersion` is 1 and changes only when the CONTRACT changes. Storage
- * changes underneath do not bump it.
+ * `schemaVersion` changes only when the CONTRACT changes. Storage changes
+ * underneath do not bump it. It is at 3; see `Meta.schemaVersion` for what
+ * each version added. EVERY ADDITION SINCE 1 IS OPTIONAL, which is not
+ * politeness to old consumers — it is what lets `docs/reference/demo.json`
+ * stay frozen at 1 (ADR-022) while remaining a valid document that the
+ * metrics package reads and the golden master asserts against.
  */
 
 /** A quarterly point on the fund's NAV history. Drives the FMV growth KPIs. */
@@ -112,6 +116,13 @@ export interface Kpi {
   burn: number;
   cash: number;
   runwayMo: number;
+  /**
+   * Net revenue retention, percent as reported: 107 means 107%. Added at
+   * schemaVersion 3 — the column has been in `company_kpi` since A1 and never
+   * reached the contract, so it is absent on the reference fixture and the NRR
+   * alert simply never evaluates there.
+   */
+  nrr?: number | null;
 }
 
 export interface ValuationMark {
@@ -128,10 +139,113 @@ export interface BoardPosition {
   nextMeeting?: string | null;
 }
 
-/** Alert thresholds. `minRunwayMo` is absent on some records; a value of 0 disables the alert. */
+/**
+ * Per-company alert thresholds.
+ *
+ * THREE MEANINGS, NOT TWO, AND THE DIFFERENCE DECIDES A WATCHLIST:
+ *
+ *   absent  -- this company sets no threshold of its own. From
+ *              schemaVersion 3 it INHERITS `AlertPolicy`; before 3 it
+ *              simply had no alert. The reference fixture is
+ *              schemaVersion 1 and carries no policy, so the two are
+ *              indistinguishable there and the inherited behaviour is
+ *              reproduced exactly (ADR-013).
+ *   0       -- DISABLED. The company opts out, and the fund policy does
+ *              not resurrect it. This is the inherited meaning and it is
+ *              the only escape hatch from a portfolio-wide default.
+ *   n > 0   -- this company's own threshold, overriding the policy.
+ *
+ * `minCashBalance` is $M like every other money field in this contract.
+ */
 export interface Thresholds {
   minRunwayMo?: number;
   maxBurnMult?: number;
+  /** Added at schemaVersion 3. $M. */
+  minCashBalance?: number;
+  /** Added at schemaVersion 3. Percent: 20 means a 20% quarter-over-quarter fall. */
+  maxRevenueDeclinePct?: number;
+  /** Added at schemaVersion 3. Percent as reported: 90 means 90% net revenue retention. */
+  minNrrPct?: number;
+}
+
+/**
+ * Portfolio-wide alert thresholds, added at schemaVersion 3.
+ *
+ * The answer to "where does the platform record that our runway
+ * threshold is twelve months". Every company that does not set its own
+ * threshold for a metric inherits this one.
+ *
+ * OPTIONAL ON THE DOCUMENT, AND THAT IS LOAD-BEARING. The reference
+ * fixture is schemaVersion 1 and will never carry a policy (ADR-022
+ * freezes it). A consumer that finds this absent must fall back to
+ * per-company thresholds alone, which is precisely the prototype's
+ * behaviour -- and is why adding fund defaults did not disturb a single
+ * golden-master figure.
+ *
+ * A null field means the fund sets no policy for that metric. It never
+ * means zero.
+ */
+export interface AlertPolicy {
+  minRunwayMo: number | null;
+  maxBurnMult: number | null;
+  /** $M. */
+  minCashBalance: number | null;
+  maxRevenueDeclinePct: number | null;
+  minNrrPct: number | null;
+  /** `YYYY-MM-DD`. When this policy came into force. */
+  effectiveFrom: string;
+  setBy: string;
+  note?: string | null;
+}
+
+/**
+ * The structured half of a risk flag, added at schemaVersion 3.
+ *
+ * `Company.riskFlags` keeps emitting display strings and keeps being the
+ * field the contract froze. This runs ALONGSIDE it, one entry per flag,
+ * in the same order -- the ADR-026 pattern: the verbatim string for the
+ * contract, the resolved key for logic.
+ *
+ * `category` is what replaced de-duplicating flags by regex on their
+ * text. A category declares which derived metric alert it stands in
+ * for, so a flag about runway suppresses the runway alert because it
+ * says it does, not because it contains the word.
+ */
+export interface RiskFlagDetail {
+  id: number;
+  /** Stable machine key from `ref_risk_flag_category.code`. */
+  category: string;
+  categoryLabel: string;
+  /** The free-text half, if the author wrote one. */
+  note?: string | null;
+  /** `null` = inherit the company's health colour, the frozen prototype rule. */
+  severity: 'red' | 'yellow' | null;
+  /** `YYYY-MM-DD`. */
+  raisedAt: string;
+  raisedBy: string;
+}
+
+/**
+ * A time-boxed judgement that an open alert is understood and accepted.
+ * Added at schemaVersion 3.
+ *
+ * Suppresses an alert from the ACTIVE feed. It never deletes one: the
+ * breach is still derived, still true, and still shown on the company.
+ *
+ * `value` is the metric as it stood when this was signed. The alert
+ * returns early if the figure moves materially past it, because knowing
+ * about four months of runway is not consent to ignore two.
+ */
+export interface AlertAcknowledgement {
+  /** Matches `HealthAlert.key`. Derived from the alert's subject, never its value. */
+  alertKey: string;
+  reason: string;
+  /** `YYYY-MM-DD`. The acknowledgement expires on its own. */
+  untilDate: string;
+  value: number | null;
+  by: string;
+  /** `YYYY-MM-DD`. */
+  at: string;
 }
 
 export interface Milestone {
@@ -185,6 +299,14 @@ export interface Company {
   hq: string;
   desc: string;
   riskFlags: string[];
+  /**
+   * The structured half of `riskFlags`, added at schemaVersion 3. Same
+   * order, one entry per flag. Absent on the reference fixture, which
+   * has display strings and nothing behind them.
+   */
+  riskFlagDetail?: RiskFlagDetail[];
+  /** Open alert acknowledgements. Added at schemaVersion 3. */
+  acknowledgements?: AlertAcknowledgement[];
   proRata: boolean;
   reservesAllocated: number;
   reservesDeployed: number;
@@ -349,8 +471,13 @@ export interface Meta {
    *     be re-exported without invalidating every golden-master fixture.
    * 2 — adds `funnelGroups`. The API emits 2; the reference fixture stays 1,
    *     which is why the field is optional rather than required.
+   * 3 — adds `alertPolicy`, three fields to `Thresholds`, and
+   *     `riskFlagDetail` / `acknowledgements` on a company (A9, ADR-032).
+   *     Every addition is optional for the same reason: the fixture stays
+   *     1, and `healthAlerts()` reads the policy only when it is present,
+   *     so the frozen fixture produces the frozen figures.
    */
-  schemaVersion: 1 | 2;
+  schemaVersion: 1 | 2 | 3;
   /**
    * Wall-clock stamp. Normalised out of the contract snapshot test, because a
    * timestamp drifting is not contract drift (ADR-022).
@@ -372,5 +499,13 @@ export interface PortfolioExport {
    * missing should fall back to treating each `funnel` value as its own column.
    */
   funnelGroups?: FunnelGroup[];
+  /**
+   * Portfolio-wide alert thresholds. Present from schemaVersion 3;
+   * absent on the reference fixture, which is schemaVersion 1. A
+   * consumer that finds it missing must read per-company thresholds
+   * alone — that fallback is the prototype's behaviour, and it is what
+   * keeps the golden master intact.
+   */
+  alertPolicy?: AlertPolicy | null;
   meta: Meta;
 }

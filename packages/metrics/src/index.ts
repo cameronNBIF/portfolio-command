@@ -25,7 +25,15 @@ export { fundMetrics, isEvergreen, type FundMetrics, type MetricOptions } from '
 
 export { fiTvpi, fiDpi, fiIrr, lpMetrics, fiMetrics, type LpMetrics } from './lp.js';
 
-export { healthAlerts, type HealthAlert, type Severity } from './alerts.js';
+export {
+  healthAlerts,
+  allAlerts,
+  type HealthAlert,
+  type AlertOptions,
+  type AlertSource,
+  type MetricKey,
+  type Severity,
+} from './alerts.js';
 
 export {
   scenarioDefaults,
