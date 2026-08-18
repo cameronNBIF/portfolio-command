@@ -59,6 +59,22 @@ export interface AffinityStatusMap {
   updated_at: Generated<Timestamp>;
 }
 
+export interface AlertAcknowledgement {
+  acknowledged_at: Generated<Timestamp>;
+  acknowledged_by: string;
+  acknowledged_value: Numeric | null;
+  alert_acknowledgement_id: Generated<Int8>;
+  /**
+   * Derived from the alert subject, never its value. "metric:runway" stays stable across every Visible refresh, so an acknowledgement survives the nightly sync that would otherwise silently expire it.
+   */
+  alert_key: string;
+  company_id: string;
+  reason: string;
+  revoked_at: Timestamp | null;
+  revoked_by: string | null;
+  until_date: Timestamp;
+}
+
 export interface AppUser {
   created_at: Generated<Timestamp>;
   display_name: string;
@@ -242,11 +258,25 @@ export interface CompanyOwnership {
 
 export interface CompanyRiskFlag {
   cleared_at: Timestamp | null;
+  cleared_by: string | null;
+  /**
+   * Why the flag was lowered. Required by the write path when cleared_at is set: a flag that disappears without a reason is indistinguishable from one raised by mistake, and the board pack shows both.
+   */
+  cleared_reason: string | null;
   company_id: string;
   company_risk_flag_id: Generated<Int8>;
+  /**
+   * ADR-001 display string, emitted verbatim into companies[].riskFlags[]. Composed by the write path as "<category> - <note>" for flags raised in-platform, and preserved as authored for rows the fixture importer loaded. Never re-derived from the category on read: ADR-026, same reason as company.sector_label.
+   */
   flag_text: string;
+  note: string | null;
   raised_at: Generated<Timestamp>;
   raised_by: string;
+  risk_flag_category_id: number;
+  /**
+   * NULL = inherit the company health colour, which is the frozen prototype rule (ADR-013). A value overrides it. Nullable rather than defaulted so the inherited path stays the default path.
+   */
+  severity: string | null;
 }
 
 export interface CompanyState {
@@ -291,6 +321,12 @@ export interface CompanyTask {
 export interface CompanyThreshold {
   company_id: string;
   max_burn_multiple: Numeric | null;
+  max_revenue_decline_pct: Numeric | null;
+  min_cash_balance: Numeric | null;
+  min_nrr_pct: Numeric | null;
+  /**
+   * A9 CHANGED THIS. Was: NULL = no alert for this company. Now: NULL = inherit fund_alert_policy. An explicit 0 disables the alert and overrides the fund policy; that is the only opt-out, and it is the inherited contract meaning (ADR-013).
+   */
   min_runway_months: number | null;
   updated_at: Generated<Timestamp>;
   updated_by: string;
@@ -348,6 +384,24 @@ export interface Fund {
   reserves_policy: string | null;
   style: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface FundAlertPolicy {
+  effective_from: Generated<Timestamp>;
+  effective_to: Timestamp | null;
+  fund_alert_policy_id: Generated<Int8>;
+  fund_id: number;
+  max_burn_multiple: Numeric | null;
+  max_revenue_decline_pct: Numeric | null;
+  min_cash_balance: Numeric | null;
+  min_nrr_pct: Numeric | null;
+  /**
+   * The general runway floor - 12 months, in NBIF stated policy. A company with company_threshold.min_runway_months set overrides it; a company with an explicit 0 disables the alert entirely and the policy does NOT resurrect it (ADR-013: 0 means disabled, and that meaning is inherited).
+   */
+  min_runway_months: number | null;
+  note: string | null;
+  set_at: Generated<Timestamp>;
+  set_by: string;
 }
 
 export interface FundDistribution {
@@ -565,6 +619,19 @@ export interface RefInvestmentVehicle {
   sort_order: Generated<number>;
 }
 
+export interface RefRiskFlagCategory {
+  code: string;
+  default_severity: Generated<string>;
+  is_active: Generated<boolean>;
+  name: string;
+  risk_flag_category_id: Generated<number>;
+  sort_order: Generated<number>;
+  /**
+   * Reproduces the inherited runway-regex behaviour structurally. Only the runway and burn categories carry a value; every other category always appears. Changing this row changes which alerts the feed shows, so it is reference data, not configuration.
+   */
+  suppresses_metric: string | null;
+}
+
 export interface RefSector {
   is_active: Generated<boolean>;
   name: string;
@@ -767,6 +834,22 @@ export interface VFinancialChangeLog {
   table_name: string | null;
 }
 
+export interface VFundAlertPolicyCurrent {
+  effective_from: Timestamp | null;
+  effective_to: Timestamp | null;
+  fund_alert_policy_id: Int8 | null;
+  fund_id: number | null;
+  max_burn_multiple: Numeric | null;
+  max_revenue_decline_pct: Numeric | null;
+  min_cash_balance: Numeric | null;
+  min_nrr_pct: Numeric | null;
+  min_runway_months: number | null;
+  note: string | null;
+  set_at: Timestamp | null;
+  set_by: string | null;
+  set_by_name: string | null;
+}
+
 export interface VKpiCoverage {
   cash_balance: Int8 | null;
   companies_reporting: Int8 | null;
@@ -891,6 +974,7 @@ export interface VTransactionLive {
 export interface DB {
   affinity_field_change: AffinityFieldChange;
   affinity_status_map: AffinityStatusMap;
+  alert_acknowledgement: AlertAcknowledgement;
   app_user: AppUser;
   audit_log: AuditLog;
   board_seat: BoardSeat;
@@ -909,6 +993,7 @@ export interface DB {
   deal_gate: DealGate;
   financial_row_version: FinancialRowVersion;
   fund: Fund;
+  fund_alert_policy: FundAlertPolicy;
   fund_distribution: FundDistribution;
   fund_investment: FundInvestment;
   fund_investment_nav: FundInvestmentNav;
@@ -923,6 +1008,7 @@ export interface DB {
   ref_funnel_stage: RefFunnelStage;
   ref_instrument: RefInstrument;
   ref_investment_vehicle: RefInvestmentVehicle;
+  ref_risk_flag_category: RefRiskFlagCategory;
   ref_sector: RefSector;
   ref_source_channel: RefSourceChannel;
   ref_stage: RefStage;
@@ -936,6 +1022,7 @@ export interface DB {
   v_company_realized: VCompanyRealized;
   v_deal_stage_history: VDealStageHistory;
   v_financial_change_log: VFinancialChangeLog;
+  v_fund_alert_policy_current: VFundAlertPolicyCurrent;
   v_kpi_coverage: VKpiCoverage;
   v_lp_capital_to_direct: VLpCapitalToDirect;
   v_lp_position_current: VLpPositionCurrent;
