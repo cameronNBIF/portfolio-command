@@ -27,6 +27,25 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AffinityControlSnapshot {
+  affinity_control_snapshot_id: Generated<Int8>;
+  affinity_org_id: string | null;
+  company_id: string;
+  /**
+   * Verbatim at the moment of the snapshot. Stored rather than joined so a rename in Affinity between now and cutover is visible during the control-total review instead of being silently absorbed.
+   */
+  company_name: string;
+  fmv: Numeric | null;
+  note: string | null;
+  snapshot_label: string;
+  taken_at: Generated<Timestamp>;
+  taken_by: string;
+  /**
+   * A copy of company.affinity_total_investment, which is VC-team-maintained reference data and has never entered a calculation (ADR-020). Its value here is as an independent anchor, and it only has that value because it was taken before we overwrote the original.
+   */
+  total_investment: Numeric | null;
+}
+
 export interface AffinityFieldChange {
   action_type: string;
   affinity_field_change_id: Int8;
@@ -729,6 +748,10 @@ export interface Transaction {
   entered_by: string;
   fund_investment_id: string | null;
   fx_rate_to_cad: Numeric | null;
+  /**
+   * What this cheque bought. NOT the round's instrument, though it usually matches: a round can be funded with a note alongside equity, and a company can hold both an equity position and an outstanding loan. NOT company.instrument_id either, which ADR-027 records as an independent headline fact rather than a derivation. NULL = unrecorded, never defaulted, on the ADR-030 precedent.
+   */
+  instrument_id: number | null;
   investment_round_id: Int8 | null;
   investment_vehicle_id: number | null;
   is_synthetic: Generated<boolean>;
@@ -972,6 +995,7 @@ export interface VTransactionLive {
 }
 
 export interface DB {
+  affinity_control_snapshot: AffinityControlSnapshot;
   affinity_field_change: AffinityFieldChange;
   affinity_status_map: AffinityStatusMap;
   alert_acknowledgement: AlertAcknowledgement;
