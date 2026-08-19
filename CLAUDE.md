@@ -20,15 +20,17 @@ These are settled architecture decisions. Do not work around them; if one seems 
 4. **The frontend ports one-to-one** (ADR-014). Same layout, terminology, colour conventions, drawer behaviour, eight tabs. "Looks identical to the prototype" is the acceptance criterion. Two sanctioned exceptions: revenue is labelled quarterly rather than run-rate, and the diversity tile shows coverage instead of treating unreported as zero.
 5. **Financial rows are editable, over a versioned store** (ADR-031, superseding ADR-018). Transactions, valuation marks and LP cashflows are edited and soft-deleted in place. **Every mutation writes the prior row image to `financial_row_version` by database trigger** — not by application code, so a direct psql `UPDATE` is captured too — and the trigger raises unless the session sets `pc.actor_id`. Nothing modifies a financial row anonymously. `*_asof(timestamptz)` functions reconstruct any table as it stood at a past instant; that is what keeps an issued board pack reproducible, so **if you touch the version tables, the round-trip tests are the ones that matter**. Editing a row inside a frozen `fund_nav_snapshot` period requires a restatement reason. Judgement fields — health, flags, milestones, memos, gates — remain freely editable with an audit trail.
 6. **Synthetic data is flagged and announced** (ADR-020). Every generated financial row carries `is_synthetic`. While `v_synthetic_data_status.contains_synthetic` is true, a persistent banner appears on every screen and every PDF export. Never suppress it.
-7. **Affinity and Visible sync one way, inbound only** (ADR-009, ADR-010). The platform never writes to either.
+7. **Affinity and Visible sync one way, inbound only** (ADR-009, ADR-010). The platform never writes to either. **One exception exists, and only one** (ADR-039): at A13, calculated total invested per company is pushed to Affinity once, the field becomes read-only there, and the platform stops reading it. One field, one direction, one event — not a two-way sync. Its pre-cutover values are already frozen in `affinity_control_snapshot`. Do not add a second outbound write; ADR-039 is the precedent to argue against, not from.
 8. **No secrets in code.** Azure Key Vault, environment variables locally. Never commit a connection string, API key or token.
 
 ## Where things are
 
 | Path | Contents |
 |---|---|
-| `docs/architecture-decisions.md` | 30 ADRs plus the decision log. **The authority for any "why is it like this" question.** |
-| `docs/delivery-roadmap.md` | Phased build sequence, effort, exit criteria, risks |
+| `docs/architecture-decisions.md` | 39 ADRs plus the decision log. **The authority for any "why is it like this" question.** ADR-033 to ADR-039 are **Proposed** — raised at F0 ahead of the code, accepted as each phase lands. |
+| `docs/delivery-roadmap.md` | Phased build sequence, effort, exit criteria, risks. Four tracks: A platform, B data readiness, C process, **F finance model hardening — which gates A13** |
+| `docs/finance-requirements-register.md` | The FR-numbered requirements from the 19 Aug 2026 Finance meeting, with dispositions. **Living document — update dispositions as phases land, do not fork it.** |
+| `docs/finance-design-notes.md` | The D-numbered reasoning behind them, and the Q-numbered open questions. **The question list is the agenda for the second Finance meeting.** |
 | `docs/schema.sql` | Postgres DDL: tables, views, period-labelling functions |
 | `docs/field-inventory.csv` | All 148 prototype fields → source system → target table and column |
 | `docs/affinity-field-mapping.csv` | Affinity field → target column, transforms, controlled vocabularies |

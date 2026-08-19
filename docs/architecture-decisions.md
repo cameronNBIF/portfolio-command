@@ -121,6 +121,28 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - **The reporting lag has a visible consequence.** Between an effective date and the date Finance books the exercise, the platform shows the *previous* mark as current. A report run in March for a 31 January as-of date will differ from the same report run in April, once the January marks are entered. Board-facing views therefore carry a stamp reading "marks as at *[effective date]*, booked *[booked date]*", and `fund_nav_snapshot.frozen_at` fixes the figures actually issued so a re-run never restates a published number.
 - Marks are entered by Finance and treated as final on entry (ADR-008). A `supersedes_id` chain preserves any later restatement.
 
+**Amended 19 August 2026 by ADR-034 (Proposed, lands with F2). Nothing above is
+reversed, and the sign-off principle in particular survives untouched — which is
+the point.**
+
+- **The entry screen changes; the authority does not.** Finance asked to enter FMV
+  as an adjustment against the last known value rather than as a new absolute.
+  ADR-034 satisfies that without changing what is stored: the mark records the
+  adjustment that produced it and stores the resulting absolute, computed rather
+  than typed. Entry by the Director of Finance is still the sign-off, and there
+  is still no separate approval step.
+- **The one-final-mark-per-company-per-date index is relaxed** to one *review*
+  mark per company per date. It was written when a second mark on one date could
+  only be a mistake; it now blocks two follow-ons on one day and a transaction
+  landing on 31 January. Two cheques on one day are two facts, not a conflict.
+- **`company_fmv_asof`'s tiebreak is corrected in the same change.** It orders by
+  `effective_date desc, booked_at desc`, and two marks written inside one
+  database transaction tie on `booked_at`. `valuation_mark_id desc` becomes the
+  final term. This is a latent defect today and a live one the moment same-day
+  marks are legal.
+- **The semi-annual cadence, the carry-forward rule and the 31 Jan / 31 Jul
+  effective dates are unchanged.** Nothing in the FMV calendar moves.
+
 ---
 
 ## ADR-008 — Reporting currency is CAD; the schema stays currency-aware
@@ -223,6 +245,37 @@ is in `docs/affinity-v2-field-map.csv`; endpoint mechanics in
   in Affinity, which is where a system-of-record correction belongs; the sync
   carries labels verbatim and does not special-case them (decision, 12 Aug 2026).
 
+**Amended twice on 19 August 2026, and the second amendment is the first stated
+exception to this ADR's central rule. Both are recorded here rather than only in
+the new ADRs, because a reader who finds this one first must not come away with a
+rule that is no longer whole.**
+
+- **Roster status becomes a synced field (ADR-036, Proposed, lands with F4).**
+  The list's `Status` was profiled as 80 of 80 rows carrying one value, always
+  `Portfolio`, and was mapped as unused on that basis. It is not unused; the
+  Exited view's companies were simply never in the extract. Status is what
+  decides whether a company is a portfolio company or an exited one, it is
+  maintained by the VC team in Affinity, and the platform therefore **syncs it
+  and does not hold a membership state of its own.** This is the rule this ADR
+  already sets, applied to one more field — and it is the same reasoning ADR-032
+  used when it cancelled the health-rating workflow: a flag maintained in two
+  places is a flag the nightly sync silently wins.
+  It lands on `company_state`, the dated table, and is distinct from
+  `lifecycle_status` — Affinity's separate Portfolio Status field, whose values
+  include "Winding Down", which does **not** move a company out of the portfolio.
+- **The one-way rule gains its first exception, at cutover only (ADR-039,
+  Proposed, lands with A13).** This ADR says "the platform never writes back",
+  and at A13 it writes back exactly once: calculated total invested per company
+  is pushed to Affinity, the field becomes read-only there, and the platform
+  stops reading it. One field, one direction, one event — not a two-way sync, and
+  not something the nightly job acquires. It is defensible only because ADR-011
+  already makes the platform the registry for that specific figure, and no other
+  Affinity field has that property. **The pre-cutover values of
+  `affinity_total_investment` and `affinity_fmv` are frozen in
+  `affinity_control_snapshot` before the first write** (taken at F0, 19 August
+  2026), because after the write, reconciling against them would be checking our
+  arithmetic against our own output.
+
 ---
 
 ## ADR-010 — Visible.vc is the system of record for company-reported KPIs, including jobs and diversity
@@ -318,6 +371,32 @@ answered.** Recorded in place; nothing above is reversed.
   the tab, so every ported element stays where the prototype puts it (ADR-014).
   Read from `v_mandate_completeness`, deliberately outside the frozen ADR-001
   document, on the A5 `v_kpi_coverage` precedent.
+
+**Amended 19 August 2026 by ADR-033 (Proposed, lands with F1). One line of the A8
+amendment above is superseded; the role split it rests on is not.**
+
+- **The transaction's round link is a reconciliation, not a capture, and
+  `CAN_CAPTURE_ROUND` is the right gate for it.** The A8 amendment reasoned that
+  "our cheque is Finance's fact and lives on `transaction`, which is unchanged and
+  still finance-only", and the transaction form was shipped with the round picker
+  read-only on that basis, pointing the user at the Deal Close tab. That is right
+  about *authorship of the round* and wrong about *the link itself* — and the
+  pointer was a dead end besides, because the Deal Close capture does not write
+  `transaction` either. **No interface writes that column at all today; every link
+  in the database was written by the A6 generator.**
+- **What changes is scoped to the foreign key and nothing else.** ADR-033 adds one
+  deliberately narrow mutation that sets or clears `transaction.investment_round_id`
+  and touches no other column on that table. Amount, date, type, currency and
+  vehicle stay behind `CAN_WRITE_FINANCIAL`. That narrowness is the argument: a
+  deal lead attaching a cheque to a round they closed is doing reconciliation, and
+  an operation that can move a foreign key and nothing else cannot restate
+  Finance's figures.
+- **Participation becomes explicit, and leverage reads it.** `nbif_participated`
+  distinguishes a round we sat out from a round whose cheque is missing — today
+  both are "a round with no transactions" and both read `ourInvested` of $0.
+  `v_round_leverage` excludes the former. This ADR's rule that a round with a
+  missing or invalid total is *excluded, never imputed* is extended, not altered:
+  a round we did not participate in is excluded for the same reason.
 
 ---
 
@@ -457,7 +536,7 @@ Four conditions attach to this decision, and it is not sound without them.
 1. **The synthetic data is dirty on purpose.** Data generated cleanly from Affinity is by construction perfectly resolvable, which is precisely what real data will not be. The generator deliberately produces orphan transactions, unresolvable company names, rounds with missing totals at a rate matching what Finance expects for old vintages, a renamed company, a duplicate, a mark predating its first investment, a non-CAD transaction, and a company reporting no KPIs. Exception handling is built against dirt, not against the happy path.
 2. **Every synthetic row is flagged and every environment says so.** `is_synthetic` is set on `transaction`, `valuation_mark`, `investment_round`, `fund_investment_nav` and `company_ownership`. The application reads `v_synthetic_data_status` at start and displays a persistent, unmissable banner on every screen and every PDF export while synthetic rows exist. In a small organisation, a plausible-looking NAV on a screen someone walks past becomes a number in a conversation.
 3. ~~**A small real sample arrives early, not with the full backfill.**~~ **Withdrawn 14 August 2026.** Five to ten companies with complete real history were to be requested from Finance during the synthetic-data phase, to discover whether the schema actually fits how Finance holds the data. See the amendment below for what replaced it and what was given up.
-4. **The Finance entry interfaces are walked through with the Director of Finance before they are built,** using the synthetic dataset. Building an entry workflow entirely without its user, on the strength of a schema, is how you reach cutover with something correct and unusable.
+4. **The Finance entry interfaces are walked through with the Director of Finance before they are built,** using the synthetic dataset. Building an entry workflow entirely without its user, on the strength of a schema, is how you reach cutover with something correct and unusable. — **Satisfied 19 August 2026** for the surfaces the meeting covered; see the amendment at the end.
 
 **Consequences.**
 - Development is unblocked from Finance's timeline, which was the largest schedule risk in the programme.
@@ -481,6 +560,14 @@ Condition 3 required a 5–10 company real sample during the synthetic-data phas
   - batches reconcile to Finance's control totals one at a time, so a mismatch shows up on batch one instead of after the whole extract is in.
 
 **And the real load is now a phase with a name.** The roadmap splits cutover into **A13 · Financial history port** and **A14 · Go-live**. A13 is the single operation in which all of Finance's history — transactions, rounds, marks, LP cashflows, NAV, ownership — is loaded, reconciled and the synthetic dataset removed. **After A13 the platform is the system of record for financial data and there is no second import**: Affinity remains authoritative for company identity and pipeline and Visible for company-reported KPIs, both syncing nightly, while every new transaction, mark, round and LP cashflow is entered through the A7 and A8 interfaces. That is why those interfaces are built before the port rather than after it, and why the A6 generator is retired as part of A13 rather than left in a repository that now touches real money.
+
+**Amendment, 19 August 2026 — condition 4 is satisfied, and it produced more than a sign-off.**
+
+The walkthrough happened on 19 August 2026 with Pat McMullon (Director of Finance) and Funke Yusuf (Controller), against the synthetic dataset, on the A7 and A8 surfaces as built. **Condition 4 is recorded as met for those surfaces**, and action A-9 — which the build log has been carrying since 17 August — closes with it.
+
+**What it produced is the point.** The session did not confirm the interfaces; it generated thirty-six numbered requirements, seven of which name something the platform cannot currently express at all, and it is now three committed documents: `docs/finance-requirements-register.md`, `docs/finance-design-notes.md` and Track F in `docs/delivery-roadmap.md`. That is condition 4 working exactly as this ADR intended — the alternative was reaching cutover with an entry workflow that was correct against the schema and unusable against the job. Two of the findings were live defects rather than gaps: no interface writes `transaction.investment_round_id`, and the dashboard's 7 exited companies are a generator artefact.
+
+**What condition 4 does not yet cover.** The surfaces the meeting did not reach — net book value, debt instruments and the reconciliation screen — are not walked through, because they do not exist to walk through. Nineteen of the thirty-six requirements are blocked on a second meeting or on an artefact that has not been seen. Condition 4 should be re-read as satisfied *per surface*, not once and for the programme.
 
 ---
 
@@ -1342,6 +1429,34 @@ is reversed.
   `v_lp_capital_to_direct`, `v_mandate_completeness`, `company_current_asof` and
   the ADR-001 export adapter's round query now all honour it.
 
+**Amended 19 August 2026 by ADR-038 (Proposed, lands with F6). Additive; nothing
+in the mechanism changes.**
+
+- **A restatement and a late arrival are not the same event, and the version store
+  will say which.** This ADR flags an edit inside a frozen period as a
+  restatement, which is right for a corrected figure and wrong for a grant that
+  becomes known six months after the round — a real and expected case, and the one
+  Pat asked for by name. Both look identical in the change log today, and one of
+  them reads as an accusation. **The row's history was right; the label was
+  wrong.** `financial_row_version.change_kind` — `correction`, `new-information`,
+  `initial-load` — carries the distinction.
+- **Nullable, and NULL means unclassified.** Every row written before that
+  migration genuinely is, and backfilling a guess would be worse than the gap.
+- **`new-information` is offered only inside a frozen period.** Outside one there
+  is nothing to restate and the distinction is noise; offering it everywhere would
+  train people to pick one at random.
+
+**Amended 19 August 2026 by ADR-033 (Proposed, lands with F1). No mechanism
+change; recorded because it is the first write path that deliberately relies on
+this one.**
+
+- The `link-transactions` mutation writes nothing but a foreign key, and gets both
+  audit capture and restatement detection **for free** — the trigger fires on any
+  `UPDATE` to `transaction`, and `checkRestatement` keys on `txn_date`. Linking a
+  2024 cheque inside a frozen period demands a reason and is flagged, which is
+  correct: the link moves that round's `ourInvested` and can move leverage. Both
+  properties are asserted in the F1 tests rather than assumed.
+
 ---
 
 ## ADR-032 — Alert thresholds inherit from a fund-level policy; risk flags carry a controlled vocabulary; alerts can be acknowledged
@@ -1491,6 +1606,228 @@ decision, with its full effect enumerated.
 
 ---
 
+## ADR-033 — A round is an event in the company's life, participation is explicit, and the cheque-to-round link is writable from both surfaces
+
+**Status:** Proposed (19 August 2026). Raised at F0, lands with F1. Amends ADR-012.
+
+**Context.** The finance requirements meeting reached two conclusions that cannot both hold: *"a round cannot exist without at least one associated transaction from NBIF's perspective; however, rounds can also occur in which NBIF does not participate, and these still need to be recorded because they affect FMV and cap table ownership percentages."* A round we did not participate in **is** a round with no transaction.
+
+The resolution is a definition rather than an arbitration, and it does not need Finance to pick a side: **the round is an event in the company's life, not in ours.** A Series B happens whether or not we write a cheque. Once that is the definition, three of the four states are legal and the fourth is a data error:
+
+| State | Legal | Why |
+|---|---|---|
+| Transaction with no round | yes | A bridge note, a standalone convertible, a secondary purchase |
+| Round with no transaction | yes | A round we did not participate in, which still moves ownership and FMV |
+| Round we *did* participate in, with no transaction | **no** | This is the rule Pat was actually articulating |
+
+**The database cannot currently tell the third case from the second.** Both are a round row with nothing pointing at it, `ourInvested` reads $0 for both — and also for a cheque that exists but was never linked, and for a plain entry error. Four states, one representation.
+
+Worse, **no interface writes `transaction.investment_round_id` at all.** The Finance tab renders it read-only and points at the Deal Close tab; the Deal Close capture writes three tables and `transaction` is not one of them. Every link in the database today was written by the A6 generator.
+
+**Decision.**
+
+1. **`investment_round.nbif_participated` is three-state — `yes` / `no` / `unknown` — and defaults to `unknown`.** Not to either answer: a backfilled 2011 round genuinely may not know, and unknown is not a synonym for no. This is the convention the codebase has already reached twice — a null round total means "unknown" and is excluded from leverage rather than imputed, and a null co-investor amount means "the name is known and the figure is not". Absence must be *distinguishable from* rather than *conflated with* a real value.
+
+2. **The backfill reads evidence, never an assumption.** A round with a live linked transaction becomes `yes`. Everything else stays `unknown`.
+
+3. **`v_round_leverage` excludes rounds where participation is `no`.** Leverage measures capital attracted alongside our own money; a round we sat out contributes a round total with no matching cost and would inflate the ratio. No published figure moves on the day this lands, because every generated round carries a cheque and backfills to `yes` — **which is exactly why it goes in now.** The guard is installed before the data that would trip it exists, and it is asserted in a test rather than trusted, because the first non-participating round will arrive months from now with nobody watching.
+
+4. **`transaction.standalone_confirmed_at` / `_by` records that a null round link has been looked at.** Without it the reconciliation surface's unlinked-cheque check has no way to ever reach zero, because it cannot tell a cheque nobody has reviewed from one that correctly has no round.
+
+5. **The link is writable from both surfaces, through one deliberately narrow mutation.** `link-transactions` sets or clears `transaction.investment_round_id` and touches no other column on that table. The Deal Close form gets a *cheques in this round* section; the transaction form's round picker is enabled, with an explicit *No round — standalone* option.
+
+6. **That narrowness is what settles the permission question.** `investment_round` is captured by `vc`, `finance` and `admin`; `transaction` is `finance` and `admin` only. A deal lead attaching a cheque to a round is doing **reconciliation**, not restating Finance's figures — so `CAN_CAPTURE_ROUND` is the right gate for an operation that can move a foreign key and nothing else. Amount, date, type and currency stay behind `CAN_WRITE_FINANCIAL`.
+
+**Why not enforce an entry order.** The two records have different authors on different clocks. The deal lead holds closing documents at close; Finance books the wire when it clears; the two events are days or weeks apart in either direction. An order requirement — either one — guarantees that whoever gets there first is blocked, and the reliable outcome of blocking someone from recording a fact they hold is that the fact goes into a spreadsheet instead. That is the exact failure ADR-031 was written to prevent when it reversed the append-only rule.
+
+**Why not merge the two tables**, which is what FR-06 asked for. Merging would break the ADR-005 role split that A8 is built on and put Finance's cheque and the deal lead's round total behind one permission. **Merge the workflow, not the tables** — one capture flow that can create or link the cheque, plus an explicit Finance confirmation state on the round, which is precisely what Pat described when he said Finance "can then verify and confirm that the fields relevant to accounting are correct".
+
+**Consequences.**
+- ADR-012's read-only note on the round picker is superseded. That note reasoned that "which round a cheque belongs to is a deal capture decision, not a Finance correction." It is right about *authorship of the round* and wrong about *the link itself*: the link is a reconciliation between two records, and reconciliation is Finance's work as much as the deal lead's.
+- Two properties come for free and are asserted rather than assumed. The ADR-031 trigger captures a link change, because it fires on any `UPDATE` to `transaction` — linking is audited with an actor without a line of audit code. And restatement detection works, because `checkRestatement` keys on `txn_date`: linking a 2024 cheque inside a frozen period demands a reason, which is correct, since the link moves that round's `ourInvested` and can move leverage.
+- `unknown` becomes a reportable completeness gap, in the same way mandate coverage already is. It should be, rather than being quietly counted as either answer.
+
+---
+
+## ADR-034 — A valuation mark records the adjustment that produced it; the retention factor is the input and the absolute is the fact
+
+**Status:** Proposed (19 August 2026). Raised at F0, lands with F2. Amends ADR-007.
+
+**Context.** Finance asked to record FMV **adjustments against the last known value** rather than new absolute figures. The platform stores absolutes, and every metric, view, export and golden master reads them. `company_fmv_asof()` — which is the definition of NAV, and therefore of TVPI, RVPI and IRR — is a single query for the latest final mark.
+
+Switching to a pure delta chain would mean every read recomputes a running sum from the beginning of a company's life, and one corrected early row silently shifts every figure after it. That is a large change to the most load-bearing function in the system, in exchange for a data-entry convenience.
+
+**Decision. Adjustment in, absolute out, both persisted.** The ask is about how Finance *enters* a figure, not about what is stored, and both can be satisfied at once — the same move ADR-031 made when it dropped append-only entry without dropping the reproducibility guarantee underneath.
+
+A mark becomes an **event** carrying its cause, its basis, its input and its result: `adjustment_type`, `basis_mark_id`, `basis_fmv`, `retention_factor`, `adjustment_amount`, and `fmv` unchanged as the absolute result — **computed, never typed.** Everything that reads FMV today keeps working untouched. No metric moves, no golden master is recaptured, no board number changes as a consequence of the storage change, and that property is what makes this affordable rather than a rewrite.
+
+1. **The stored value is a factor, not a percentage, and the distinction is deliberate.** `0.7500` means the position is carried at 75% of its previous FMV — a 25% impairment. A factor has exactly one arithmetic meaning, `new = prior × factor`, and cannot be read backwards six months from now; a bare `75` can. **Store the factor, display the sentence:** the form shows *"Retain 75% of existing FMV — a 25% decrease"* and the resulting dollar figure before saving, because that is the language the review is conducted in.
+
+2. **`fmv` is never accepted from the client on the review path.** The server resolves the prior mark, writes the basis from it, and computes the result. A computed figure that the client can also supply is a computed figure that will eventually disagree with itself.
+
+3. **`basis_fmv` is stored rather than looked up.** If a 2019 mark is later corrected, every subsequent mark's arithmetic silently becomes wrong under a lookup and nothing says so. Storing the basis at write time turns that into a **detectable** condition — `basis_fmv` no longer matching its predecessor — which becomes a line on the reconciliation screen instead of a number nobody can explain.
+
+4. **The retention vocabulary lives in a reference table, not a CHECK constraint,** so Finance can add or retire an option through the Policies surface without a migration. The meeting's intent was a constrained list rather than free entry; what changes is who is able to change the list, not whether it is constrained. Validation is server-side against the active rows, not by the shape of a drop-down.
+
+5. **`impairment` and `hold` are one type, not two.** Once 100% is an option on the same drop-down, "we reviewed this and held it" and "we reviewed this and took 25% off" are the same action with different inputs — one type, one control, one row. This is a simplification the FR-18 answer bought rather than a shortcut: under a write-down reading, "no change" would have had no entry in the list at all and would have needed a mechanism of its own.
+
+6. **The same-date unique index is relaxed to one *review* mark per company per date.** The current index permits one final mark per company per effective date, which blocks two follow-ons on one day and blocks a transaction landing on 31 January. Everything other than a review may repeat: two cheques on one day are two facts, not a conflict. **And `company_fmv_asof`'s tiebreak is fixed in the same change** — it orders by `effective_date desc, booked_at desc`, and two marks written inside one database transaction can tie on `booked_at`, because the ordering was written when a tie was impossible. Adding `valuation_mark_id desc` is one line and it is load-bearing from the moment same-day marks are legal.
+
+7. **The free-entry path survives as `adjustment_type = 'manual'`**, still requiring a rationale — because A13 loads fifteen years of absolute marks through it, and because an escape hatch that exists is better than one that gets improvised.
+
+**What is deliberately not decided here.** The `transaction` and `round_reprice` types are declared in the vocabulary and written by nothing. Whether new money raises FMV by the cheque or reprices the whole position, whether an unpriced round can do anything at all, and whether a system-calculated adjustment is final without anyone clicking are Q-2, Q-3 and Q-4. **None of them changes the shape of a row** — they change which rows get written and by what process — which is why the storage lands now and the automation waits.
+
+**Consequences.**
+- ADR-007 is amended, not reversed. Entry by the Director of Finance is still the sign-off; what changes is what the entry screen asks for.
+- FMV becomes a downward ratchet between transactions: an impaired company that recovers stays impaired until a new round or investment reprices it. That is a defensible conservative position and is almost certainly intended, but it is stated here because it is the kind of rule that surprises someone two years later.
+- Impairment compounds — 50% then 50% leaves a position at 25% of where it started. That is the natural reading of "relative to its previous valuation"; Q-1 is a one-line confirmation, not a discussion.
+- There is no 0% option, so a position can be impaired to a quarter but not to nil except through the wind-down path. Whether Finance wants to mark a company worthless before it is formally wound up is Q-19.
+
+---
+
+## ADR-035 — Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag
+
+**Status:** Proposed (19 August 2026). Raised at F0, lands with F3.
+
+**Context.** `company_ownership` is dated, structured and correct in shape — and is written **only** by the Deal Close capture form, as part of capturing a round. There is no way to record an ownership change that is not attached to a round we captured, and Q-15 established that those changes are real and routine: an option pool expansion, a round we did not participate in, a secondary. Finance enters them **ad hoc, as word of the event reaches them.** No cadence, no reporting period, no batch.
+
+Separately, Pat asked for a configurable significant-influence threshold with automatic flagging and a report. 10% is the standard rule; board seats create acknowledged grey areas.
+
+**These two are one ADR because the second is worthless without the first.** A significant-influence flag derived from a stale ownership percentage is worse than no flag, because it looks authoritative.
+
+**Decision.**
+
+1. **`company_ownership` gains `change_reason` and an optional link to a causing round.** An ad-hoc adjustment that does not say what caused it is a number nobody can defend six months later, and this table feeds MOIC, the waterfall and — once the threshold lands — the accounting treatment of the company. The reason is required on the standalone path and not on the Deal Close path, because there **the round is the reason.**
+
+2. **The threshold lives in `fund_accounting_policy`, effective-dated, on the `fund_alert_policy` pattern.** Same shape and same argument: this drives financial-statement treatment, a prior period's classification has to stay reproducible, and a policy that silently rewrote itself would reclassify a company in a board pack that was issued before the change. Setting a threshold **supersedes** the current row rather than updating it.
+
+3. **The migration inserts no policy row.** The behaviour change lands when someone sets the threshold on the Policies screen, deliberately, and not as a side effect of running a migration. Migration 0005 followed the same rule for the alert policy and for the same reason.
+
+4. **`significant_influence_asof()` returns NULL, never false, when ownership is unrecorded.** "We hold no ownership figure for this company" and "this company is below the threshold" are different statements, and reporting the second when the first is true is how a company quietly drops off a schedule an auditor expects to find it on. This is D-5's rule — non-reporters are excluded, never counted as zeros — applied where the stakes are highest. NULL is also returned when no policy is in force, for the same reason.
+
+5. **Configuration moves out of the Alerts tab into a Policies tab**, with two role-gated sections: *Portfolio Alert Policies* for `vc` and `admin`, *Finance Policies* for `finance` and `admin`. A clean move, not a copy. This improves the tab it leaves: Alerts was deliberately built as the **working** view — the feed, the flags, the acknowledgements — and configuration sitting inside it was always slightly the wrong shape. It also gives the finance policies that will accumulate (retention options, NBV rules, exit vocabularies) somewhere to live that is not the Finance entry tab.
+
+6. **Standalone ownership entry is gated to `CAN_CAPTURE_ROUND`**, which is where the table is already permitted. Q-15's expectation is that Finance enters these and Finance already holds that capability; leaving the deal lead able to record a cap-table change they learn about first costs nothing.
+
+**Consequences.**
+- The significant-influence report groups companies with no ownership figure separately, under *ownership not recorded* — visible rather than silently absent, and actionable through the entry form on the same screen.
+- Until the board-seat override exists (Q-7) the report carries a note saying the flag is derived from ownership alone and that grey areas are known to exist. The override is additive to a flag that already works, so waiting costs no rework.
+- A company at exactly the threshold is flagged. The inclusive reading is what gets built and asserted; Pat confirms it rather than the code assuming it silently.
+
+---
+
+## ADR-036 — Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views
+
+**Status:** Proposed (19 August 2026). Raised at F0, lands with F4. Amends ADR-009.
+
+**Context.** The platform needs an Exited view, and the first design for it was wrong. It proposed that the platform hold its own exited state, reasoning that the Affinity sync never deletes, so a company removed from the active view would keep arriving every night. The premise was right and the conclusion did not follow: the sync's own rule — **membership from Status rather than from which saved view a row arrived in** — already handles this. A company arriving every night with Status `Exited` is not a problem to work around; it is the answer.
+
+**Decision. Two things that were conflated are separated, and neither owns the other.**
+
+| | What it is | Who owns it | Where it lives |
+|---|---|---|---|
+| **Roster status** | Is this a portfolio company or an exited one? | The VC team, in Affinity | `company_state`, dated, synced |
+| **Exit event** | We realized, or wrote off, this position on this date for this reason | Finance, in the platform | `company_exit` plus a `realization` / `write_off` transaction |
+
+1. **A company with Status `Portfolio` is a portfolio company, regardless of a zero FMV and regardless of a Portfolio Status of "Winding Down".** Those are different Affinity fields. It becomes an exited company when, and only when, its Affinity Status changes to `Exited`. **There is no platform-side membership state.**
+
+2. **They will usually agree, and they do not have to agree at every instant.** Finance may book a write-off in March; the roster status may not change until someone updates Affinity in June. Under a platform-side flag that lag would silently move a company out of the portfolio view. Under this model it is visible: the company sits in the Portfolio view carrying an exit event, which is exactly the sort of thing the reconciliation screen should list.
+
+3. **`roster_status` goes on `company_state`, the dated table, not on `company`.** "When did this company leave the portfolio" is a question the board asks, and it deserves an answer with a date on it.
+
+4. **The `exited` derivation carries a fallback, and the fallback is not a hedge.**
+   ```
+   exited = (roster_status = 'Exited')
+         or (roster_status is null and a company_exit row exists)
+   ```
+   `exited` is in the frozen ADR-001 contract and the golden masters assert against a fixture that has no Affinity roster status at all. The fallback preserves the fixture path and every golden master untouched while making Affinity authoritative wherever it actually speaks. It is the honest expression of two sources with different coverage.
+
+5. **F4 begins with a read-only probe, not a migration.** Status was profiled as 80/80 rows with one distinct value, always `Portfolio`, and was mapped as unused on that basis; the Exited view's companies were never in the extract. Before anything is written: pull the Status field's dropdown options from field configuration rather than observed values (ADR-009's own rule — options exist that no visible row has used), count entries by Status, and report how many carry `Exited`, whether any are already on the roster, and what their invested and FMV figures are. **If they bring new organisations onto the roster, the invested and FMV control totals move** — the same totals A6 reconciles to and A13 must tie to. Stop and decide with the numbers on the table.
+
+**Consequences.**
+- This follows the rule ADR-009 already sets and ADR-032 reaffirmed when the health-rating workflow was cut: Affinity is the system of record for company identity and status, the sync is one-way, and the platform does not build an edit box that would disagree with it. An exited flag maintained in two places would have the nightly sync silently winning the argument — the precise failure the health workflow was cancelled to avoid.
+- **The A6 generator has a defect this exposes.** It writes a `company_exit` row wherever Affinity's *lifecycle* status reads "Winding Down" — a different field entirely — so **the 7 exited companies on today's dashboard are a generator artefact**, and under this model every one of them is still a portfolio company. Correcting it moves a visible number on the dashboard. That is a correction rather than a regression, and it is merged deliberately with the before and after recorded, not discovered by someone in a meeting.
+- The exit-entry screen says on its face that recording an exit does not move the company between views. Otherwise the first person to use it will expect that it does.
+- `company_state` appends only on genuine change, so a status transition produces exactly one new row on the night it happens. That convergence property is re-verified after the sync widens: a second run must create zero new rows.
+
+---
+
+## ADR-037 — LP commitments are dated events; `committed` becomes derived
+
+**Status:** Proposed (19 August 2026). Raised at F0, lands with F5.
+
+**Context.** The LP model has three stages — commitment, drawdown, distribution — and two of them work. A drawdown is a `transaction` typed `capital_call`; a distribution is a `transaction` typed `distribution`. **The commitment is a scalar on the position**: `fund_investment.committed`, not dated, no source document, no way to record an increase as a fact.
+
+Q-16 confirmed the three-stage model and disposed of the figures that had muddied it. The word that settles the design is **adjustable**: a commitment is not fixed at subscription, so it cannot be a column.
+
+**Decision.**
+
+1. **`fund_commitment` holds the commitment as at a date — an absolute, not a delta.** Same reasoning as the valuation ledger: an absolute that can be read directly beats a chain that has to be replayed, and an increase is a new dated row rather than an arithmetic puzzle. `fund_committed_asof()` reads the latest row on or before a date.
+
+2. **Then the column is retired.** Backfill one row per position at inception, assert the total reconciles to the workbook's $8,725,000, run for one cycle with both in place and compared, and drop `fund_investment.committed`. **This pays down one of ADR-002's oldest debts** — the field inventory has listed `called` and `distributions` as "should be derived, MVP stores it separately" since A1, and this is the first of them to actually go.
+
+3. **The contract does not change.** `FundInvestment.committed` stays a `$M` scalar; the API derives it instead of reading a column. `packages/metrics/lp.ts` is untouched, and TVPI, DPI, RVPI and IRR do not move. That is the ADR-001 boundary doing what it exists to do.
+
+4. **The terminology rename changes the stored value, not just the label.** Funke's point stands on its own: from the fund manager's side a capital call is a demand for funds, while from ours the same event is a drawdown against a prior commitment. Renaming touches the `txn_lp_types` CHECK constraint, `TXN_TYPES`, `TXN_TYPE_LABELS`, the export adapter's cashflow-sign mapping, the fixture importer, the A6 LP generator and every test naming the string. **Doing it now costs an afternoon; doing it after A13 costs a data migration over fifteen years of history.**
+
+5. **A drawdown exceeding the commitment in force is accepted and flagged, never refused.** Same principle as a round total below our own cheque, and the same reasoning: it is a real state of real data, and the platform's job is to surface it rather than make it un-recordable.
+
+**Consequences.**
+- Unfunded becomes `committed_asof − called to date`, derived at every point in time rather than only now. A commitment raised mid-life leaves the prior level readable at its own date.
+- **This phase is gated on one email, not on the meeting.** Q-23 asks Funke for the exact words — "commitment drawdown", or just "drawdown". Do not guess: the whole value of renaming now is that it happens once.
+- NAV entry is unchanged and stays (Q-18, approved by Daniel). It informs LP TVPI, RVPI and IRR, and removing it would remove three metrics from a live screen rather than remove a field.
+
+---
+
+## ADR-038 — The version store distinguishes a correction from information arriving late
+
+**Status:** Proposed (19 August 2026). Raised at F0, lands with F6. Amends ADR-031.
+
+**Context.** ADR-031 makes every financial edit a versioned change with a reason, and an edit inside a frozen reporting period is flagged as a **restatement**. Pat's requirement is that a grant which becomes known six months after the round can be added to that round **without it being treated as a data correction error**.
+
+Under ADR-031 as built, both look identical in the change log, and one of them reads as an accusation. **The row's history was right; the label was wrong.**
+
+**Decision.**
+
+1. **`financial_row_version` gains `change_kind`** — `correction`, `new-information` or `initial-load`.
+
+2. **Nullable, and NULL means unclassified.** Every row written before the migration genuinely is unclassified, and backfilling a guess would be worse than the gap. Required on updates going forward.
+
+3. **`new-information` is selectable only where the row falls inside a frozen period.** Outside one there is nothing to restate and the distinction is noise; offering it everywhere would train people to pick one at random. The existing `ReasonField` component becomes reason plus kind.
+
+4. **The duplicate-round check is a warning with a mandatory acknowledgement, never a hard block.** Detect a same-company, same-normalised-label round; refuse the plain save; require a reason stored on the row. The codebase's own precedent is that a round total below our own cheque is *accepted and flagged, never refused*, because pushing someone into fudging a figure to get past a form is worse than the figure being wrong and visible. "Series A" and "Series A extension", and a second tranche of one raise, are all real.
+
+**Consequences.**
+- Q-9 — what counts as a duplicate — tightens the rule later without a rebuild. Built as a warning, it cannot be got wrong in a damaging way: too loose and it under-fires, too tight and it is clicked through.
+- The change log becomes readable by someone who was not there. A restatement of a wrong figure and a late-arriving grant stop looking like the same event, which is the whole of FR-14.
+
+---
+
+## ADR-039 — Total invested is pushed to Affinity at cutover and becomes read-only there; the pre-cutover figures are frozen before the first write
+
+**Status:** Proposed (19 August 2026). Raised and **half-executed** at F0 — the snapshot is taken now; the write happens at A13. Amends ADR-009.
+
+**Context.** ADR-009 states the Affinity rule categorically: **the platform never writes back.** ADR-011 makes the platform the registry for transaction records, and Pat's concern in the meeting was the obvious consequence — *"if transaction data lives in both this platform and Affinity, there is a risk of maintaining two sets of records that could diverge over time."* Affinity currently holds an independently maintained Total Investment Amount per company.
+
+Q-17 settles the sequence. Until cutover the platform **reads** the figure to calibrate the A6 generator. **At A13 the direction reverses in a single event:** the platform stops reading it, extracts total invested per company from the loaded transaction history, and pushes it to Affinity, where the field becomes read-only and is never edited by hand again. Ownership of the figure moves to Portfolio Command.
+
+**Decision.**
+
+1. **This is a real exception to ADR-009 and is recorded as one, in ADR-009 itself as well as here.** It is one field, one direction, one event, at cutover — not a two-way sync and not a feature the nightly job acquires. A reader who finds ADR-009 first must not come away with a rule that is no longer whole.
+
+2. **The pre-cutover figures are frozen before the first outbound write, and F0 is where that happens.** `company.affinity_total_investment` and `company.affinity_fmv` are simultaneously the A6 generator's reconciliation anchor, the agreed A13 control totals, and the fields the write will overwrite. **After the write, reconciling against them proves nothing** — the platform would be checking its arithmetic against its own output.
+
+3. **`affinity_control_snapshot` is written once and never again.** It stores the company name verbatim alongside the id, so a later rename in Affinity is visible rather than silently absorbed. **A13 ties to this table, not to the live column.**
+
+4. **It is taken now rather than at A13**, which is the whole point of raising this ADR at F0 rather than at cutover. A snapshot of a figure you are about to overwrite is worth nothing if it is remembered afterwards, and A13 is the phase with the least spare attention in the programme.
+
+**Consequences.**
+- The snapshot is insurance with a known expiry: it is the reconciliation baseline for exactly one event and is then a historical record. That is fine — it costs one table and 82 rows.
+- The platform's outbound surface is one field. If a second one is ever proposed, this ADR is the precedent to argue against rather than from: the case here rests on ADR-011 already making the platform the registry for *that specific figure*, and no other Affinity field has that property today.
+- ADR-020's note that Affinity's figures are "stored as labelled reference columns … never entering a calculation" survives up to cutover and then stops being true in one direction: after A13 the column is our output, and the platform must stop reading it. Both halves are recorded in ADR-009.
+
+---
+
 ## Decisions requiring the VC team lead
 
 **All settled as of 28 July 2026.** No architecture or data decision remains open.
@@ -1511,7 +1848,10 @@ decision, with its full effect enumerated.
 | A‑1 | Add women in C-suite and C-suite size to the Visible quarterly request | VC team |
 | A‑2 | Historical backfill: transactions, rounds, marks, ownership. Runs asynchronously; gates launch, not development (ADR-020) | Systems & Data Analyst + Finance |
 | ~~A‑8~~ | ~~Request a 5–10 company **real sample** with complete history~~ — **withdrawn 14 August 2026**, see the ADR-020 amendment | — |
-| A‑9 | Walk the transaction and mark entry workflow through with the Director of Finance before building it | Systems & Data Analyst |
+| ~~A‑9~~ | ~~Walk the transaction and mark entry workflow through with the Director of Finance before building it~~ — **closed 19 August 2026.** Held with Pat McMullon and Funke Yusuf against the synthetic dataset. Satisfies ADR-020 condition 4 for the A7 and A8 surfaces and produced the finance requirements register, the design notes and Track F. See the ADR-020 amendment. | — |
+| A‑10 | Second Finance meeting: the five question blocks in `docs/finance-design-notes.md`. Block 2 (net book value) is the one worth protecting. Blocks FR-17, FR-20, FR-22 to FR-26 and FR-31 | Systems & Data Analyst + Finance |
+| A‑11 | One email to Funke: the exact LP wording (Q-23). Gates F5 and nothing else | Systems & Data Analyst |
+| A‑12 | Obtain the pedal report file from Pat. The non-investment leverage fields cannot be designed without the format they have to produce | Finance |
 | A‑3 | Issue the staging templates to Finance and reconcile a first batch against agreed control totals | Systems & Data Analyst + Finance |
 | A‑4 | Build the company crosswalk — Finance name → Affinity organisation → internal company_id — before any transaction loads | Systems & Data Analyst |
 | A‑5 | Establish how far back *per-company* marks exist, as opposed to fund-level NAV only | Finance |

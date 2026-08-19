@@ -28,6 +28,70 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-19 · F0 · Finance groundwork — a fourth track, seven ADRs, and the snapshot that stops being possible later
+
+**A new track.** The finance requirements meeting with Pat McMullon and Funke Yusuf produced thirty-six numbered requirements, nineteen of which are blocked on a second meeting or on an artefact nobody has seen. **Seventeen are not**, and sixteen of the thirty-six need a schema change. That is the whole argument for Track F and for its position in the sequence: a schema change costs an afternoon against 284 synthetic transactions regenerable from a seed, and costs a data migration over fifteen years of history once A13 has run. **Track F is the work that has to happen while changing the schema is still free**, and it goes before A13.
+
+F0 is the phase that buys the options. Nothing in it changes a calculation, no metric moves, and no golden master was touched — 252 metrics tests, 95 API tests, 39 db tests and 63 functions tests all pass unchanged.
+
+### Built
+
+**The three finance documents are in `docs/`.** `finance-requirements-register.md` and `finance-design-notes.md` verbatim; the roadmap addendum merged into `docs/delivery-roadmap.md` as **Track F**, which is now a fourth track beside A, B and C. The roadmap goes to v2.2. Notes on the Stage 3 and Stage 4 headings say where Track F sits, the outbound Affinity write is an explicit A13 bullet, and Track F is added to the minimum launchable product with the order to cut in if it has to give — F6, then F3, then F4, because F0, F1, F2 and F5 are the four that touch the schema in ways A13 would make expensive.
+
+**Seven ADRs raised as Proposed, ADR-033 to ADR-039**, each moving to Accepted as its phase lands. An ADR written after the code is a summary; one written before it is a decision. The theses are in the Track F section of the roadmap and the records themselves are in `docs/architecture-decisions.md`.
+
+**Four existing ADRs amended in place**, which is the part worth insisting on. A reader who finds ADR-009 first must not come away with a rule that is no longer whole:
+
+| ADR | What changed |
+|---|---|
+| ADR-007 | The same-date mark index relaxes to one *review* mark per date; `company_fmv_asof` gains `valuation_mark_id desc` as a tiebreak. The FMV cadence, the carry-forward rule and the sign-off principle are untouched — only the entry screen changes |
+| ADR-009 | **Twice.** Roster status becomes a synced field (ADR-036), and the one-way rule gains its **first stated exception** at cutover (ADR-039) |
+| ADR-012 | The transaction's round link is a reconciliation rather than a capture, which is why `CAN_CAPTURE_ROUND` is the right gate for a mutation that can move a foreign key and nothing else |
+| ADR-031 | The version store will distinguish a correction from information arriving late (ADR-038) |
+
+**ADR-020 condition 4 is recorded as satisfied** for the A7 and A8 surfaces, and action **A-9 closes with it** after carrying since 17 August. Three new actions open in its place: the second Finance meeting (A-10), the Q-23 email to Funke (A-11), and the pedal report file (A-12). Condition 4 is re-read as satisfied *per surface* rather than once for the programme — net book value, debt instruments and the reconciliation screen have not been walked through because they do not exist to walk through.
+
+**Migration 0006 · `affinity_control_snapshot`, and the reason it could not wait.** `company.affinity_total_investment` and `company.affinity_fmv` are doing three jobs at once: the A6 generator's per-company reconciliation anchor, the agreed A13 control totals, and — per Q-17 — the fields the platform **overwrites with its own figure at cutover**. The third destroys the other two. After the outbound write, reconciling against those columns proves nothing; the platform would be checking its arithmetic against its own output and would agree with itself perfectly while being wrong.
+
+`npm run snapshot:affinity-controls` froze **82 companies, $47,216,678.00 invested and $42,030,272.00 FMV, to the cent**, asserted against the agreed totals before anything was written. It refuses on a second run rather than upserting, because a baseline that quietly restates itself is not a baseline.
+
+**Migration 0006 · `transaction.instrument_id`,** with the picker beside the vehicle picker on the Finance form, and the read path, write path, A6 generator and fixture importer all carrying it. 180 of 284 rows backfilled from the linked round; the other 104 left NULL and honest about it.
+
+**A test suite for both**, `packages/api/test/finance-groundwork.test.ts`, seven tests.
+
+### Changed
+
+- **`v_transaction_live` is deliberately not widened.** 0002 rewrote it with an explicit column list precisely so a later migration adding a column could not silently widen a view the ADR-001 export reads from. This is the first migration since to add one, and the Finance read path selects from `pc.transaction` directly. FR-25 is the change that will want it in the view.
+- **The A6 generator and the fixture importer resolve `instrument_id` in the INSERT** from the round the cheque is being linked to. Without this the F0 backfill would be silently undone by the next `npm run db:generate`, which deletes and reinserts the whole synthetic spine — and an exit criterion that holds until someone runs `db:reset` is not one.
+- `CLAUDE.md` non-negotiable 7 now states the ADR-039 exception, and the document table carries the two new finance documents.
+
+### Decided
+
+Three judgement calls the F0 spec did not anticipate. All three are recorded here because each one is a place a future reader would otherwise have to reverse-engineer an intention.
+
+**1. The version trigger is scoped off for the instrument backfill, and for one specific reason.** `zz_version_transaction` fires on every `UPDATE` and would have fired on all 180 backfilled rows. Writing 180 version rows describing a migration is arguably honest noise. **The problem is `new.row_updated_at := now_ts`**, which the trigger sets unconditionally: the Finance screen reads `row_updated_at > row_created_at` as "this row has been edited since it was entered" and draws a pill, so 180 transactions would claim permanently and on screen to have been edited by someone. Nobody edited them.
+
+That failure is not new. Migrations 0002 and 0003 both hit it and both fixed it the same way — flattening `row_updated_at = row_created_at` after their backfills, which 0003's comment says in as many words. Neither could reuse that fix here, because in both cases the trigger was not yet attached and the flattening `UPDATE` would itself fire it now. So the precedent the codebase has already set twice is honoured by scoping the trigger off to exactly that statement, inside the migration's own transaction, re-enabled immediately after.
+
+**The ADR-031 guarantee is not weakened, and the distinction is precise.** That guarantee is about financial *facts*: no dollar figure, date, subject or classification changes without an attributed, reconstructable version record. The backfill changes none of those. It copies a value already in the database, from a row the transaction already points at, into a column nothing reads, by a derivation reproducible from the schema alone. Verified after the fact: `financial_row_version` unchanged at 35 rows, and the only two transactions showing as edited are the two that were genuinely edited on 18 August.
+
+**2. `affinity_control_snapshot` carries no foreign key to `company`, overriding the F0 design note, which specified one.** `truncate pc.company cascade` truncates every table that references it and **fires no row-level trigger** — and the fixture importer issues exactly that statement over eight root tables on every `npm run import:fixture` and every round-trip test run. The FK would therefore have meant the frozen A13 anchor was destroyed, silently and completely, by a routine developer command, through the one door nobody would think to check. Found while writing the tests, not by reasoning about it.
+
+Dropping it is also the more honest model: this is a record of what *another system* said about a company at an instant, and its worth does not depend on the platform's current roster row still existing. That is already the reasoning behind storing `company_name` verbatim rather than joining for it. Referential integrity at write time is not lost either way — the populate script selects straight out of `pc.company` and cannot produce an id that was never there. A `before truncate` statement trigger closes the remaining door on the snapshot table itself.
+
+**3. `txn_instrument_direct_only`.** An LP capital call, distribution or fee bought no instrument. The form hides the picker, the write path gives Finance a readable message, and the constraint is what makes both true for a caller that is neither — which is the pattern `validateTransaction` already follows for the other four transaction constraints: Postgres enforces, TypeScript supplies the sentence a person can act on.
+
+### Outstanding
+
+- **`finance-current-state.md` was not supplied**, and the S-numbers cited throughout Track F — S-1, S-2, S-3, S-4, S-5, S-7, S-8, S-10 — have no committed document behind them. Track F's own repository-context list names it as the as-built baseline and asks that S-numbers be cited in commit messages, which cannot honestly be done until it lands. **This is the one F0 exit criterion not met**, and it is a missing input rather than undone work.
+- The equity-versus-loan categorisation (FR-25) waits on **Q-20**. SAFEs are neither straightforwardly, and a column encoding a guess about how NBIF's statements treat one is worse than no column. The instrument is captured; the bucket is not.
+- **A-11 · the Q-23 email to Funke** should go before F5 starts, and can go today. It gates F5 and nothing else in Track F. "Commitment drawdown", or just "drawdown" — the whole value of renaming now is that it happens once.
+- **A-10 · the second Finance meeting.** The agenda is the *Open questions* section of `docs/finance-design-notes.md`, grouped into five blocks each stating what it blocks. Block 2 — net book value — is the one worth protecting if the meeting runs short.
+- **A-12 · the pedal report file.** FR-13's non-investment leverage fields cannot be designed without the format they have to produce.
+- F1 will find the `investmentRoundId` note on the transaction form still pointing at the Deal Close tab, which is a dead end: that tab does not write the column either, and nothing in the platform does (S-1). The note is left in place and flagged in the code rather than removed, because F1 is the change that replaces it with a working picker.
+
+---
+
 ## 2026-08-18 · A9 · Alerts, health and watchlist — three surfaces, and one word in the spec that did not survive
 
 **The phase as written was "alert feed, health rating workflow, watchlist".** The feed existed and was frozen. The watchlist existed. **The health workflow should not be built at all**, and the reason is a decision already in the ADRs.
