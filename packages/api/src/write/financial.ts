@@ -83,6 +83,19 @@ export interface TransactionInput {
   fundInvestmentId?: string | null;
   investmentRoundId?: string | null;
   investmentVehicleId?: number | null;
+  /**
+   * F0. What this cheque bought — an instrument id, or null for unrecorded.
+   *
+   * NOT derived here from the linked round, even though migration 0006's
+   * backfill did exactly that. A backfill is a one-time interpretation of rows
+   * written before the column existed; this is a form, and a form that quietly
+   * fills a field the operator left blank is how "unrecorded" stops meaning
+   * anything. The two commonly differ in the cases Finance cares about — a
+   * round funded with a note alongside equity, a company holding both an equity
+   * position and a loan — which is the whole reason the column is on the
+   * transaction rather than read off the round.
+   */
+  instrumentId?: number | null;
   /** DOLLARS, as typed. Always positive; direction is implied by `txnType`. */
   amount: string;
   currency?: string;
@@ -153,7 +166,7 @@ export interface FinancialWriteResult {
 // constraint failed.
 
 /**
- * The four `transaction` check constraints, restated in TypeScript.
+ * The five `transaction` check constraints, restated in TypeScript.
  *
  * Postgres enforces these regardless; catching them here is about the message.
  * "txn_direct_types" tells a developer what happened. "A capital call belongs to
@@ -188,6 +201,11 @@ function validateTransaction(v: TransactionInput): void {
   }
   if (currency === 'CAD' && v.fxRateToCad) {
     throw new ValidationError('"fxRateToCad" must be empty for a CAD transaction.');
+  }
+  if (v.instrumentId && !hasCompany) {
+    throw new ValidationError(
+      `A ${v.txnType.replace('_', ' ')} is LP activity and did not buy an instrument; leave "instrumentId" empty.`,
+    );
   }
 }
 
@@ -325,6 +343,7 @@ async function writeTransaction(
     fund_investment_id: optional(v.fundInvestmentId),
     investment_round_id: v.investmentRoundId ? BigInt(v.investmentRoundId) : null,
     investment_vehicle_id: optional(v.investmentVehicleId),
+    instrument_id: optional(v.instrumentId),
     amount,
     currency,
     fx_rate_to_cad: optional(v.fxRateToCad),

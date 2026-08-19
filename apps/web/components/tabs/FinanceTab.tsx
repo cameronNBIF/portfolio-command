@@ -175,14 +175,24 @@ function RowActions({
  * A8's capture form needed the same list, so the reference route now exists and
  * this field can be what ADR-030 says it is.
  *
- * The round link stays read-only: which round a cheque belongs to is a deal
- * capture decision, not a Finance correction, and it is set on the Deal Close
- * tab.
+ * THE INSTRUMENT PICKER IS F0, and it sits beside the vehicle picker because it
+ * is the same kind of fact about the same cheque. It is NOT the round's
+ * instrument, though it usually matches — a round can be funded with a note
+ * alongside equity, and a company can hold both an equity position and an
+ * outstanding loan against it, which is the case Pat described when he said
+ * investments and loans are tracked separately on the balance sheet. Blank
+ * means unrecorded and is never filled in on the operator's behalf.
+ *
+ * The round link stays read-only for now, and F1 is the phase that changes
+ * that. The note below it is currently a dead end — it points at the Deal Close
+ * tab, which does not write this column either. Nothing does (finding S-1);
+ * every link in the database was written by the A6 generator.
  */
 const EMPTY_TXN: Draft = {
   txnDate: '', txnType: 'investment', companyId: '', fundInvestmentId: '',
   amount: '', currency: 'CAD', fxRateToCad: '', sourceDocument: '', note: '',
   investmentRoundId: '', investmentVehicleId: '', vehicleName: '',
+  instrumentId: '', instrumentName: '',
 };
 
 function TransactionsSurface({ db }: { db: PortfolioExport }) {
@@ -236,6 +246,10 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
           // Preserved, not edited. See the note on EMPTY_TXN.
           investmentRoundId: d['investmentRoundId'] || null,
           investmentVehicleId: d['investmentVehicleId'] ? Number(d['investmentVehicleId']) : null,
+          // Cleared alongside companyId when the type flips to LP activity, for
+          // the same reason and against the same constraint: a capital call
+          // bought no instrument.
+          instrumentId: isDirect && d['instrumentId'] ? Number(d['instrumentId']) : null,
         },
       });
       setEditing(null);
@@ -388,6 +402,29 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                 ))}
               </select>
             </Field>
+            {/* F0. Only on a direct cheque: an LP capital call or distribution
+                has no instrument, and offering the picker there would invite an
+                answer to a question that does not apply. */}
+            {isDirect && (
+              <Field
+                label="Instrument"
+                hint="What this cheque bought — not necessarily the round's instrument. Leave blank if unrecorded."
+              >
+                <select
+                  value={editing.draft['instrumentId'] ?? ''}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      draft: { ...editing.draft, instrumentId: e.target.value },
+                    })}
+                >
+                  <option value="">Not recorded</option>
+                  {(reference?.instruments ?? []).map((i) => (
+                    <option key={i.id} value={String(i.id)}>{i.name}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <Field label="Note">
               <input
                 type="text"
@@ -470,6 +507,8 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                             investmentRoundId: r.investmentRoundId ?? '',
                             investmentVehicleId: r.investmentVehicleId ? String(r.investmentVehicleId) : '',
                             vehicleName: r.vehicleName ?? '',
+                            instrumentId: r.instrumentId ? String(r.instrumentId) : '',
+                            instrumentName: r.instrumentName ?? '',
                           },
                         });
                       }}

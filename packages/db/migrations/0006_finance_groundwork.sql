@@ -69,7 +69,26 @@ create table affinity_control_snapshot (
   taken_at           timestamptz not null default now(),
   taken_by           uuid not null references pc.app_user,
 
-  company_id         text not null references pc.company,
+  -- NO FOREIGN KEY TO pc.company, and this is the one place the F0 design note
+  -- was overridden rather than followed.
+  --
+  -- `truncate pc.company cascade` truncates every table that references it, and
+  -- TRUNCATE does not fire the row-level guard below. The fixture importer
+  -- issues exactly that statement over eight root tables on every
+  -- `npm run import:fixture` and on every round-trip test run. An FK here would
+  -- therefore mean the frozen A13 anchor is destroyed, silently and completely,
+  -- by a routine developer command -- which is precisely the failure this table
+  -- exists to prevent, arriving through the one door nobody would think to
+  -- check.
+  --
+  -- Dropping it is also the more honest model. This is a record of what ANOTHER
+  -- SYSTEM said about a company at an instant, and its worth does not depend on
+  -- the platform's current roster row still existing. That is already the
+  -- reasoning behind storing `company_name` verbatim rather than joining for
+  -- it; the id follows the same rule. Referential integrity at write time is
+  -- not lost either way: the populate script selects straight out of
+  -- `pc.company` and cannot produce an id that was never there.
+  company_id         text not null,
   affinity_org_id    text,
 
   -- VERBATIM, and stored beside the id rather than joined to. A company
@@ -131,6 +150,14 @@ create trigger affinity_control_snapshot_immutable
   before update or delete on affinity_control_snapshot
   for each row execute function affinity_control_snapshot_is_immutable();
 
+-- AND TRUNCATE, which a row-level trigger does not see at all. A guarantee with
+-- one unguarded door is not a guarantee, and `truncate` is the door someone
+-- reaches for when they want the table empty in a hurry. Statement-level,
+-- because TRUNCATE has no rows to fire per.
+create trigger affinity_control_snapshot_no_truncate
+  before truncate on affinity_control_snapshot
+  for each statement execute function affinity_control_snapshot_is_immutable();
+
 -- ---------------------------------------------------------------------
 -- 2. WHAT THIS CHEQUE BOUGHT (part of S-5, ahead of FR-22 and FR-25)
 --
@@ -161,7 +188,14 @@ create trigger affinity_control_snapshot_immutable
 -- ---------------------------------------------------------------------
 
 alter table pc.transaction
-  add column instrument_id int references pc.ref_instrument;
+  add column instrument_id int references pc.ref_instrument,
+  -- An LP capital call, distribution or fee did not buy an instrument, and a
+  -- row claiming otherwise is not a judgement call anyone should get to make.
+  -- Written against `company_id` rather than against the four direct txn_types
+  -- because `txn_direct_types` already ties those two together, and restating
+  -- the type list here would be a second copy to keep in step.
+  add constraint txn_instrument_direct_only check (
+    instrument_id is null or company_id is not null);
 
 comment on column pc.transaction.instrument_id is
   'What this cheque bought. NOT the round''s instrument, though it usually matches: a round can be funded with a note alongside equity, and a company can hold both an equity position and an outstanding loan. NOT company.instrument_id either, which ADR-027 records as an independent headline fact rather than a derivation. NULL = unrecorded, never defaulted, on the ADR-030 precedent.';

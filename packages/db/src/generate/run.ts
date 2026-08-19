@@ -634,11 +634,23 @@ async function insertTxn(
   note: string | null,
   reverses?: number,
 ): Promise<number> {
+  // `instrument_id` is resolved in the INSERT rather than passed in, and it is
+  // the same rule migration 0006's backfill applied: the instrument of the
+  // round this cheque is linked to, where a link exists, and NULL otherwise.
+  //
+  // It is here rather than as a tenth argument because it is a derivation, not
+  // a decision the plan makes -- and because without it the F0 backfill would
+  // be silently undone by the next `npm run db:generate`, which deletes and
+  // reinserts the whole synthetic spine. An exit criterion that holds until
+  // someone runs `db:reset` is not one.
   const { rows } = await client.query<{ transaction_id: string }>(
     `insert into transaction
        (txn_date, txn_type, company_id, investment_round_id, investment_vehicle_id,
-        amount, currency, fx_rate_to_cad, note, entered_by, is_synthetic, reverses_transaction_id)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,$11)
+        amount, currency, fx_rate_to_cad, note, entered_by, is_synthetic, reverses_transaction_id,
+        instrument_id)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,$11,
+             (select r.instrument_id from investment_round r
+               where r.investment_round_id = $4))
      returning transaction_id`,
     [date, type, companyId, roundId, vehicleId, toDollars(amountCents), currency,
       fx === null ? null : fx.toFixed(8), note, SYSTEM_USER, reverses ?? null],

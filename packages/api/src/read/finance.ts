@@ -54,6 +54,13 @@ export interface TransactionRow {
   investmentRoundId: string | null;
   investmentVehicleId: number | null;
   vehicleName: string | null;
+  /**
+   * F0. What this cheque bought, as distinct from what the round was
+   * denominated in. Null is "unrecorded", never a default — the ADR-030
+   * precedent, and the same reading as `investmentVehicleId` above.
+   */
+  instrumentId: number | null;
+  instrumentName: string | null;
   sourceDocument: string | null;
   note: string | null;
   isSynthetic: boolean;
@@ -129,7 +136,8 @@ export async function readTransactions(
     fund_investment_id: string | null; fund_name: string | null;
     amount: string; currency: string; fx_rate_to_cad: string | null; amount_cad: string;
     investment_round_id: string | null; investment_vehicle_id: string | null;
-    vehicle_name: string | null; source_document: string | null; note: string | null;
+    vehicle_name: string | null; instrument_id: string | null; instrument_name: string | null;
+    source_document: string | null; note: string | null;
     is_synthetic: string; deleted_at: string | null; deleted_reason: string | null;
     entered_by_name: string | null; row_created_at: string; row_updated_at: string;
     edited: string;
@@ -150,6 +158,8 @@ export async function readTransactions(
            t.investment_round_id::text       as investment_round_id,
            t.investment_vehicle_id::text     as investment_vehicle_id,
            iv.name                           as vehicle_name,
+           t.instrument_id::text             as instrument_id,
+           ri.name                           as instrument_name,
            t.source_document,
            t.note,
            t.is_synthetic::text              as is_synthetic,
@@ -163,6 +173,7 @@ export async function readTransactions(
       left join pc.company c   on c.company_id = t.company_id
       left join pc.fund_investment fi on fi.fund_investment_id = t.fund_investment_id
       left join pc.ref_investment_vehicle iv on iv.investment_vehicle_id = t.investment_vehicle_id
+      left join pc.ref_instrument ri on ri.instrument_id = t.instrument_id
       left join pc.app_user u  on u.user_id = t.entered_by
      where ${where}
      order by t.txn_date desc, t.transaction_id desc
@@ -210,6 +221,8 @@ export async function readTransactions(
       investmentRoundId: r.investment_round_id,
       investmentVehicleId: r.investment_vehicle_id ? Number(r.investment_vehicle_id) : null,
       vehicleName: r.vehicle_name,
+      instrumentId: r.instrument_id ? Number(r.instrument_id) : null,
+      instrumentName: r.instrument_name,
       sourceDocument: r.source_document,
       note: r.note,
       isSynthetic: r.is_synthetic === 'true',

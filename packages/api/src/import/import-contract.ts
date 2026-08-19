@@ -326,10 +326,17 @@ export async function importContract(
       bump('investment_round');
       roundInvestedTotal += r.invested;
 
+      // `instrument_id` follows migration 0006's backfill rule exactly: the
+      // linked round's instrument, and nothing else. The contract does not carry
+      // a per-cheque instrument -- `rounds[].instrument` is the round's -- so
+      // this is a derivation from a link the importer is creating in the same
+      // breath, not an invented value. It resolves to NULL wherever the round's
+      // own instrument did not match `ref_instrument`, which is the ADR-026 rule
+      // holding: the importer never coerces to a nearest neighbour.
       await client.query(
         `insert into transaction (txn_date, txn_type, company_id, investment_round_id, amount,
-                                  is_synthetic, entered_by, batch_id, note)
-         values ($1,$2,$3,$4,$5,true,$6,$7,$8)`,
+                                  is_synthetic, entered_by, batch_id, note, instrument_id)
+         values ($1,$2,$3,$4,$5,true,$6,$7,$8,$9)`,
         [
           r.date,
           i === 0 ? 'investment' : 'follow_on',
@@ -339,6 +346,7 @@ export async function importContract(
           SYSTEM_USER_ID,
           batchId,
           `${r.label} cheque`,
+          instruments.get(r.instrument) ?? null,
         ],
       );
       bump('transaction');
