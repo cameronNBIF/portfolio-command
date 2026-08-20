@@ -104,11 +104,47 @@ export interface TransactionInput {
   note?: string | null;
 }
 
+/**
+ * The two adjustment types F2 builds a write path for (ADR-034).
+ *
+ * The other six -- `legacy`, `initial`, `transaction`, `round_reprice`,
+ * `realization`, `write_off` -- are declared in the schema's vocabulary and
+ * written by nothing. They are deliberately NOT in this union: a type the API
+ * accepts but has no branch for would be a type that silently falls through to
+ * whatever the last `else` happens to do.
+ */
+export type MarkAdjustmentType = 'review' | 'manual';
+
 export interface ValuationMarkInput {
   companyId: string;
   effectiveDate: string;
-  /** DOLLARS. Zero is legitimate -- it is how a write-off is marked. */
-  fmv: string;
+  /**
+   * ADR-034. What kind of mark this is. **Defaults to `manual`**, which is the
+   * free-entry absolute path that existed before F2 and that clause 7 keeps on
+   * purpose -- A13 loads fifteen years of absolute marks through it, and an
+   * escape hatch that exists is better than one that gets improvised.
+   */
+  adjustmentType?: MarkAdjustmentType;
+  /**
+   * DOLLARS. Zero is legitimate -- it is how a write-off is marked.
+   *
+   * REQUIRED on `manual` and REFUSED on `review`, rather than ignored there.
+   * On the review path the server computes it from the basis and the factor,
+   * and ADR-034 clause 2 is explicit about why the client may not also supply
+   * it: a computed figure the client can also send is one that will eventually
+   * disagree with itself, and the disagreement surfaces as a board number.
+   */
+  fmv?: string;
+  /**
+   * Required on `review`. The RETAINED proportion as a factor -- "0.7500" means
+   * the position is carried at 75% of its basis, a 25% impairment.
+   *
+   * Validated server-side against the ACTIVE rows of
+   * `ref_fmv_retention_option`, not by the shape of a drop-down: the list is
+   * editable through the Policies surface, so the question "is this a legal
+   * choice" only has an answer at write time and only the server can ask it.
+   */
+  retentionFactor?: string;
   valuationMethodId?: number | null;
   methodLabel: string;
   /** Required by the schema and by the ADR-007 sign-off. Not a formality. */
@@ -157,6 +193,19 @@ export interface FinancialWriteResult {
   id: string;
   /** True when the change moved a figure inside an already-issued period. */
   restated: boolean;
+  /**
+   * ADR-034. On a review, what the server actually computed and stored, echoed
+   * back so the screen reports the figure that landed rather than the one it
+   * predicted. The two agree; showing the stored one is what makes that
+   * checkable rather than assumed.
+   */
+  mark?: {
+    fmv: string;
+    basisFmv: string;
+    /** Null when the basis was cost rather than an earlier mark (ADR-007). */
+    basisMarkId: string | null;
+    retentionFactor: string;
+  };
 }
 
 // --- validation -------------------------------------------------------------
@@ -372,6 +421,101 @@ async function writeTransaction(
   return { id: String(row.transaction_id), restated };
 }
 
+/**
+ * The carrying value a review is applied to, and the mark it came from.
+ *
+ * THIS IS `company_fmv_asof` RESTATED IN TYPESCRIPT, and the duplication is
+ * deliberate rather than an oversight: the function returns a number and this
+ * needs the mark's IDENTITY as well, because `basis_mark_id` is half of what
+ * ADR-034 clause 3 stores. The ordering below is the function's, term for term
+ * -- INCLUDING the `valuation_mark_id desc` tiebreak migration 0009 added -- so
+ * that the basis a review records and the FMV every metric reads can never be
+ * two different marks.
+ *
+ * THE COST FALLBACK IS NOT AN EDGE CASE. ADR-007 holds a company with no mark
+ * at cost, so cost IS its carrying value, and the first review of a company
+ * between its first cheque and its first formal mark is an ordinary thing to
+ * run. It returns a basis with no basis row, which the schema permits
+ * explicitly.
+ *
+ * `p_as_of` is the NEW mark's effective date, not today: a review dated 31
+ * January is applied to what the position was worth on 31 January, and running
+ * the exercise in March must not silently pick up a February mark.
+ */
+async function resolveBasis(
+  trx: Kysely<DB>,
+  companyId: string,
+  effectiveDate: string,
+  excludeMarkId: string | null,
+): Promise<{ basisMarkId: string | null; basisFmv: string }> {
+  const { rows } = await sql<{ id: string; fmv: string }>`
+    select vm.valuation_mark_id::text as id, vm.fmv::text as fmv
+      from pc.valuation_mark vm
+     where vm.company_id = ${companyId}
+       and vm.status = 'final'
+       and vm.deleted_at is null
+       and vm.effective_date <= ${effectiveDate}::date
+       and (${excludeMarkId}::bigint is null or vm.valuation_mark_id <> ${excludeMarkId}::bigint)
+     order by vm.effective_date desc, vm.booked_at desc, vm.valuation_mark_id desc
+     limit 1
+  `.execute(trx);
+
+  if (rows.length > 0) {
+    return { basisMarkId: rows[0]!.id, basisFmv: rows[0]!.fmv };
+  }
+
+  const { rows: cost } = await sql<{ cost: string }>`
+    select coalesce(sum(t.amount_cad), 0)::numeric(18,2)::text as cost
+      from pc.v_transaction_live t
+     where t.company_id = ${companyId}
+       and t.txn_type in ('investment','follow_on')
+       and t.txn_date <= ${effectiveDate}::date
+  `.execute(trx);
+
+  return { basisMarkId: null, basisFmv: cost[0]?.cost ?? '0.00' };
+}
+
+/**
+ * The retention factor, checked against the list as it stands right now.
+ *
+ * AGAINST THE ACTIVE ROWS, NOT A CONSTANT. `ref_fmv_retention_option` is a
+ * table precisely so Finance can add or retire an option without a migration
+ * (ADR-034 clause 4), which means a hardcoded list here would be wrong the
+ * first time they use that ability -- and wrong in the direction that refuses
+ * a choice the platform itself offered.
+ *
+ * Marks already written under a since-retired factor are untouched: there is no
+ * foreign key, and reconstructing an issued board pack must not depend on the
+ * option list still containing what it contained then.
+ */
+async function validateRetentionFactor(trx: Kysely<DB>, value: unknown): Promise<string> {
+  if (typeof value !== 'string' || !/^\d(\.\d{1,4})?$/.test(value)) {
+    throw new ValidationError(
+      '"retentionFactor" must be the retained proportion as a decimal factor — "0.75" means the position is carried at 75% of its previous value, a 25% impairment. Got ' +
+        `${JSON.stringify(value)}.`,
+    );
+  }
+
+  const { rows } = await sql<{ factor: string; label: string }>`
+    select factor::text as factor, label
+      from pc.ref_fmv_retention_option
+     where is_active
+     order by sort_order, fmv_retention_option_id
+  `.execute(trx);
+
+  const match = rows.find((r) => Number(r.factor) === Number(value));
+  if (!match) {
+    throw new ValidationError(
+      `"${value}" is not one of the retention options Finance has approved. ` +
+        `The active list is: ${rows.map((r) => r.factor).join(', ')}. ` +
+        'Options are maintained on the Policies surface, not in code.',
+    );
+  }
+  // Normalised to the stored scale so the row matches the reference row it was
+  // chosen from, rather than carrying whatever precision the client sent.
+  return match.factor;
+}
+
 async function writeValuationMark(
   trx: Kysely<DB>,
   principal: Principal,
@@ -380,41 +524,128 @@ async function writeValuationMark(
 ): Promise<FinancialWriteResult> {
   const v = m.values;
   const effectiveDate = date(v.effectiveDate, 'effectiveDate');
-  // Zero is allowed: a mark of nil is how a write-off is recorded (ADR-007).
-  const fmv = money(v.fmv, 'fmv', true);
   const rationale = text(v.rationale, 'rationale');
   const methodLabel = text(v.methodLabel, 'methodLabel');
   const companyId = text(v.companyId, 'companyId');
+
+  /**
+   * ADR-034 clause 7. Absent means `manual`, the free-entry absolute path that
+   * existed before F2 -- so every existing caller, the fixture importer and
+   * A13's backfill included, keeps working without naming a type.
+   */
+  const adjustmentType: MarkAdjustmentType = v.adjustmentType ?? 'manual';
+  if (adjustmentType !== 'review' && adjustmentType !== 'manual') {
+    throw new ValidationError(
+      `"adjustmentType" must be "review" or "manual". The other values in the schema's vocabulary — initial, transaction, round_reprice, realization, write_off — are declared for later phases and no write path produces them yet.`,
+    );
+  }
+  const isReview = adjustmentType === 'review';
 
   const dates: (string | null)[] = [effectiveDate];
   if (m.op === 'update') dates.push(await existingDate(trx, 'valuation_mark', m.id));
   const restated = await checkRestatement(trx, dates, reason, 'valuation mark');
 
-  // The schema allows one final mark per company per date. Caught here so the
-  // message names the clash rather than the index.
-  const { rows: clash } = await sql<{ id: string }>`
-    select valuation_mark_id::text as id
-      from pc.valuation_mark
-     where company_id = ${companyId} and effective_date = ${effectiveDate}::date
-       and status = 'final' and deleted_at is null
-       and (${m.op === 'update' ? m.id : null}::bigint is null
-            or valuation_mark_id <> ${m.op === 'update' ? m.id : null}::bigint)
-  `.execute(trx);
-  if (clash.length > 0) {
-    throw new ValidationError(
-      `${companyId} already has a final mark at ${effectiveDate}. Edit that mark rather than adding a second one.`,
+  /**
+   * Migration 0009 constrains ONE REVIEW per company per date; everything else
+   * may repeat, because two cheques on one day are two facts (S-3). Caught here
+   * so the message names the clash rather than the index.
+   *
+   * The predicate matches the index term for term, `adjustment_type` and
+   * `deleted_at` included. When the two disagree the user gets a constraint
+   * error they cannot act on -- which is exactly what the pre-F2 pair did,
+   * since the old index did not exclude soft-deleted rows and this check did.
+   */
+  if (isReview) {
+    const { rows: clash } = await sql<{ id: string }>`
+      select valuation_mark_id::text as id
+        from pc.valuation_mark
+       where company_id = ${companyId} and effective_date = ${effectiveDate}::date
+         and status = 'final' and adjustment_type = 'review' and deleted_at is null
+         and (${m.op === 'update' ? m.id : null}::bigint is null
+              or valuation_mark_id <> ${m.op === 'update' ? m.id : null}::bigint)
+    `.execute(trx);
+    if (clash.length > 0) {
+      throw new ValidationError(
+        `${companyId} has already been reviewed at ${effectiveDate}. Edit that review rather than adding a second one — a review is the semi-annual exercise, and it happens once per company per cycle.`,
+      );
+    }
+  }
+
+  /**
+   * THE REVIEW PATH. The server resolves the basis, stores it, and computes the
+   * result; the client supplies the factor and nothing else about the figure.
+   *
+   * `fmv` IS REFUSED RATHER THAN IGNORED (ADR-034 clause 2). Silently
+   * discarding it would let a client believe it had set a figure that the
+   * server overwrote, and the disagreement would surface much later as a board
+   * number nobody could account for. Refusing makes the contract legible at the
+   * point of the mistake.
+   */
+  let fmv: string;
+  let basisMarkId: string | null = null;
+  let basisFmv: string | null = null;
+  let retentionFactor: string | null = null;
+
+  if (isReview) {
+    if (v.fmv !== undefined && v.fmv !== null && v.fmv !== '') {
+      throw new ValidationError(
+        'A review computes its own FMV from the previous value and the retention factor, so "fmv" must not be sent with it. Use adjustmentType "manual" to enter an absolute figure directly.',
+      );
+    }
+    retentionFactor = await validateRetentionFactor(trx, v.retentionFactor);
+
+    const basis = await resolveBasis(
+      trx,
+      companyId,
+      effectiveDate,
+      m.op === 'update' ? m.id : null,
     );
+    basisMarkId = basis.basisMarkId;
+    basisFmv = basis.basisFmv;
+
+    /**
+     * The arithmetic, in `numeric` rather than in JavaScript.
+     *
+     * ADR-008 keeps money as strings end to end precisely so it never becomes a
+     * double, and `basis x factor` is the one place in this module that has to
+     * multiply two of them. Doing it in Postgres keeps the value exact and
+     * rounds it the same way every other stored figure is rounded; doing it
+     * here would put a float in the middle of the only computed board number in
+     * the schema.
+     */
+    const { rows: computed } = await sql<{ fmv: string }>`
+      select round(${basisFmv}::numeric * ${retentionFactor}::numeric, 2)::text as fmv
+    `.execute(trx);
+    fmv = computed[0]!.fmv;
+  } else {
+    if (v.retentionFactor !== undefined && v.retentionFactor !== null && v.retentionFactor !== '') {
+      throw new ValidationError(
+        'A retention factor only means something on a review, where it is applied to the previous value. Set "adjustmentType" to "review", or leave the factor out.',
+      );
+    }
+    // Zero is allowed: a mark of nil is how a write-off is recorded (ADR-007).
+    fmv = money(v.fmv, 'fmv', true);
   }
 
   const cols = {
     company_id: companyId,
     effective_date: effectiveDate,
     fmv,
+    adjustment_type: adjustmentType,
+    basis_mark_id: basisMarkId === null ? null : BigInt(basisMarkId),
+    basis_fmv: basisFmv,
+    retention_factor: retentionFactor,
     valuation_method_id: optional(v.valuationMethodId),
     method_label: methodLabel,
     rationale,
     source_document: optional(v.sourceDocument),
   };
+
+  // Echoed back only on a review, because it is only there that the stored
+  // figure is one the caller did not send and therefore cannot assume.
+  const mark = isReview
+    ? { fmv, basisFmv: basisFmv!, basisMarkId, retentionFactor: retentionFactor! }
+    : undefined;
 
   if (m.op === 'create') {
     const row = await trx
@@ -428,7 +659,7 @@ async function writeValuationMark(
       } as never)
       .returning('valuation_mark_id')
       .executeTakeFirstOrThrow();
-    return { id: String(row.valuation_mark_id), restated };
+    return { id: String(row.valuation_mark_id), restated, ...(mark ? { mark } : {}) };
   }
 
   const row = await trx
@@ -438,7 +669,7 @@ async function writeValuationMark(
     .returning('valuation_mark_id')
     .executeTakeFirst();
   if (!row) throw new ValidationError(`No valuation mark with id ${m.id}.`);
-  return { id: String(row.valuation_mark_id), restated };
+  return { id: String(row.valuation_mark_id), restated, ...(mark ? { mark } : {}) };
 }
 
 async function writeLpNav(

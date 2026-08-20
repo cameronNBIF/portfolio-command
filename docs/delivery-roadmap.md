@@ -334,6 +334,12 @@ The storage model is robust to every answer available, and the manual review pat
 
 **Exit:** Finance can run a review from a screen that shows them everything they would otherwise look up. Every stored FMV is still an absolute, every existing metric reads it unchanged, and no board number has moved. **Size: L** — the largest phase in Track F, and the one with the most direct daily value to Finance.
 
+**Done, 20 August 2026** — see the F2 entry in `BUILD-LOG.md`. Migration 0009 labelled all 1,016 existing marks `legacy` and moved not one figure; portfolio FMV still reconciles to the frozen Affinity control total of **$42,030,272.00 to the cent**. 252 golden masters, 39 db tests and 63 functions tests pass unchanged; the API suite goes from 111 to 128.
+
+**Two things the spec did not settle, both decided and recorded.** A review may be applied to **cost** — ADR-007 holds an unmarked company there, so it is the carrying value, and refusing would send Finance to compute cost × 0.75 by hand and enter it as an absolute, which is the re-entry FR-19 exists to remove. And the same-date index gained `deleted_at is null` while it was being rewritten: the 0001 version did not exclude soft-deleted rows while the application check did, so deleting a mark and entering another at the same date passed validation and then failed on a constraint the operator could not see.
+
+**Q-1 stops being a reading and becomes a test.** Successive 50% / 50% impairment landing at 25% of the original is now asserted rather than described as "almost certainly what is intended".
+
 #### F3 · Ownership maintenance, the Policies surface, and significant influence
 
 **Closes:** FR-36 (new, from Q-15) · FR-21 · Cameron's Policies-tab design. **Lands ADR-035.**
@@ -421,7 +427,7 @@ Raised as **Proposed** at F0; each moves to **Accepted** as its phase lands.
 | ADR | Thesis | Lands with |
 |---|---|---|
 | **ADR-033** ✅ | A round is an event in the company's life; participation is explicit, and the cheque-to-round link is writable from both surfaces through a narrow mutation. **Accepted 20 Aug 2026.** Clause 3 was amended on landing: the leverage guard had to go in the export as well as the view | F1 |
-| **ADR-034** | A valuation mark records the adjustment that produced it and stores the resulting absolute; the retention factor is the input and the absolute is the fact | F2 |
+| **ADR-034** ✅ | A valuation mark records the adjustment that produced it and stores the resulting absolute; the retention factor is the input and the absolute is the fact. **Accepted 20 Aug 2026.** Clause 3 gained the rule for a review applied to cost | F2 |
 | **ADR-035** | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag | F3 |
 | **ADR-036** | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views | F4 |
 | **ADR-037** | LP commitments are dated events and `committed` becomes derived | F5 |

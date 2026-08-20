@@ -12,6 +12,18 @@ export { periodOf, toCalendarLabel, type QuarterPeriod } from './periods.js';
 
 export { buildExport, resolveAsOf, type ExportOptions } from './read/export.js';
 export { readKpiCoverage, type KpiCoverageRow } from './read/kpi-coverage.js';
+
+// F2, FR-19. The FMV review workspace: a surface rather than a form. Reads
+// only -- the proposal panel waits on Q-2 to Q-4 (ADR-034).
+export {
+  readFmvReview,
+  readFmvReviewQueue,
+  type FmvReview,
+  type ReviewQueueRow,
+  type ReviewTransaction,
+  type ReviewRound,
+  type CurrentValuation,
+} from './read/fmv-review.js';
 export {
   readRounds,
   readCompanyCheques,
@@ -71,6 +83,7 @@ export {
   type FinancialWriteResult,
   type TransactionInput,
   type ValuationMarkInput,
+  type MarkAdjustmentType,
   type LpNavInput,
   type FundDistributionInput,
 } from './write/financial.js';

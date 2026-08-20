@@ -164,6 +164,7 @@ Every requirement below is traced to what was said, checked against what the pla
 **Said by:** Funke Yusuf, consensus reached. Key highlight 9, topic 11, next step 5.
 **Current state:** `valuation_mark.fmv` stores an **absolute** figure per company per effective date. Every metric, view, export and golden master reads absolutes.
 **Gap:** The ask is about **how Finance enters the figure**, and the answer should not be to change what is stored. See design note **D-3** for the recommended model: adjustment in, absolute out, both persisted.
+**Disposition:** **Storage half closed, F2 (20 Aug 2026).** Built as recommended and lands as ADR-034: a mark carries `adjustment_type`, `basis_mark_id`, `basis_fmv`, `retention_factor` and `adjustment_amount`, with `fmv` unchanged as the absolute result — computed server-side, never accepted from the client. Every existing metric reads FMV exactly as before. **The automation half is FR-17 and still waits on Q-2 to Q-4.**
 **Size:** L · **Schema:** Yes
 
 ### FR-17 · Transaction-driven FMV changes apply automatically
@@ -193,7 +194,7 @@ Two consequences follow, and both are good ones:
 
 **Cameron's alternative, and the recommendation.** Storing a **decimal factor** (1.00, 0.75, 0.50, 0.25) rather than a percentage is less ambiguous, and that is the right call for the *stored* value: a factor has one arithmetic meaning — `new FMV = prior FMV × factor` — and cannot be read backwards. The *interface* should still show the percentage with its consequence spelled out and the resulting dollar figure before saving, because that is the language Finance used in the meeting. **Store the factor, display the sentence.**
 
-**Disposition:** Build. No longer blocked.
+**Disposition:** **Closed, F2 (20 Aug 2026).** Built as Cameron's recommendation: the stored value is a decimal factor in `ref_fmv_retention_option` — a table rather than a CHECK, so Finance edits the list on the Policies surface (F3) instead of asking for a migration — and the interface shows the sentence and the resulting dollar figure before saving. `impairment` and `hold` are one type, as the FR-18 answer allows. **Q-19's 0% option is now a one-row insert rather than a schema change.** Compounding (Q-1) is asserted in the F2 suite.
 **Size:** M · **Schema:** Yes
 
 ### FR-19 · FMV review screen shows last value, its date, and everything since
@@ -201,7 +202,7 @@ Two consequences follow, and both are good ones:
 **Current state:** The mark entry form shows a company picker and empty fields. No context at all.
 **Gap:** Straightforwardly needed, and probably the single highest-value usability item in the whole register — it is the screen the semi-annual exercise actually runs on.
 **Extended by Cameron:** the surface should also show **the full history of previous FMV entries** — when each adjustment was made, by how much, and the reasoning — alongside the transactions and rounds. Every field this needs already exists: `valuation_mark` carries `effective_date`, `booked_at`, `method_label`, `prepared_by_label` and a **mandatory** `rationale`, and the ADR-031 version store holds the change history behind each row. Nothing new has to be captured to make this work; it has to be *shown*.
-**Disposition:** Build as a dedicated **FMV review workspace**, not a form: mark history with rationale and author, transactions and rounds since the last mark, and the retention control. The *proposed automatic adjustments* portion waits on Q-2 to Q-4; the rest does not.
+**Disposition:** **Read half closed, F2 (20 Aug 2026).** Built as a dedicated FMV Review surface on the Finance tab: a review-cycle queue that can be cleared, and per company the carrying value with its full provenance, the complete mark history with rationale and author, every transaction and round booked since the last mark's **effective** date, and the retention control showing the resulting figure before saving. Cheques name the round they funded, which F1 made possible. **The proposed-adjustments panel still waits on Q-2 to Q-4** — the workspace shows context, not proposals.
 **Size:** L, splittable · **Schema:** No
 
 ---

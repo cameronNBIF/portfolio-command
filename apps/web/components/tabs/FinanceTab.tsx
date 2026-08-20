@@ -53,17 +53,23 @@ import {
   fetchTransactions,
   money,
   mutate,
+  retentionSentence,
   type FinancialTableName,
 } from '../../lib/finance-api';
+import { FmvReviewSurface } from './FmvReviewSurface';
 // ADR-030's vehicle list, served by the A8 reference route. F1 adds the round
 // list the picker offers and the narrow mutation that writes the link.
 import { RoundsApiError, fetchReference, fetchRounds, linkTransactions } from '../../lib/rounds-api';
 
-type Surface = 'transactions' | 'marks' | 'lp';
+type Surface = 'transactions' | 'marks' | 'review' | 'lp';
 
 const SURFACES: { id: Surface; label: string }[] = [
   { id: 'transactions', label: 'Transactions' },
   { id: 'marks', label: 'Valuation Marks' },
+  // F2. The semi-annual exercise, run from a screen rather than beside one
+  // (FR-19). Beside the marks table rather than replacing it: this is the
+  // review path, that is the register.
+  { id: 'review', label: 'FMV Review' },
   { id: 'lp', label: 'LP Activity' },
 ];
 
@@ -90,6 +96,7 @@ export function FinanceTab({ db }: { db: PortfolioExport }) {
 
       {surface === 'transactions' && <TransactionsSurface db={db} />}
       {surface === 'marks' && <MarksSurface db={db} />}
+      {surface === 'review' && <FmvReviewSurface db={db} />}
       {surface === 'lp' && <LpSurface db={db} />}
     </>
   );
@@ -804,8 +811,13 @@ function MarksSurface({ db }: { db: PortfolioExport }) {
       <Notice text={notice} onDismiss={() => setNotice(null)} />
 
       <div className="hint" style={{ marginBottom: 10 }}>
-        Marks are effective 31 January and 31 July and are carried forward between exercises
-        (ADR-007). Entering a mark <b>is</b> the sign-off — your name is recorded as the preparer.
+        The register: every mark, however it was produced. Marks are effective 31 January and 31
+        July and are carried forward between exercises (ADR-007). Entering a mark <b>is</b> the
+        sign-off — your name is recorded as the preparer.
+        {' '}
+        <b>The semi-annual exercise is run on the FMV Review tab</b>, which computes the figure from
+        the previous value rather than asking for an absolute. Entry here is free-entry: historical
+        backfill and the exceptions that do not fit a retention factor (ADR-034 clause 7).
       </div>
 
       <div className="fbar">
@@ -904,6 +916,7 @@ function MarksSurface({ db }: { db: PortfolioExport }) {
                 <th>As at</th>
                 <th>Company</th>
                 <th className="num">FMV</th>
+                <th>Adjustment</th>
                 <th>Method</th>
                 <th>Prepared by</th>
                 <th>Flags</th>
@@ -919,6 +932,27 @@ function MarksSurface({ db }: { db: PortfolioExport }) {
                     <div className="hint">{r.rationale}</div>
                   </td>
                   <td className="num mono">{money(r.fmv)}</td>
+                  {/* F2, ADR-034. What produced the figure. `legacy` on
+                      everything written before the ledger existed, which is
+                      most of this table and honestly so. */}
+                  <td className="small">
+                    {r.adjustmentType === 'review' && r.retentionFactor ? (
+                      <>
+                        {retentionSentence(r.retentionFactor)}
+                        <div className="hint">on {money(r.basisFmv)}</div>
+                        {/* Clause 3, surfaced. The basis is stored rather than
+                            looked up so a later correction upstream becomes
+                            visible here instead of silently invalidating this
+                            row's arithmetic. Reported, never repaired — F6 owns
+                            the reconciliation. */}
+                        {r.basisFmvNow && r.basisFmvNow !== r.basisFmv && (
+                          <Pill tone="red">Basis since corrected</Pill>
+                        )}
+                      </>
+                    ) : (
+                      <span className="hint">{r.adjustmentType}</span>
+                    )}
+                  </td>
                   <td>{r.methodLabel}</td>
                   <td>{r.preparedByLabel}</td>
                   <td>

@@ -28,6 +28,68 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-20 · F2 · The valuation ledger — adjustment in, absolute out, and the first figure the platform computes
+
+**Closes S-3, the FR-16 storage half, FR-18 in full and the FR-19 read half. Lands ADR-034, amending ADR-007.** Migration 0009, a review path on `writeValuationMark`, a new read module, a fourth Finance surface, seventeen new tests. Track F's largest phase.
+
+**No board number moved.** All 1,016 existing marks keep their figure to the cent; portfolio FMV still reconciles to the frozen Affinity control total of **$42,030,272.00** exactly. 252 metrics golden masters, 39 db tests and 63 functions tests pass unchanged; the API suite goes from 111 to 128.
+
+### Built
+
+**Migration 0009 · a mark records the adjustment that produced it.** Finance asked to enter FMV as an adjustment against the last known value rather than as a new absolute. That is a question about **entry**, not storage, and both are satisfied at once — the same move ADR-031 made when it dropped append-only entry while keeping the reproducibility guarantee underneath. `valuation_mark` gains `adjustment_type`, `basis_mark_id`, `basis_fmv`, `retention_factor` and `adjustment_amount`; **`fmv` is unchanged and still the fact**, which is the property that made this affordable rather than a rewrite.
+
+**Why not the delta chain the request literally describes.** `company_fmv_asof()` is the definition of NAV, and therefore of TVPI, RVPI and IRR. Under a pure delta chain every read recomputes a running sum from the beginning of a company's life, and one corrected early row silently shifts every figure after it — a large change to the most load-bearing function in the system in exchange for a data-entry convenience.
+
+**`ref_fmv_retention_option`, a table rather than a CHECK.** The meeting's intent was a constrained list rather than free entry, and that is preserved; what changes is **who can change the list**. Seeded 1.00 / 0.75 / 0.50 / 0.25, and validated server-side against the *active* rows at write time — not by the shape of a drop-down, and not against a constant, which would be wrong the first time Finance used the ability the table exists to give them. **Q-19's 0% option is now a one-row insert rather than a migration**, which is most of the argument for the table.
+
+**A factor, not a percentage.** `0.7500` has exactly one arithmetic meaning and cannot be read backwards; `75` can, and the meeting itself proved how easily — FR-18 needed an explicit ruling that the number is *retained* value rather than the size of the write-down. **Store the factor, display the sentence:** the control reads *"Retain 75% of existing FMV — a 25% decrease"* and shows the resulting dollar figure before saving.
+
+**The review path, where the server computes and the client cannot.** It resolves the prior mark, stores the basis, and computes `fmv = round(basis × factor, 2)`. An `fmv` sent with a review is **refused rather than ignored** — silently discarding it would let a caller believe it had set a figure the server overwrote, and the disagreement would surface much later as a board number nobody could account for. The arithmetic runs in `numeric` inside Postgres rather than in JavaScript: ADR-008 keeps money as strings end to end so it never becomes a double, and this is the one place that has to multiply two of them.
+
+**The FMV review workspace**, a fourth Finance surface and the highest-value usability item in the register. A **review-cycle queue that can be cleared** — possible only because FR-18 made "reviewed, held" a positive entry at 100% rather than an absence — and per company: the carrying value with its full provenance, the complete mark history with rationale and author, and everything booked since the last mark. **Cheques name the round they funded, which is F1's payoff arriving on this screen.** Unpriced rounds say so in as many words, because a reviewer who can see that no post-money exists applies judgement, and one shown a confident number cannot.
+
+### Changed
+
+**S-3 · the same-date index now constrains one *review* per company per date.** It was written when a second mark on one date could only be a mistake; it blocked two follow-ons on one day and blocked a transaction landing on 31 January, which is itself a valuation date. Two cheques on one day are two facts, not a conflict.
+
+**And it gained `deleted_at is null`, which is a separate defect fixed while the statement was being rewritten anyway.** The 0001 index did not exclude soft-deleted rows while the application check in `writeValuationMark` did — so deleting a mark and entering another at the same date passed validation and then failed on a constraint the operator could not see, act on, or understand. `writeOwnership` already carries a comment about this exact hazard on `company_ownership`. The two now agree, and a test covers the sequence.
+
+**`company_fmv_asof` gained a deterministic tiebreak.** It ordered by `effective_date desc, booked_at desc` and stopped, because when it was written a tie was impossible — the old index guaranteed one final mark per date. **Both halves of that guarantee are now gone**: several marks may share a date, and `booked_at` defaults to `now()`, which is *transaction start time*, so two marks written inside one database transaction carry the identical timestamp. In the function that defines NAV, that is a board number that can differ between two runs over identical data — the exact failure ADR-021 removed from the as-of date, reappearing one row down. Checked before writing: zero ties exist today, so nothing moved.
+
+**The generator and the fixture importer label their marks `legacy`,** and the label is the honest one rather than a placeholder. `review` was the tempting choice — it would exercise F2's new columns in the demo — but a review stores a factor from a four-value list and an `fmv` computed from it, while the generated FMV path is calibrated per company to `affinity_fmv` to the cent. The ratio between consecutive generated marks is essentially never one of four exact factors, so labelling them `review` would assert a factor that did not produce them. `legacy` says what is true: these stand in for history the platform did not compute and A13 will replace.
+
+### Decided
+
+**1. A review may be applied to cost, and that changed the schema.** The first draft of 0009 made `basis_mark_id` and `basis_fmv` strictly co-null, which quietly made the first review of a never-marked company impossible. ADR-007 holds such a company **at cost**, so cost *is* its carrying value, and reviewing it is ordinary rather than exceptional — while refusing would send Finance to work out cost × 0.75 by hand and enter it as an absolute, which is precisely the re-entry FR-19 exists to remove. The constraint is now one-directional: a *named* basis must carry its value; a basis value with no row is a review against cost. Recorded in ADR-034 clause 3 rather than only here, because the asymmetry reads as an oversight to anyone meeting the schema cold.
+
+**Migration 0009 was corrected in place rather than followed by a fix-up migration.** It was uncommitted and unpushed, so this is amending a commit that has not left the machine, not editing history. The hand-rollback was verified rather than trusted: all nine migrations were replayed into a scratch database and its schema diffed against the development one. **Identical apart from `pg_dump`'s per-run nonce.**
+
+**2. Each type stores its input and never its derivation, and the database enforces it.** A review carries the factor and leaves `adjustment_amount` null, because the amount is exactly `fmv − basis_fmv` and storing it would be storing a sum (ADR-002). A transaction-driven mark, when Q-3 is answered, will do the reverse. Without the constraint the two columns drift into being filled in "for convenience", and the first disagreement between a stored derivation and its inputs is a board number nobody can reconcile.
+
+`fmv` itself is the one sanctioned exception, and ADR-034 is explicit about it: it was already the stored fact and keeping it that way — rather than moving to a delta chain — *is* the decision.
+
+**3. `adjustment_type` is a CHECK and the retention list is a table**, which looks inconsistent and is not. Every adjustment type names a distinct write path in application code, so a value nobody has written code for is a value nothing can produce — closed by construction. The retention options are a list Finance genuinely changes. Five of the eight types are declared and written by nothing: `transaction` and `round_reprice` wait on Q-2 to Q-4, `realization` on Q-12, `write_off` on F4. Declaring them costs nothing and means the vocabulary is not reopened by a migration for each.
+
+**4. The method string is pre-filled by the form, not generated by the server.** `method_label` is the verbatim string the ADR-001 contract carries (ADR-026), so the server inventing one would put an authored figure's description outside anyone's authorship. The control fills the sentence in and Finance can edit it — nobody types the same line eighty times a cycle, and the string is still theirs.
+
+### Verified
+
+Beyond the suite, one review was run end to end through the interface, at **100% retention** — chosen deliberately because it exercises the entire path (basis resolution, factor validation against the live table, server-side computation, storage, the queue clearing) while moving no figure at all.
+
+The stored row is exactly right: `adjustment_type = review`, `retention_factor = 1.0000`, `basis_fmv = 50000.00`, **`basis_mark_id` null** — the review-against-cost case the corrected constraint exists to allow — `adjustment_amount` null, `is_synthetic` false, and the preparer recorded as the person who entered it (ADR-007). Portfolio FMV after: **$42,030,272.00**, unchanged and still equal to the frozen Affinity control total.
+
+The interface reports the **stored** figure rather than its own preview, which is what makes "computed, never typed" checkable from the screen rather than taken on trust.
+
+### Outstanding
+
+- **FR-17, the automation half, is untouched and still blocked on Block 1** — Q-2 (does new money raise FMV by the cheque or reprice the position), Q-3 (how a round translates into FMV, and what an unpriced one does), Q-4 (whether a computed figure is final without anyone clicking). The storage is built and robust to every available answer; the workspace shows context, not proposals. **The proposal panel is what those answers buy.**
+- **FMV is a downward ratchet between transactions.** An impaired company that recovers stays impaired until a new round or investment reprices it. Defensible and almost certainly intended, and now stated on the review screen itself — it is the kind of rule that surprises someone two years later.
+- **Q-12** (what happens to FMV on an exit) still gates the `realization` type; **Q-19** (a 0% option) is now answerable without a migration.
+- **`ref_fmv_retention_option` has no editing UI until F3** builds the Policies surface. The table, the `is_active` retirement semantics and the server-side validation are all in place and tested; what is missing is the screen. Until then the list changes by SQL.
+- Unchanged and repeated because the list is the point: **A-11** the Q-23 email to Funke (gates F5), **A-10** the second Finance meeting — **Block 1 is now the most expensive thing on that agenda**, since it is all that stands between F2 and FR-17 — and **A-12** the pedal report file.
+
+---
+
 ## 2026-08-20 · F1 · The round–transaction link, explicit participation, and a guard that was pointing at the wrong target
 
 **Closes S-1 and S-2. Lands ADR-033, which moves to Accepted — with one clause amended on the way in.** Migration 0008, one new write module, both surfaces, sixteen new tests. **No board number moved**: 252 metrics golden masters, 39 db tests and 63 functions tests pass unchanged, and the API suite goes from 95 to 111.

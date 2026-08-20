@@ -610,6 +610,17 @@ export interface PipelineDealPassReason {
   synced_at: Generated<Timestamp>;
 }
 
+export interface RefFmvRetentionOption {
+  /**
+   * RETAINED value as a factor, not the size of the write-down. 0.7500 = the position is carried at 75% of its previous FMV, a 25% impairment. new_fmv = prior_fmv * factor.
+   */
+  factor: Numeric;
+  fmv_retention_option_id: Generated<number>;
+  is_active: Generated<boolean>;
+  label: string;
+  sort_order: Generated<number>;
+}
+
 export interface RefFunnelGroup {
   funnel_group_id: Generated<number>;
   is_terminal: Generated<boolean>;
@@ -778,6 +789,19 @@ export interface Transaction {
 }
 
 export interface ValuationMark {
+  /**
+   * The INPUT to a transaction-driven mark, when Q-3 is answered. NULL on every path F2 builds. Never populated for a review, where the amount is fmv - basis_fmv and storing it would be storing a sum (ADR-002).
+   */
+  adjustment_amount: Numeric | null;
+  /**
+   * ADR-034. What caused this mark. `review` and `manual` are the two paths F2 builds; `legacy` labels every row that predates F2. The rest are declared and written by nothing -- `transaction` and `round_reprice` wait on Q-2/Q-3/Q-4, `realization` on Q-12, `write_off` on F4. They are in the vocabulary now because none of those answers changes the shape of a row, only which rows get written.
+   */
+  adjustment_type: Generated<string>;
+  /**
+   * ADR-034 clause 3. The basis mark's FMV AT THE TIME THIS ROW WAS WRITTEN, stored rather than looked up. A later correction to an earlier mark therefore becomes a detectable inconsistency -- this value no longer matching its predecessor -- rather than silently invalidating every mark downstream. F6 reports the mismatch.
+   */
+  basis_fmv: Numeric | null;
+  basis_mark_id: Int8 | null;
   booked_at: Generated<Timestamp>;
   company_id: string;
   currency: Generated<string>;
@@ -797,6 +821,10 @@ export interface ValuationMark {
    * Not optional. This is what a board or auditor reads when they challenge a number.
    */
   rationale: string;
+  /**
+   * RETAINED value. 0.7500 = carried at 75% of the basis, a 25% impairment. The INPUT to a review; `fmv` is the result and is computed server-side, never accepted from the client (ADR-034 clause 2).
+   */
+  retention_factor: Numeric | null;
   row_created_at: Generated<Timestamp>;
   row_updated_at: Generated<Timestamp>;
   source_document: string | null;
@@ -1037,6 +1065,7 @@ export interface DB {
   pipeline_deal: PipelineDeal;
   pipeline_deal_owner: PipelineDealOwner;
   pipeline_deal_pass_reason: PipelineDealPassReason;
+  ref_fmv_retention_option: RefFmvRetentionOption;
   ref_funnel_group: RefFunnelGroup;
   ref_funnel_stage: RefFunnelStage;
   ref_instrument: RefInstrument;
