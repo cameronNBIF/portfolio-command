@@ -263,18 +263,33 @@ rule that is no longer whole.**
   It lands on `company_state`, the dated table, and is distinct from
   `lifecycle_status` — Affinity's separate Portfolio Status field, whose values
   include "Winding Down", which does **not** move a company out of the portfolio.
-- **The one-way rule gains its first exception, at cutover only (ADR-039,
-  Proposed, lands with A13).** This ADR says "the platform never writes back",
-  and at A13 it writes back exactly once: calculated total invested per company
-  is pushed to Affinity, the field becomes read-only there, and the platform
-  stops reading it. One field, one direction, one event — not a two-way sync, and
-  not something the nightly job acquires. It is defensible only because ADR-011
-  already makes the platform the registry for that specific figure, and no other
-  Affinity field has that property. **The pre-cutover values of
-  `affinity_total_investment` and `affinity_fmv` are frozen in
-  `affinity_control_snapshot` before the first write** (taken at F0, 19 August
-  2026), because after the write, reconciling against them would be checking our
-  arithmetic against our own output.
+- **A first exception to the one-way rule is PROPOSED, and it is not scheduled
+  (ADR-039 clause B, amended 20 August 2026).** This ADR says "the platform never
+  writes back". The proposal is that it writes back exactly once, for exactly one
+  field: calculated total invested per company is pushed to Affinity, the field
+  becomes read-only there, and the platform stops reading it. One field, one
+  direction, one event — not a two-way sync, and not something the nightly job
+  acquires. It is defensible only because ADR-011 already makes the platform the
+  registry for that specific figure, and no other Affinity field has that
+  property.
+
+  **Until it is separately accepted, this rule holds in full and nothing writes
+  to Affinity.** It was originally sequenced into A13 and has been taken back
+  out: the push needs total invested extracted from live history that Finance has
+  verified, which is an *output* of A13 rather than a step within it. There is no
+  date, and there will not be one until the platform's own figures are
+  trustworthy. The `Total Investment Amount` and FMV columns continue to sync
+  **inbound only**, and the A6 generator continues to calibrate against them
+  (ADR-020, ADR-030).
+
+- **Separately and already executed: the agreed control totals are frozen
+  (ADR-039 clause A, 19 August 2026).** `affinity_control_snapshot` holds
+  `affinity_total_investment` and `affinity_fmv` as they stood at F0, 82
+  companies to the cent. That is an **A13 reconciliation artefact in its own
+  right**, not merely insurance against the write above: the columns are synced
+  nightly and demonstrably volatile, the control totals were agreed at an
+  instant, and without a frozen copy a reconciliation failure at A13 cannot be
+  told apart from Affinity having moved.
 
 ---
 
@@ -1803,9 +1818,14 @@ Under ADR-031 as built, both look identical in the change log, and one of them r
 
 ---
 
-## ADR-039 — Total invested is pushed to Affinity at cutover and becomes read-only there; the pre-cutover figures are frozen before the first write
+## ADR-039 — The agreed Affinity control totals are frozen at F0; total invested is pushed back to Affinity only once the platform's own figures are trustworthy
 
-**Status:** Proposed (19 August 2026). Raised and **half-executed** at F0 — the snapshot is taken now; the write happens at A13. Amends ADR-009.
+**Status:** **Split, and the two halves now have different statuses** — see the amendment of 20 August 2026 at the end, which is the current authority on both.
+
+- **Clause A, the frozen baseline: Accepted and executed, 19 August 2026.** `affinity_control_snapshot` holds 82 companies at $47,216,678.00 invested and $42,030,272.00 FMV.
+- **Clause B, the outbound write: Proposed, and deliberately undated.** It is **not** part of A13. Amends ADR-009 when it lands, and not before.
+
+*The original title read "Total invested is pushed to Affinity at cutover and becomes read-only there; the pre-cutover figures are frozen before the first write." It is restated above because the sequencing in it is wrong — see the amendment.*
 
 **Context.** ADR-009 states the Affinity rule categorically: **the platform never writes back.** ADR-011 makes the platform the registry for transaction records, and Pat's concern in the meeting was the obvious consequence — *"if transaction data lives in both this platform and Affinity, there is a risk of maintaining two sets of records that could diverge over time."* Affinity currently holds an independently maintained Total Investment Amount per company.
 
@@ -1825,6 +1845,33 @@ Q-17 settles the sequence. Until cutover the platform **reads** the figure to ca
 - The snapshot is insurance with a known expiry: it is the reconciliation baseline for exactly one event and is then a historical record. That is fine — it costs one table and 82 rows.
 - The platform's outbound surface is one field. If a second one is ever proposed, this ADR is the precedent to argue against rather than from: the case here rests on ADR-011 already making the platform the registry for *that specific figure*, and no other Affinity field has that property today.
 - ADR-020's note that Affinity's figures are "stored as labelled reference columns … never entering a calculation" survives up to cutover and then stops being true in one direction: after A13 the column is our output, and the platform must stop reading it. Both halves are recorded in ADR-009.
+
+**Amended 20 August 2026 — the write moves out of A13, and the snapshot's justification is re-based onto the reason that does not depend on it.** This supersedes the sequencing in the context and in clauses 1, 2 and 4 above, and in the original title. Raised by Cameron; this is the correction a Proposed status exists to make cheap.
+
+### What was wrong
+
+Clause 1 said the write happens "at cutover", reading Q-17's *"push at A13"* as naming the phase. **It does not, and the distinction matters.** The push requires total invested per company to be extracted from **live, trustworthy transaction history that Finance has verified** — which is an *output* of A13, available only after the load has reconciled batch by batch and Finance has signed off on the result. Putting it inside A13 makes the riskiest phase in the programme also the phase that performs the platform's first irreversible write to a system it does not own, on figures whose verification is the same phase's exit criterion. That is a sequencing error, not a wording one.
+
+**Clause B is therefore separated and deliberately left undated.** It happens when the platform's own figures are trustworthy, which is a judgement Finance makes after A13, and it gets its own decision to proceed at that point.
+
+### What does not change, and why the snapshot stays
+
+**In the meantime nothing about the current workflow moves.** The platform continues to read `company.affinity_total_investment` and `company.affinity_fmv` nightly, and the A6 generator continues to work backward from them so synthetic rounds and marks roll up to figures the VC team recognises (ADR-020, ADR-030). No code changes, because the outbound write was never built.
+
+**And the snapshot is kept.** Clause 2 justified it as insurance against the write, which was the reason the meeting surfaced but not the strongest one available — and with the write now indefinite, an insurance-only reading would make the table look like dead schema. **Three reasons stand on their own:**
+
+1. **The agreed control totals were agreed at an instant; the columns holding them are not.** They are synced nightly and VC-team maintained, and ADR-020 already records how volatile that makes them: one deal's Potential Investment Amount ran 1,000,000 → 500,000 → deleted → 1,000,000 → 1,500 → 1,500,000, the fat-finger corrected 33 seconds later. A13 is months away. If the anchor is a live column, then "each batch reconciles to Finance's control totals" is not a reproducible instruction — a failure at A13 cannot be told apart from Affinity having moved underneath it. **The snapshot is what separates "our load is wrong" from "the target moved", and there is no other artefact in the programme that does.**
+2. **F4 may deliberately move them.** Its discovery step could bring Exited companies onto the roster who are not among the 82, which changes both totals on purpose. The snapshot is what makes that decision recoverable rather than a one-way door — already stated in the F4 gate.
+3. **It is the only one of the three that could not be taken later.** The other two arguments would still be true in six months; the ability to act on them would not.
+
+The cost of keeping it is one write-once table and 82 rows, already reconciled to the cent. The cost of having been wrong the other way is that the moment had passed.
+
+### Consequences of the amendment
+
+- **A13's scope shrinks by one bullet.** The roadmap's A13 entry no longer carries the outbound write; it carries a pointer to this clause instead. A13's exit criteria are unchanged, and the phase remains the one where the platform stops being a demo.
+- **ADR-009's stated exception becomes conditional rather than scheduled.** It is recorded there as a Proposed exception with no date, not as something the cutover plan performs. The one-way rule holds in full until clause B is separately accepted.
+- **`affinity_control_snapshot` is now correctly read as an A13 control artefact first and write-back insurance second.** Its table comment is updated to say so; migration 0006 is applied and checksummed, so the correction lands as a comment-only migration rather than an edit (the migration runner refuses an edited file, by design).
+- **The label `pre-cutover baseline` is still right.** Pre-cutover, not pre-write: it is the state of the anchor before A13 loads anything, which is what the reconciliation needs it to be.
 
 ---
 

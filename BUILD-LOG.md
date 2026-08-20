@@ -28,6 +28,53 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-20 · F0.1 · The as-built baseline lands, and ADR-039 loses its date
+
+Two things, one of which is a correction to a decision raised yesterday. **No code, no schema, no number moves** — migration 0007 rewrites two comments and nothing else.
+
+### Built
+
+**`docs/finance-current-state.md` is committed**, closing the one F0 exit criterion that was left open. Every S-number cited across Track F — S-1 through S-10 — now resolves to a document in the repository, and "cite the S-number in a Track F commit message" becomes an instruction someone can actually follow. It is listed in `CLAUDE.md`'s document table beside the register and the design notes, and the open items in the F0 roadmap entry and the F0 build-log entry are struck through rather than deleted.
+
+### Changed
+
+**ADR-039 is split, and the outbound write to Affinity moves out of A13 with no date.** Raised by Cameron; this is exactly the correction a **Proposed** status exists to make cheap.
+
+F0 read Q-17's *"push at A13"* as naming the phase, and built the roadmap, the ADR and `CLAUDE.md`'s non-negotiable 7 around that. **It does not name the phase.** The push extracts total invested per company from live transaction history **that the finance team has verified**, and that verification is A13's *exit criterion* — so the figures the push depends on are an **output** of the phase rather than something available during it. Scheduling the platform's first irreversible write to a system it does not own inside the riskiest phase in the programme, on numbers whose trustworthiness that same phase is still establishing, inverts the dependency. A sequencing error, not a wording one.
+
+The ADR now carries two clauses with different statuses:
+
+| | | |
+|---|---|---|
+| **Clause A** | The frozen control totals | **Accepted and executed**, 19 August 2026 |
+| **Clause B** | The outbound write | **Proposed, and deliberately undated.** Not part of A13 |
+
+**The current workflow is retained unchanged and deliberately.** The platform keeps reading `affinity_total_investment` and `affinity_fmv` nightly, and the A6 generator keeps working backward from them so synthetic transactions and marks roll up to the top-level figures the VC team recognises (ADR-020, ADR-030). No code changed, because the outbound write was never built — what changed is six documents that described it as scheduled.
+
+**ADR-009's one-way rule therefore holds in full again**, and is restated that way in ADR-009 itself: nothing outbound is built, none is scheduled, and clause B needs its own decision before anyone writes it. `CLAUDE.md` non-negotiable 7 previously read that the exception existed; it now reads that one is proposed.
+
+### Decided
+
+**The snapshot is kept, and its justification is re-based rather than trimmed.** Worth recording the reasoning, because the question asked was genuinely open — with the write indefinite, an insurance-only reading makes `affinity_control_snapshot` look like dead schema awaiting a phase that may never come, and the next person wanting the table gone would drop the trigger rather than ask why it is there.
+
+**The reason that survives on its own has nothing to do with the write.** $47,216,678 and $42,030,272 are the control totals A13 ties to batch by batch, and **they were agreed at an instant. The columns holding them are not** — synced nightly, maintained by hand by the VC team, and ADR-020 already records how volatile that makes them: one deal's figure ran 1,000,000 → 500,000 → deleted → 1,000,000 → 1,500 → 1,500,000, the fat-finger corrected 33 seconds later. A13 is months away. **Without a frozen copy, "each batch reconciles to Finance's control totals" is not a reproducible instruction**, because a failure could not be told apart from Affinity having moved underneath us — and no other artefact in the programme answers that question.
+
+Two more, neither sufficient alone: F4's discovery step may deliberately widen the roster with Exited companies and move both totals, and the snapshot is what makes that decision recoverable; and clause B, if it ever lands, still wants a copy taken beforehand. The through-line is that all three want it taken **before**, and before is a moment that has already passed by the time anyone remembers to. The cost of keeping it is one write-once table and 82 rows, already reconciled to the cent.
+
+**Migration 0007 exists to fix two comments, which is a low bar for a migration and was still the right call.** 0006 is applied and its checksum recorded — the runner refuses an edited file by design, and correctly so. The comments on `affinity_control_snapshot` described it purely as insurance against the write, which is now both mis-sequenced and misleading about what the table is for. Comments in this schema are load-bearing: `\d+` is the only documentation available inside psql at 9pm, and a comment that has quietly become wrong is worse than no comment. No DDL, no data change, safe to re-run.
+
+### Outstanding
+
+Unchanged from the F0 entry apart from the closed item, and repeated because the list is the point:
+
+- **A-11 · the Q-23 email to Funke** on the exact LP wording — "commitment drawdown", or just "drawdown". It gates F5 and nothing else in Track F, and it can go today.
+- **A-10 · the second Finance meeting.** Agenda is the five question blocks in `docs/finance-design-notes.md`; Block 2, net book value, is the one worth protecting if it runs short.
+- **A-12 · the pedal report file**, which FR-13's field design cannot start without.
+- FR-25's equity-versus-loan categorisation still waits on Q-20.
+- **New:** clause B has no owner and no trigger condition beyond "the platform's own figures are trustworthy". That is deliberately vague because Finance makes the judgement, but it means nothing will surface it on its own. It should be an explicit item on the A13 close-out rather than something rediscovered by a reader of this ADR in 2027.
+
+---
+
 ## 2026-08-19 · F0 · Finance groundwork — a fourth track, seven ADRs, and the snapshot that stops being possible later
 
 **A new track.** The finance requirements meeting with Pat McMullon and Funke Yusuf produced thirty-six numbered requirements, nineteen of which are blocked on a second meeting or on an artefact nobody has seen. **Seventeen are not**, and sixteen of the thirty-six need a schema change. That is the whole argument for Track F and for its position in the sequence: a schema change costs an afternoon against 284 synthetic transactions regenerable from a seed, and costs a data migration over fifteen years of history once A13 has run. **Track F is the work that has to happen while changing the schema is still free**, and it goes before A13.
@@ -83,7 +130,7 @@ Dropping it is also the more honest model: this is a record of what *another sys
 
 ### Outstanding
 
-- **`finance-current-state.md` was not supplied**, and the S-numbers cited throughout Track F — S-1, S-2, S-3, S-4, S-5, S-7, S-8, S-10 — have no committed document behind them. Track F's own repository-context list names it as the as-built baseline and asks that S-numbers be cited in commit messages, which cannot honestly be done until it lands. **This is the one F0 exit criterion not met**, and it is a missing input rather than undone work.
+- ~~**`finance-current-state.md` was not supplied**, and the S-numbers cited throughout Track F — S-1, S-2, S-3, S-4, S-5, S-7, S-8, S-10 — have no committed document behind them.~~ **Closed 20 August 2026**, see the entry above. The baseline is committed and every S-number resolves.
 - The equity-versus-loan categorisation (FR-25) waits on **Q-20**. SAFEs are neither straightforwardly, and a column encoding a guess about how NBIF's statements treat one is worse than no column. The instrument is captured; the bucket is not.
 - **A-11 · the Q-23 email to Funke** should go before F5 starts, and can go today. It gates F5 and nothing else in Track F. "Commitment drawdown", or just "drawdown" — the whole value of renaming now is that it happens once.
 - **A-10 · the second Finance meeting.** The agenda is the *Open questions* section of `docs/finance-design-notes.md`, grouped into five blocks each stating what it blocks. Block 2 — net book value — is the one worth protecting if the meeting runs short.

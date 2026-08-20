@@ -1,27 +1,37 @@
 /**
- * F0 · Freezes Affinity's pre-cutover control totals (ADR-039, FR-02, Q-17).
+ * F0 · Freezes the agreed A13 control totals (ADR-039 clause A, FR-02, Q-17).
  *
  *   npm run snapshot:affinity-controls           take it, or fail saying why
  *   npm run snapshot:affinity-controls -- --dry  check the totals, write nothing
  *   npm run snapshot:affinity-controls -- --show print the stored snapshot
  *
- * WHY THIS EXISTS, in one paragraph, because the script is trivial and the
- * reason is not.
+ * WHY THIS EXISTS, because the script is trivial and the reason is not.
  *
- * `company.affinity_total_investment` and `company.affinity_fmv` do three jobs
- * at once. They are the A6 generator's reconciliation anchor -- the synthetic
- * spine is asserted against them per company, to the cent (ADR-030). They are
- * the agreed A13 control totals. And, per Q-17, they are the fields the
- * platform will OVERWRITE with its own calculated figure at cutover, after
- * which they become read-only in Affinity and the platform stops reading them.
+ * $47,216,678 invested and $42,030,272 FMV are the control totals A13 ties to,
+ * batch by batch, and they were AGREED AT AN INSTANT. The columns holding them
+ * are not. `company.affinity_total_investment` and `company.affinity_fmv` are
+ * synced nightly from Affinity and maintained by hand by the VC team, and
+ * ADR-020 records exactly how volatile that makes them: one deal's figure ran
+ * 1,000,000 -> 500,000 -> deleted -> 1,000,000 -> 1,500 -> 1,500,000, the
+ * fat-finger corrected 33 seconds later.
  *
- * The third job destroys the other two. After the outbound write, reconciling
- * against those columns proves nothing: the platform would be checking its
- * arithmetic against its own output and would agree with itself perfectly while
- * being wrong. A13 has to tie to a copy taken before the write, and the only
- * safe moment to take that copy is one that has already passed by the time
- * anyone remembers to. So it is taken at F0, months ahead of the phase that
- * needs it.
+ * A13 is months away. If the anchor is a live column, then "each batch
+ * reconciles to Finance's control totals" is not a reproducible instruction --
+ * a failure would be indistinguishable from Affinity having moved underneath
+ * us, and nothing else in the programme could tell the two apart. That is what
+ * this freezes, and it is the reason that stands on its own.
+ *
+ * TWO MORE, both real, neither sufficient by itself. F4's discovery step may
+ * deliberately widen the roster with Exited companies and move both totals; the
+ * snapshot is what makes that decision recoverable. And ADR-039 clause B
+ * proposes that the platform eventually pushes its own calculated total invested
+ * back into that column -- after which reconciling against it would be checking
+ * our arithmetic against our own output. **That write is deferred past A13 with
+ * no date** (amendment, 20 Aug 2026) and it is NOT what this table is for; it is
+ * simply one more thing a frozen copy survives.
+ *
+ * The through-line is that all three want the copy taken BEFORE, and "before"
+ * is a moment that has already passed by the time anyone remembers to.
  *
  * WHY IT IS A SCRIPT RATHER THAN PART OF MIGRATION 0006. Migrations run against
  * an empty database in CI and against a freshly created one in the test
