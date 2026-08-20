@@ -56,22 +56,22 @@ Every requirement below is traced to what was said, checked against what the pla
 **Said by:** The group. *"A transaction can exist without a corresponding round (e.g., a standalone investment such as the $350K in Procedure Flow), a round cannot logically exist without at least one associated transaction, though rounds can also occur in which NBIF does not participate."*
 **Current state:** The nullable FK on `transaction.investment_round_id` already permits both.
 **Gap:** **The two halves of that sentence contradict each other**, and resolving the contradiction requires a schema field the platform does not have. A non-participating round is exactly a round with no transaction. See design note **D-2**.
-**Disposition:** Requires a decision. Recommended: an explicit participation flag, so that "we did not participate" and "the cheque is missing" stop being the same database state.
+**Disposition:** **Closed, F1 (20 Aug 2026).** Decided as recommended and lands as ADR-033: `investment_round.nbif_participated` is three-state — `yes` / `no` / `unknown` — defaulting to `unknown`, because a backfilled round genuinely may not know and unknown is not a synonym for no. Backfilled from evidence only (a live linked transaction), never from an assumption. `no` removes the round from the leverage figure in both the SQL view and the ADR-001 export. Both contradictory states are now refused: a round cannot claim we sat it out while holding our cheque, and a cheque cannot be attached to a round that says we sat it out.
 **Size:** S · **Schema:** Yes
 
 ### FR-05 · A transaction can be associated with a round after the fact
 **Said by:** Cameron Horwood. *"A linking mechanism could be implemented where a Deal Close entry references a specific transaction by selecting it from a drop-down."*
 **Current state:** **No interface sets this link at all** (finding S-1). The Finance tab renders it read-only and points at the Deal Close tab; the Deal Close capture writes no transaction. Every existing link came from the A6 generator.
 **Gap:** A live hole, not a new feature. Whichever way the ordering question is answered, something has to be able to write this field.
-**Disposition:** Build. See design note **D-1** for which surface owns it.
-**Size:** M · **Schema:** No
+**Disposition:** **Closed, F1 (20 Aug 2026).** Built as the `link-transactions` mutation — it sets or clears `transaction.investment_round_id` and touches no other column on that table, which is what puts it behind `CAN_CAPTURE_ROUND` rather than `CAN_WRITE_FINANCIAL` (ADR-033 clause 6). Reachable from both surfaces: an enabled round picker with an explicit *No round — standalone* option on the Finance transaction form, and a *cheques in this round* section on the Deal Close form, which is the only one the `vc` role can reach. D-1's ordering question does not arise, because neither record waits for the other.
+**Size:** M · **Schema:** No — plus `transaction.standalone_confirmed_at` / `_by`, which F1 added so that "nobody has reviewed this" and "this correctly has no round" stop being the same state
 
 ### FR-06 · Consolidate deal close and transaction entry, or link them explicitly
 **Said by:** Pat McMullon preferred a single consolidated entry. Cameron proposed linking as the alternative.
 **Current state:** Two tabs, two write paths, two roles — a deliberate split following the source of record (ADR-005, ADR-012).
 **Gap:** The tension is real and was named in the meeting: the VC team has the round documentation first, Finance has the accounting classification. Merging the tables would break the role split that A8 was built on; keeping them fully separate is what produces the duplicate-entry risk Funke raised.
-**Disposition:** Requires a decision. Recommended: **merge the workflow, not the tables** — one capture flow that can book or link the cheque, plus an explicit Finance confirmation step. See design note **D-1**.
-**Size:** L · **Schema:** Yes (confirmation state on the round)
+**Disposition:** **Mostly closed, F1 (20 Aug 2026).** Decided as recommended — merge the workflow, not the tables (ADR-033). The tables stay separate, so the ADR-005 role split A8 is built on survives; the workflow is joined by one narrow mutation both surfaces call, so neither team has to leave its own screen to reconcile. **What remains open is the explicit Finance confirmation state on the round**, which is the other half of what Pat described when he said Finance "can then verify and confirm that the fields relevant to accounting are correct". That is a state machine on `investment_round`, not a link, and it belongs with the reconciliation surface in F6 rather than being bolted onto F1's mutation.
+**Size:** L · **Schema:** Yes (confirmation state on the round) — **still outstanding, F6**
 
 ### FR-07 · Deal Close may belong under Finance's purview
 **Said by:** Cameron Horwood, noting the accounting implications of the debt/equity distinction.

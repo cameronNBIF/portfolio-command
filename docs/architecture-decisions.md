@@ -387,8 +387,9 @@ answered.** Recorded in place; nothing above is reversed.
   Read from `v_mandate_completeness`, deliberately outside the frozen ADR-001
   document, on the A5 `v_kpi_coverage` precedent.
 
-**Amended 19 August 2026 by ADR-033 (Proposed, lands with F1). One line of the A8
-amendment above is superseded; the role split it rests on is not.**
+**Amended 19 August 2026 by ADR-033, which was Accepted and landed on 20 August
+2026 with F1. One line of the A8 amendment above is superseded; the role split it
+rests on is not.**
 
 - **The transaction's round link is a reconciliation, not a capture, and
   `CAN_CAPTURE_ROUND` is the right gate for it.** The A8 amendment reasoned that
@@ -1461,9 +1462,10 @@ in the mechanism changes.**
   is nothing to restate and the distinction is noise; offering it everywhere would
   train people to pick one at random.
 
-**Amended 19 August 2026 by ADR-033 (Proposed, lands with F1). No mechanism
-change; recorded because it is the first write path that deliberately relies on
-this one.**
+**Amended 19 August 2026 by ADR-033, Accepted and landed 20 August 2026 with F1.
+No mechanism change; recorded because it is the first write path that
+deliberately relies on this one. Both properties are now asserted in
+`packages/api/test/round-transaction-link.test.ts` rather than assumed.**
 
 - The `link-transactions` mutation writes nothing but a foreign key, and gets both
   audit capture and restatement detection **for free** — the trigger fires on any
@@ -1623,7 +1625,9 @@ decision, with its full effect enumerated.
 
 ## ADR-033 — A round is an event in the company's life, participation is explicit, and the cheque-to-round link is writable from both surfaces
 
-**Status:** Proposed (19 August 2026). Raised at F0, lands with F1. Amends ADR-012.
+**Status:** **Accepted (20 August 2026)**, landed with F1 in migration 0008. Raised as Proposed at F0. Amends ADR-012.
+
+**One clause was found to be incomplete on landing, and is corrected below rather than left as written.** Clause 3 puts the leverage guard in `v_round_leverage`, and that view is marked CONVENIENCE ONLY (ADR-021) and is read by nothing in the API. The published figure is `fundMetrics` over the ADR-001 export. See the amended clause 3.
 
 **Context.** The finance requirements meeting reached two conclusions that cannot both hold: *"a round cannot exist without at least one associated transaction from NBIF's perspective; however, rounds can also occur in which NBIF does not participate, and these still need to be recorded because they affect FMV and cap table ownership percentages."* A round we did not participate in **is** a round with no transaction.
 
@@ -1645,7 +1649,15 @@ Worse, **no interface writes `transaction.investment_round_id` at all.** The Fin
 
 2. **The backfill reads evidence, never an assumption.** A round with a live linked transaction becomes `yes`. Everything else stays `unknown`.
 
-3. **`v_round_leverage` excludes rounds where participation is `no`.** Leverage measures capital attracted alongside our own money; a round we sat out contributes a round total with no matching cost and would inflate the ratio. No published figure moves on the day this lands, because every generated round carries a cheque and backfills to `yes` — **which is exactly why it goes in now.** The guard is installed before the data that would trip it exists, and it is asserted in a test rather than trusted, because the first non-participating round will arrive months from now with nobody watching.
+3. **Rounds where participation is `no` leave the leverage figure — in `v_round_leverage` *and* in the ADR-001 export.** Leverage measures capital attracted alongside our own money; a round we sat out contributes a round total with no matching cost and would inflate the ratio. No published figure moves on the day this lands, because every generated round carries a cheque and backfills to `yes` — **which is exactly why it goes in now.** The guard is installed before the data that would trip it exists, and it is asserted in a test rather than trusted, because the first non-participating round will arrive months from now with nobody watching.
+
+   **The second half of that sentence is an amendment made at F1, and the reason matters more than the change.** As raised, this clause named only `v_round_leverage`. That view is marked CONVENIENCE ONLY under ADR-021 and **no API path reads it**: the published leverage KPI is `fundMetrics` in `packages/metrics`, computed from the export document, and its predicate is `roundTotal && roundTotal >= invested`. A round we sat out reaches it with `invested` of 0, passes that test, and adds its whole total to `capitalAttracted` against nothing of ours — so **the ratio rises because we did less.** The Capital Attracted chart has the same shape. The guard as originally written would have gone into the one place it could never trip.
+
+   **The predicate therefore sits in `read/export.ts` as well, and that is not a change to the frozen contract.** `packages/metrics` cannot apply it — the contract carries no participation field and ADR-001 freezes the shape — and it does not need to, because the contract's own definition of the type settles the question: `Round` is documented as *"one financing round we participated in"*. A round we did not participate in was never in scope for that array. Excluding it is the export layer reading the contract correctly, and it is the same category as the soft-delete exclusion already there: not ours to report. The rounds that array carries remain **unfiltered by the leverage predicate**, which is the property ADR-021 and ADR-023 actually protect.
+
+   **The cost, recorded rather than discovered later:** a round we sat out will not appear in the company drawer's round history, which reads the export. Its ownership and FMV consequences are still captured and still visible on the Deal Close tab. Giving it a home on the ported screens is a phase-2 conversation under ADR-014, not an F1 one.
+
+   **`<> 'no'`, never `= 'yes'`, in both places.** `unknown` stays in the ratio. Excluding it would mean a historical round nobody has classified silently leaves the leverage figure, and coverage would improve every time somebody failed to answer a question. Only an explicit statement removes a round.
 
 4. **`transaction.standalone_confirmed_at` / `_by` records that a null round link has been looked at.** Without it the reconciliation surface's unlinked-cheque check has no way to ever reach zero, because it cannot tell a cheque nobody has reviewed from one that correctly has no round.
 
@@ -1661,6 +1673,8 @@ Worse, **no interface writes `transaction.investment_round_id` at all.** The Fin
 - ADR-012's read-only note on the round picker is superseded. That note reasoned that "which round a cheque belongs to is a deal capture decision, not a Finance correction." It is right about *authorship of the round* and wrong about *the link itself*: the link is a reconciliation between two records, and reconciliation is Finance's work as much as the deal lead's.
 - Two properties come for free and are asserted rather than assumed. The ADR-031 trigger captures a link change, because it fires on any `UPDATE` to `transaction` — linking is audited with an actor without a line of audit code. And restatement detection works, because `checkRestatement` keys on `txn_date`: linking a 2024 cheque inside a frozen period demands a reason, which is correct, since the link moves that round's `ourInvested` and can move leverage.
 - `unknown` becomes a reportable completeness gap, in the same way mandate coverage already is. It should be, rather than being quietly counted as either answer.
+- **`v_mandate_completeness` is deliberately NOT changed at F1, and the inconsistency is named rather than left to be found.** That view's `pct_leverage_coverage` is documented as *the share of rounds the leverage figure can see*, and it counts every round with a captured total — including, now, rounds that participation has just removed from the figure. Once a `no` round carries a total, coverage will overstate itself slightly. It is left alone because it moves no number today, because a round we sat out still legitimately wants its total captured (that total is the dilution context ADR-033 exists to preserve), and because what the completeness denominator should be is a question F6 has to answer anyway for the reconciliation surface. **It is an explicit F6 input, not an oversight.**
+- **Three surfaces computed a leverage-shaped figure and only one of them was named in this ADR when it was raised.** The lesson generalises past F1: `INHERITED-COERCIONS.md` §2 already records that `fundMetrics.nbCapital`, the dashboard chart and `v_round_leverage` disagree about NB capital. Any future guard on a round-level metric has to state which of the three it is being installed in, and F1's suite asserts the view and the export together for exactly that reason.
 
 ---
 

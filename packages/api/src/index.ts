@@ -14,9 +14,12 @@ export { buildExport, resolveAsOf, type ExportOptions } from './read/export.js';
 export { readKpiCoverage, type KpiCoverageRow } from './read/kpi-coverage.js';
 export {
   readRounds,
+  readCompanyCheques,
   readMandateCompleteness,
   readReferenceData,
   type RoundRow,
+  type RoundChequeRow,
+  type CompanyChequeRow,
   type RoundFilters,
   type RoundPage,
   type CoinvestorRow,
@@ -74,6 +77,14 @@ export {
 
 // ADR-012, A8. The deal-close capture: one mutation, three tables, written by
 // the deal lead rather than by Finance (CAN_CAPTURE_ROUND).
+// ADR-033, F1. The cheque-to-round link: one narrow mutation, both surfaces,
+// gated on CAN_CAPTURE_ROUND because it can move a foreign key and nothing else.
+export {
+  applyLinkTransactions,
+  type LinkTransactionsMutation,
+  type LinkTransactionsResult,
+} from './write/link-transactions.js';
+
 export {
   applyRoundMutation,
   type RoundMutation,

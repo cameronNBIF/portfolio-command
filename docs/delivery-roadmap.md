@@ -303,6 +303,10 @@ Two properties come for free and should be asserted rather than assumed: the ADR
 
 **Exit:** a cheque can be attached to a round from either surface, by the role that would naturally do it, and the change is auditable. A round can state that we did not participate, and the leverage figure believes it. No board number has moved. **Size: M**
 
+**Done, 20 August 2026** — see the F1 entry in `BUILD-LOG.md`. Migration 0008 backfilled 176 of 180 rounds to `yes` from evidence and left 4 as `unknown`, which are the genuine S-2 states rather than a gap. 252 golden-master tests, 39 db tests and 63 functions tests pass unchanged; the API suite goes from 95 to 111.
+
+**One thing in this spec did not survive contact with the code, and it is the metric change above.** `v_round_leverage` is marked CONVENIENCE ONLY (ADR-021) and **no API path reads it** — the published leverage KPI is `fundMetrics` over the ADR-001 export, whose predicate lets a round we sat out through with `invested` of 0 and adds its whole total to capital attracted. The guard as specified would have gone into the one place it could never trip. It is installed in **both** the view and `read/export.ts`, which is not a change to the frozen contract: the contract's own `Round` type is documented as *"one financing round we participated in"*. ADR-033 clause 3 carries the full reasoning and the cost. **The F1 suite asserts the view and the export together, and demonstrates the ratio moving**, because a change to one without the other is silent.
+
 #### F2 · The valuation ledger
 
 *The FMV storage model and the manual review path. Not the automation.*
@@ -416,7 +420,7 @@ Raised as **Proposed** at F0; each moves to **Accepted** as its phase lands.
 
 | ADR | Thesis | Lands with |
 |---|---|---|
-| **ADR-033** | A round is an event in the company's life; participation is explicit, and the cheque-to-round link is writable from both surfaces through a narrow mutation | F1 |
+| **ADR-033** ✅ | A round is an event in the company's life; participation is explicit, and the cheque-to-round link is writable from both surfaces through a narrow mutation. **Accepted 20 Aug 2026.** Clause 3 was amended on landing: the leverage guard had to go in the export as well as the view | F1 |
 | **ADR-034** | A valuation mark records the adjustment that produced it and stores the resulting absolute; the retention factor is the input and the absolute is the fact | F2 |
 | **ADR-035** | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag | F3 |
 | **ADR-036** | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views | F4 |

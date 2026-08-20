@@ -75,6 +75,21 @@ export interface RoundCaptureInput {
   /** ADR-030. Which vehicle our participation came from. Null = unrecorded, never a default. */
   investmentVehicleId?: number | null;
 
+  /**
+   * ADR-033. Did we put money into this round: `yes`, `no` or `unknown`.
+   *
+   * DEFAULTS TO `unknown` WHEN ABSENT, never to either answer -- which is why
+   * this is optional on the input rather than required. A round captured from a
+   * 2011 closing file by someone who does not know is a legitimate state, and
+   * demanding an answer would get a guess typed into the column whose whole
+   * purpose is to hold the difference between a guess and a fact.
+   *
+   * `no` is what makes a round with no cheque legitimate rather than a data
+   * error, and it is what takes the round out of leverage. It cannot be set on a
+   * round that has our cheque booked against it -- see `validateParticipation`.
+   */
+  nbifParticipated?: 'yes' | 'no' | 'unknown' | null;
+
   /** DOLLARS. The full round including every investor. DRIVES THE LEVERAGE KPI. */
   roundTotal?: string | null;
   /** DOLLARS. Capital from OTHER New Brunswick investors, excluding ours. DRIVES THE NB KPI. */
@@ -104,6 +119,12 @@ export interface RoundWriteResult {
   id: string;
   /** True when the change moved a figure inside an already-issued period. */
   restated: boolean;
+  /**
+   * ADR-033. What the round now says about our participation, echoed back so
+   * the form can report the default rather than leaving the user to discover
+   * that leaving the field alone meant `unknown`.
+   */
+  nbifParticipated: 'yes' | 'no' | 'unknown';
   /** How the co-investor set was reconciled, so the UI can say what it did. */
   coinvestors: { created: number; updated: number; removed: number };
   ownershipWritten: boolean;
@@ -129,6 +150,69 @@ function percent(value: unknown, field: string): string {
 
 const optionalPercent = (v: unknown, field: string): string | null =>
   v === null || v === undefined || v === '' ? null : percent(v, field);
+
+const PARTICIPATION = ['yes', 'no', 'unknown'] as const;
+type Participation = (typeof PARTICIPATION)[number];
+
+/**
+ * ADR-033 clause 1. Absent means `unknown`, and `unknown` is a real answer.
+ *
+ * The blank-to-null conversion the money and percent helpers do would be wrong
+ * here: `null` is not a value this column can hold, and mapping an untouched
+ * form field to the schema default is exactly what "defaults to unknown, not to
+ * either answer" means in practice.
+ */
+function participation(value: unknown): Participation {
+  if (value === null || value === undefined || value === '') return 'unknown';
+  if (typeof value !== 'string' || !(PARTICIPATION as readonly string[]).includes(value)) {
+    throw new ValidationError(
+      `"nbifParticipated" must be one of ${PARTICIPATION.join(', ')} — leave it blank for unknown. Got ${JSON.stringify(value)}.`,
+    );
+  }
+  return value as Participation;
+}
+
+/**
+ * The other half of ADR-033's state table, enforced.
+ *
+ * The ADR names one illegal state -- a round we participated in with no
+ * transaction -- and that one is a REPORTING gap rather than a constraint,
+ * because the cheque legitimately arrives days later on Finance's clock and
+ * blocking the deal lead until it does is the failure ADR-031 was written to
+ * prevent. This is its mirror image, and it is not the same shape at all:
+ * "we did not participate" said over a cheque that is already booked against
+ * the round is not two records arriving out of order, it is two records
+ * contradicting each other. One of them is wrong and the person on this form
+ * is the one who can say which.
+ *
+ * Refused rather than flagged for the reason set out in `link-transactions.ts`:
+ * this is not a figure anybody holds, so refusing costs nobody a fact.
+ */
+async function validateParticipation(
+  trx: Kysely<DB>,
+  roundId: string,
+  value: Participation,
+): Promise<void> {
+  if (value !== 'no') return;
+
+  const { rows } = await sql<{ n: string; total: string }>`
+    select count(*)::text                        as n,
+           coalesce(sum(t.amount_cad), 0)::text  as total
+      from pc.v_transaction_live t
+     where t.investment_round_id = ${roundId}::bigint
+       and t.txn_type in ('investment','follow_on')
+  `.execute(trx);
+
+  const n = Number(rows[0]?.n ?? '0');
+  if (n > 0) {
+    throw new ValidationError(
+      `This round has ${n} cheque${n > 1 ? 's' : ''} of ours booked against it, totalling ` +
+        `$${Number(rows[0]!.total).toLocaleString('en-CA')}, so it cannot record that we did not participate. ` +
+        'Either we did participate, or those cheques belong to a different round — ' +
+        'move them on the Finance tab first, then set this.',
+    );
+  }
+}
 
 /**
  * The two `investment_round` check constraints, restated in the deal lead's
@@ -259,7 +343,20 @@ async function softDelete(
     );
   }
 
-  return { id, restated, coinvestors: { created: 0, updated: 0, removed: 0 }, ownershipWritten: false };
+  // The participation state is read back rather than assumed: a delete does
+  // not change it, and echoing a guess would make the one field the caller did
+  // not touch the one field it cannot trust.
+  const { rows: p } = await sql<{ v: string }>`
+    select nbif_participated as v from pc.investment_round where investment_round_id = ${id}::bigint
+  `.execute(trx);
+
+  return {
+    id,
+    restated,
+    nbifParticipated: (p[0]?.v ?? 'unknown') as 'yes' | 'no' | 'unknown',
+    coinvestors: { created: 0, updated: 0, removed: 0 },
+    ownershipWritten: false,
+  };
 }
 
 async function writeRound(
@@ -282,12 +379,15 @@ async function writeRound(
   if (m.op === 'update') dates.push(await existingRoundDate(trx, m.id));
   const restated = await checkRestatement(trx, dates, reason, 'round');
 
+  const nbifParticipated = participation(v.nbifParticipated);
+
   const cols = {
     company_id: companyId,
     round_date: roundDate,
     label,
     instrument_id: v.instrumentId,
     investment_vehicle_id: optional(v.investmentVehicleId),
+    nbif_participated: nbifParticipated,
     round_total: optionalMoney(v.roundTotal, 'roundTotal'),
     nb_other: optionalMoney(v.nbOther, 'nbOther'),
     post_money: optionalMoney(v.postMoney, 'postMoney'),
@@ -309,6 +409,13 @@ async function writeRound(
       .executeTakeFirstOrThrow();
     roundId = String(row.investment_round_id);
   } else {
+    // Before the write, not after. A round that does not exist yet cannot have
+    // cheques booked against it, so this check only ever has anything to say on
+    // an update -- and saying it before anything is written means the error
+    // names the contradiction rather than a constraint the user has to work
+    // backwards from.
+    await validateParticipation(trx, m.id, nbifParticipated);
+
     const row = await trx
       .updateTable('investment_round')
       .set(cols as never)
@@ -335,7 +442,7 @@ async function writeRound(
   const coinvestors = await writeCoinvestors(trx, roundId, v.coinvestors, m.op === 'create');
   const ownershipWritten = await writeOwnership(trx, principal, companyId, v.ownership);
 
-  return { id: roundId, restated, coinvestors, ownershipWritten };
+  return { id: roundId, restated, nbifParticipated, coinvestors, ownershipWritten };
 }
 
 /**

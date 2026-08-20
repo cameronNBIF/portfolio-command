@@ -14,6 +14,7 @@
  * `numeric`.
  */
 import type {
+  CompanyChequeRow,
   MandateCompleteness,
   ReferenceData,
   RoundPage,
@@ -43,12 +44,47 @@ export const fetchCompleteness = (): Promise<MandateCompleteness> =>
 export const fetchReference = (): Promise<ReferenceData> =>
   call('/api/v1/rounds?reference=true');
 
+/** F1. Every direct cheque a company has, with the round each is attached to. */
+export const fetchCompanyCheques = (companyId: string): Promise<{ rows: CompanyChequeRow[] }> =>
+  call(`/api/v1/rounds?${new URLSearchParams({ cheques: companyId })}`);
+
 export interface RoundMutationResult {
   ok: true;
   id: string;
   restated: boolean;
   coinvestors: { created: number; updated: number; removed: number };
   ownershipWritten: boolean;
+}
+
+export interface LinkResult {
+  ok: true;
+  linked: number;
+  cleared: number;
+  restated: boolean;
+  participationSetToYes: boolean;
+}
+
+/**
+ * ADR-033's narrow mutation, from either surface.
+ *
+ * ON `/api/v1/rounds` RATHER THAN `/api/v1/financial`, though it writes a
+ * column on `transaction`. The gate is `CAN_CAPTURE_ROUND`, because attaching a
+ * cheque to a round is reconciliation rather than restatement — and the deal
+ * lead who closed the round is `vc`, who cannot reach the financial endpoint at
+ * all.
+ *
+ * `investmentRoundId: null` is the explicit *No round — standalone* choice, and
+ * it is a WRITE, not an absence: it records who confirmed it and when.
+ */
+export function linkTransactions(body: {
+  transactionIds: string[];
+  investmentRoundId: string | null;
+  reason?: string | null;
+}): Promise<LinkResult> {
+  return call('/api/v1/rounds', {
+    method: 'POST',
+    body: JSON.stringify({ op: 'link-transactions', ...body }),
+  });
 }
 
 export function captureRound(body: {

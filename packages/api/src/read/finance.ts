@@ -52,6 +52,25 @@ export interface TransactionRow {
   fxRateToCad: string | null;
   amountCad: string;
   investmentRoundId: string | null;
+  /**
+   * F1. The round's own label and date, so the picker and the table can name
+   * the round rather than showing a bare id.
+   *
+   * The A7 screen printed "Linked to round #142", which is an id the user has
+   * no way to resolve without opening another tab. Both null when the cheque is
+   * unattached.
+   */
+  roundLabel: string | null;
+  roundDate: string | null;
+  /**
+   * ADR-033 clause 4. Set when someone confirmed this cheque correctly has no
+   * round, as opposed to nobody having looked at it yet.
+   *
+   * Null against a null `investmentRoundId` is the state F6's unlinked-cheque
+   * check counts; a timestamp there is what lets that count reach zero.
+   */
+  standaloneConfirmedAt: string | null;
+  standaloneConfirmedByName: string | null;
   investmentVehicleId: number | null;
   vehicleName: string | null;
   /**
@@ -135,7 +154,9 @@ export async function readTransactions(
     company_id: string | null; company_name: string | null;
     fund_investment_id: string | null; fund_name: string | null;
     amount: string; currency: string; fx_rate_to_cad: string | null; amount_cad: string;
-    investment_round_id: string | null; investment_vehicle_id: string | null;
+    investment_round_id: string | null; round_label: string | null; round_date: string | null;
+    standalone_confirmed_at: string | null; standalone_confirmed_by_name: string | null;
+    investment_vehicle_id: string | null;
     vehicle_name: string | null; instrument_id: string | null; instrument_name: string | null;
     source_document: string | null; note: string | null;
     is_synthetic: string; deleted_at: string | null; deleted_reason: string | null;
@@ -156,6 +177,10 @@ export async function readTransactions(
            t.fx_rate_to_cad::text            as fx_rate_to_cad,
            (t.amount * coalesce(t.fx_rate_to_cad, 1))::text as amount_cad,
            t.investment_round_id::text       as investment_round_id,
+           r.label                           as round_label,
+           r.round_date::text                as round_date,
+           t.standalone_confirmed_at::text   as standalone_confirmed_at,
+           sb.display_name                   as standalone_confirmed_by_name,
            t.investment_vehicle_id::text     as investment_vehicle_id,
            iv.name                           as vehicle_name,
            t.instrument_id::text             as instrument_id,
@@ -175,6 +200,8 @@ export async function readTransactions(
       left join pc.ref_investment_vehicle iv on iv.investment_vehicle_id = t.investment_vehicle_id
       left join pc.ref_instrument ri on ri.instrument_id = t.instrument_id
       left join pc.app_user u  on u.user_id = t.entered_by
+      left join pc.investment_round r on r.investment_round_id = t.investment_round_id
+      left join pc.app_user sb on sb.user_id = t.standalone_confirmed_by
      where ${where}
      order by t.txn_date desc, t.transaction_id desc
      limit ${limit} offset ${offset}
@@ -219,6 +246,10 @@ export async function readTransactions(
       fxRateToCad: r.fx_rate_to_cad,
       amountCad: r.amount_cad,
       investmentRoundId: r.investment_round_id,
+      roundLabel: r.round_label,
+      roundDate: r.round_date,
+      standaloneConfirmedAt: r.standalone_confirmed_at,
+      standaloneConfirmedByName: r.standalone_confirmed_by_name,
       investmentVehicleId: r.investment_vehicle_id ? Number(r.investment_vehicle_id) : null,
       vehicleName: r.vehicle_name,
       instrumentId: r.instrument_id ? Number(r.instrument_id) : null,

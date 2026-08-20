@@ -11,10 +11,12 @@
  *
  * 1. **Money crosses the unit boundary exactly once**, via `units.ts`. No
  *    literal 1e6 appears below.
- * 2. **Rounds are delivered UNFILTERED** (ADR-021, ADR-023). A round with a
- *    missing or invalid `roundTotal` still appears. The leverage exclusion is
- *    the frozen definition and belongs to `packages/metrics`, which cannot
- *    apply it to rows this layer has already dropped.
+ * 2. **Rounds are delivered UNFILTERED BY THE LEVERAGE PREDICATE** (ADR-021,
+ *    ADR-023). A round with a missing or invalid `roundTotal` still appears.
+ *    That exclusion is the frozen definition and belongs to `packages/metrics`,
+ *    which cannot apply it to rows this layer has already dropped. Rounds that
+ *    are not ours at all -- soft-deleted, or ones we did not participate in --
+ *    are a different question and are excluded here. See the round query.
  * 3. **Array order is load-bearing and runs opposite ways** (INHERITED-
  *    COERCIONS.md §3): `kpis` and `marks` newest-first, `rounds` oldest-first.
  *    Metrics read `kpis[0]` as the current period and `rounds[0]` as the
@@ -239,6 +241,37 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     // the ADR-012 capture form gave rounds a write path that can set
     // deleted_at -- migration 0002 added the column and left every reader of
     // this table, including this query, unaware of it.
+    //
+    // F1 ADDS THE SECOND MEMBER OF THAT SECOND CATEGORY, and it is the one
+    // place in Track F where a predicate had to go somewhere ADR-033 did not
+    // name. The ADR puts the participation guard in `v_round_leverage`. That
+    // view is marked CONVENIENCE ONLY (ADR-021) and NOTHING IN THE API READS
+    // IT: the published leverage KPI is `fundMetrics` in packages/metrics,
+    // computed from this document, and its predicate is
+    // `roundTotal && roundTotal >= invested`. A round we sat out arrives here
+    // with `invested` of 0, passes that test, and adds its whole total to
+    // `capitalAttracted` with nothing in the denominator to match -- so the
+    // ratio goes UP because we did LESS. The Capital Attracted chart has the
+    // same shape. The guard as written would have gone into the one place that
+    // cannot trip.
+    //
+    // WHY THE PREDICATE IS HERE AND NOT IN packages/metrics. The contract is
+    // frozen (ADR-001) and carries no participation field, so metrics cannot
+    // see the distinction at all; and it does not need to, because this
+    // contract's own definition of the type settles it -- `Round` is
+    // documented as "one financing round we participated in". A round we did
+    // not participate in was never in scope for this array. Excluding it is
+    // this layer reading the contract correctly, not a change to it, and it is
+    // the same category as the soft-delete above: not ours to report.
+    //
+    // `<> 'no'` AND NOT `= 'yes'`. `unknown` still ships, on ADR-033's own
+    // reasoning: only an explicit statement that we sat a round out removes it,
+    // and a round nobody has classified must not quietly leave the numerator.
+    //
+    // NO NUMBER MOVES ON THE DAY THIS LANDS -- every round backfills to `yes`
+    // -- which is exactly why it goes in now. The F1 suite asserts it against a
+    // round built for the purpose, because the first real one will arrive
+    // months from now with nobody watching.
     q<{
       company_id: string; round_date: Date | string; label: string; instrument: string | null;
       invested: string; post_money: string | null; ownership_after_pct: string | null;
@@ -258,6 +291,7 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
            where investment_round_id = r.investment_round_id
              and txn_type in ('investment','follow_on')) t on true
        where r.deleted_at is null
+         and r.nbif_participated <> 'no'
        order by r.company_id, r.round_date, r.investment_round_id`),
 
     // Newest first: metrics read kpis[0] as the current period.

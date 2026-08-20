@@ -16,12 +16,15 @@
  * units note in `packages/api/src/write/session.ts`.
  */
 import {
+  applyLinkTransactions,
   applyRoundMutation,
   db,
+  readCompanyCheques,
   readMandateCompleteness,
   readReferenceData,
   readRounds,
   ValidationError,
+  type LinkTransactionsMutation,
   type RoundMutation,
 } from '@portfolio-command/api';
 
@@ -30,6 +33,42 @@ import { withPrincipal } from '../../_lib/handler';
 export const dynamic = 'force-dynamic';
 
 const OPS = ['create', 'update', 'delete', 'restore'];
+
+/**
+ * ADR-033. The link lives on THIS endpoint rather than on `/api/v1/financial`,
+ * and that placement is the permission decision made visible.
+ *
+ * It writes a column on `transaction`, which is Finance's table -- so the
+ * obvious home is the financial endpoint. The obvious home is wrong. That
+ * endpoint is gated on `CAN_WRITE_FINANCIAL` (`finance`, `admin`) and the deal
+ * lead who closed the round is `vc`, and the whole point of ADR-033 clause 6 is
+ * that attaching a cheque to a round is reconciliation rather than restatement.
+ * Routing it here puts it behind `CAN_CAPTURE_ROUND`, beside the round capture
+ * it reconciles against, where the two people who do this work both have access.
+ */
+const LINK_OP = 'link-transactions';
+
+function parseLink(b: Record<string, unknown>): LinkTransactionsMutation {
+  const ids = b['transactionIds'];
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ValidationError('"transactionIds" must be a non-empty list of transaction ids.');
+  }
+  const roundId = b['investmentRoundId'];
+  // `undefined` is rejected and `null` is accepted, deliberately: null is the
+  // form's explicit "No round -- standalone" choice and has to be expressible,
+  // while a body that simply omits the key is a caller who has not decided, and
+  // guessing which they meant is how a cheque gets silently detached.
+  if (roundId === undefined) {
+    throw new ValidationError(
+      '"investmentRoundId" is required — a round id, or null for a standalone cheque with no round.',
+    );
+  }
+  return {
+    transactionIds: ids.map(String),
+    investmentRoundId: roundId === null ? null : String(roundId),
+    reason: typeof b['reason'] === 'string' ? b['reason'] : null,
+  };
+}
 
 /**
  * Narrows the body to a `RoundMutation`.
@@ -45,7 +84,7 @@ function parseMutation(body: unknown): RoundMutation {
 
   const op = b['op'];
   if (typeof op !== 'string' || !OPS.includes(op)) {
-    throw new ValidationError(`"op" must be one of: ${OPS.join(', ')}.`);
+    throw new ValidationError(`"op" must be one of: ${[...OPS, LINK_OP].join(', ')}.`);
   }
   const reason = typeof b['reason'] === 'string' ? b['reason'] : null;
 
@@ -82,10 +121,24 @@ function parseMutation(body: unknown): RoundMutation {
 
 export async function POST(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
-    const mutation = parseMutation(await request.json().catch(() => null));
-    // The role check lives in applyRoundMutation so a second caller that does
-    // not come through this route cannot skip it.
-    const result = await applyRoundMutation(db(), principal, mutation);
+    const body = await request.json().catch(() => null);
+    if (typeof body !== 'object' || body === null) {
+      throw new ValidationError('Body must be an object.');
+    }
+    const b = body as Record<string, unknown>;
+
+    // Branched before `parseMutation` rather than inside it: the link carries a
+    // different payload entirely -- no `values`, no round fields -- and folding
+    // it into the capture parser would mean one function with two bodies and a
+    // set of fields that are required in one shape and forbidden in the other.
+    if (b['op'] === LINK_OP) {
+      // The role check lives in applyLinkTransactions so a second caller that
+      // does not come through this route cannot skip it.
+      const result = await applyLinkTransactions(db(), principal, parseLink(b));
+      return { ok: true, ...result };
+    }
+
+    const result = await applyRoundMutation(db(), principal, parseMutation(body));
     return { ok: true, ...result };
   });
 }
@@ -104,6 +157,16 @@ export async function GET(request: Request): Promise<Response> {
     // with no investment-vehicle picker (ADR-030).
     if (q.get('reference') === 'true') {
       return readReferenceData(db(), principal);
+    }
+
+    // F1. Every direct cheque a company has, with the round each is currently
+    // attached to. Behind `?cheques=` on this endpoint rather than on the
+    // financial one for the same reason the link mutation is: it is the read
+    // that surface needs in order to reconcile, and the deal lead has to be
+    // able to make it.
+    const chequesFor = q.get('cheques');
+    if (chequesFor) {
+      return { rows: await readCompanyCheques(db(), principal, chequesFor) };
     }
 
     return readRounds(db(), principal, {
