@@ -4,6 +4,11 @@
  * The significant-influence schedule, and the ownership entry behind it
  * (F3, FR-21, FR-36, ADR-035).
  *
+ * A FINANCE SURFACE, beside transactions, marks, the FMV review and LP
+ * activity, and last of the five because it is a consequence of the others.
+ * The THRESHOLD it applies is set on the Policies tab; a rule and the work the
+ * rule produces are different things, and this is the second.
+ *
  * THREE GROUPS, NOT A FILTERED LIST, AND THAT IS THE REQUIREMENT. The flag is
  * three-valued: held, not held, and **not determined** — no ownership figure,
  * or no threshold in force. A screen that showed only the flagged companies
@@ -44,16 +49,12 @@ import { Card, ConventionNote, Kpi, KpiRow, Pill } from '../ui';
 
 const CAN_RECORD = ['vc', 'finance', 'admin'];
 
-export function SignificantInfluenceSurface({ policyVersion = 0 }: { policyVersion?: number }) {
+export function SignificantInfluenceSurface() {
   const { role, openCompany } = useApp();
   const [date, setDate] = useState(todayISO);
   const [editing, setEditing] = useState<SignificantInfluenceRow | null>(null);
 
-  /* `policyVersion` is a dependency rather than decoration: the threshold is set
-     on a card above this one, and a schedule that kept showing the old
-     classification until someone reloaded would be the screen contradicting the
-     policy it sits under. */
-  const load = useCallback(() => fetchSignificantInfluence(date), [date, policyVersion]);
+  const load = useCallback(() => fetchSignificantInfluence(date), [date]);
   const { data, error, reload, notice, setNotice } = useRowState<SignificantInfluenceReport>(load);
 
   const rows = data?.rows ?? [];
@@ -191,7 +192,7 @@ export function SignificantInfluenceSurface({ policyVersion = 0 }: { policyVersi
         undetermined,
         'yellow',
         data?.threshold == null
-          ? 'No threshold is in force, so nothing can be classified — including the companies whose ownership IS recorded. Set one under Finance policies above.'
+          ? 'No threshold is in force, so nothing can be classified — including the companies whose ownership IS recorded. Set one under Finance policies on the Policies tab.'
           : 'We hold no ownership figure for these companies as at this date. They are NOT below the threshold — they are companies nobody has told the platform about, and that is why they are listed rather than quietly absent.',
       )}
       {group(

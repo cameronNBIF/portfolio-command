@@ -1748,6 +1748,8 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 
 5. **Configuration moves out of the Alerts tab into a Policies tab**, with two role-gated sections: *Portfolio Alert Policies* for `vc` and `admin`, *Finance Policies* for `finance` and `admin`. A clean move, not a copy. This improves the tab it leaves: Alerts was deliberately built as the **working** view — the feed, the flags, the acknowledgements — and configuration sitting inside it was always slightly the wrong shape. It also gives the finance policies that will accumulate (retention options, NBV rules, exit vocabularies) somewhere to live that is not the Finance entry tab.
 
+   **Amended on landing: the tab holds the two policy sections and nothing else.** The significant-influence **schedule** is a fifth Finance surface, after Transactions, Valuation Marks, FMV Review and LP Activity. A rule and the work the rule produces are different things — the threshold is configuration, set rarely and by one role, while the schedule is a register Finance reads and a cap table Finance maintains. Decided by Cameron on the day F3 landed.
+
 6. **Standalone ownership entry is gated to `CAN_CAPTURE_ROUND`**, which is where the table is already permitted. Q-15's expectation is that Finance enters these and Finance already holds that capability; leaving the deal lead able to record a cap-table change they learn about first costs nothing.
 
 **Consequences.**

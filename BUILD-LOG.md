@@ -52,15 +52,13 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 **`write/finance-policy.ts`, behind a new `CAN_SET_FINANCE_POLICY`** — the same two roles as `CAN_WRITE_FINANCIAL` and still a separate list, because what it gates is not a financial row but the rule that classifies every one. It also gives `ref_fmv_retention_option` the editing path **F2 explicitly left to F3**.
 
-**The Policies tab**, two role-gated sections and the schedule. The alert policy card is a **move, not a copy** — the A9 card unchanged, still posting to `/api/v1/judgement` — and Alerts is better for losing it: that tab was built as the *working* view and configuration inside it was always slightly the wrong shape. What stays on an alert is where its threshold came from, which is the part that belongs there.
+**The Policies tab**, two role-gated sections. The alert policy card is a **move, not a copy** — the A9 card unchanged, still posting to `/api/v1/judgement` — and Alerts is better for losing it: that tab was built as the *working* view and configuration inside it was always slightly the wrong shape. What stays on an alert is where its threshold came from, which is the part that belongs there.
 
-**The schedule groups the three states rather than filtering to the interesting one,** with the unclassifiable group first because it is the only actionable one and the entry form is on the same screen. **Every row carries the age of its ownership figure** — 87 months on MESH/diversity, 2 on pHathom — because this ADR's own argument is that a flag over a stale cap table looks exactly as authoritative as one over a current one. No staleness threshold is invented; nobody has set one.
+**The schedule is a fifth Finance surface** — after Transactions, Valuation Marks, FMV Review and LP Activity — rather than a third section on Policies. **It groups the three states rather than filtering to the interesting one,** with the unclassifiable group first because it is the only actionable one and the entry form is on the same screen. **Every row carries the age of its ownership figure** — 87 months on MESH/diversity, 2 on pHathom — because this ADR's own argument is that a flag over a stale cap table looks exactly as authoritative as one over a current one. No staleness threshold is invented; nobody has set one.
 
 ### Changed
 
 **The heading of the unclassifiable group names its cause, and that was a defect found in the browser.** With no threshold in force, all 82 companies read NULL and **not one of them is missing an ownership figure**. Headed *ownership not recorded*, the screen would have sent Finance chasing 82 cap tables that are already recorded when what was missing was one policy. It now reads *not determined — no threshold in force* in that state.
-
-**Setting the threshold refreshes the schedule below it.** Two separate reads of two separate endpoints, only one of them written — and a screen showing a policy and its consequence at once must not show them disagreeing.
 
 **The schedule's date picker defaults to today, not to the document's `asOf`.** That default is derived from the latest valuation mark, and significant influence has nothing to do with when a position was last valued. Defaulting to a mark date showed a threshold set that morning as not yet in force: true, and useless. The API still requires the date and refuses to assume one.
 
@@ -74,7 +72,11 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 **2. The effective dating is day-grained in both directions, and that is stated rather than left to be discovered.** A policy set and superseded on the same date covers no date at all, so a classification reproduced for that day reads *not determined* rather than guessing which applied. `fund_alert_policy` behaves identically. It looks like a bug the first time it is met; it is the honest answer, and the test says so.
 
-**3. The retention-option editing came in with this phase**, though the F3 spec does not list it. F2's own outstanding item names F3 as the phase that closes it, and FR-21's design direction names the retention options as one of the finance policies the tab exists to hold. Add, retire and reinstate — never delete, because a factor already used is referenced by marks that must keep reconstructing.
+**3. The schedule lives on the Finance tab and the threshold lives on Policies.** Built the other way first, with both on Policies, and changed at Cameron's direction the same day — correctly, and the reason is worth keeping: **a rule and the work the rule produces are different things.** The threshold is configuration, set rarely, by one role, beside the alert policy it resembles. The schedule is a register Finance reads and a cap table Finance maintains, which is what the other four Finance surfaces are. The two no longer share a screen, so the refresh that kept them agreeing is gone with it — switching tabs remounts the schedule, which reads the policy fresh.
+
+**One consequence, stated rather than left to be found:** the Finance tab is gated to `finance` and `admin`, so **the deal lead can no longer reach the ownership entry from a screen.** The write path still permits it (`CAN_CAPTURE_ROUND`, ADR-035 clause 6) and Deal Close still writes ownership as part of capturing a round; what the `vc` role has lost is the standalone form for a cap-table change they hear about first. Worth a surface on the Deal Close tab if it turns out to matter, and not worth guessing at now.
+
+**4. The retention-option editing came in with this phase**, though the F3 spec does not list it. F2's own outstanding item names F3 as the phase that closes it, and FR-21's design direction names the retention options as one of the finance policies the tab exists to hold. Add, retire and reinstate — never delete, because a factor already used is referenced by marks that must keep reconstructing.
 
 ### Found
 

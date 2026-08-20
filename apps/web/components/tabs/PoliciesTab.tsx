@@ -11,6 +11,13 @@
  * have put it behind the wrong gate, and putting it on the Finance entry tab
  * would have mixed a rule in with the rows it governs.
  *
+ * THE SCHEDULE THE THRESHOLD DRIVES IS NOT HERE. The significant-influence
+ * report and the ownership entry behind it live on the Finance tab, beside the
+ * other entry surfaces: what is set here is a RULE, and that is the WORK the
+ * rule produces. The two are read from separate endpoints and neither needs the
+ * other on screen -- switching tabs remounts the schedule, so a threshold
+ * changed here is read fresh the next time it is opened.
+ *
  * THE ALERT POLICY CARD IS A MOVE, NOT A COPY. It is the A9 card, unchanged in
  * behaviour and still posting to `/api/v1/judgement`. Moving it improves the tab
  * it leaves: Alerts was deliberately built as the WORKING view — the feed, the
@@ -38,7 +45,6 @@ import type { FinancePolicies } from '@portfolio-command/api';
 import { useApp } from '../AppShell';
 import { Field, FormGrid, Notice, useRowState } from '../entry';
 import { Card, ConventionNote, Pill, ViewHeader } from '../ui';
-import { SignificantInfluenceSurface } from './SignificantInfluence';
 
 /** Labels for the five alert metrics, in the order they are shown (A9). */
 const METRICS = [
@@ -58,12 +64,6 @@ export function PoliciesTab({ db }: { db: PortfolioExport }) {
   const { role, toast } = useApp();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /* Bumped when a finance policy changes, so the schedule below re-reads. The
-     two are separate reads of separate endpoints and only one of them is being
-     written -- but the classification the schedule shows is a consequence of
-     the threshold this card sets, and a screen showing both at once must not
-     show them disagreeing. */
-  const [policyVersion, setPolicyVersion] = useState(0);
 
   const seesAlerts = CAN_EDIT_ALERTS.includes(role);
   const seesFinance = CAN_SET_FINANCE.includes(role);
@@ -103,12 +103,9 @@ export function PoliciesTab({ db }: { db: PortfolioExport }) {
       {seesFinance && (
         <>
           <h3 className="vsub" style={{ marginTop: 18 }}>Finance policies</h3>
-          <FinancePoliciesCard onChanged={() => setPolicyVersion((v) => v + 1)} />
+          <FinancePoliciesCard />
         </>
       )}
-
-      <h3 className="vsub" style={{ marginTop: 18 }}>Significant influence</h3>
-      <SignificantInfluenceSurface policyVersion={policyVersion} />
     </>
   );
 }
@@ -259,7 +256,7 @@ function AlertPolicyCard({
  * factor it used, so a review written under an option later retired still
  * reconstructs from its own row — the list only decides what may be chosen next.
  */
-function FinancePoliciesCard({ onChanged }: { onChanged: () => void }) {
+function FinancePoliciesCard() {
   const { toast } = useApp();
   const { data, error, reload, notice, setNotice } = useRowState<FinancePolicies>(fetchFinancePolicies);
 
@@ -281,7 +278,6 @@ function FinancePoliciesCard({ onChanged }: { onChanged: () => void }) {
       toast(applied);
       setEditing(false);
       reload();
-      onChanged();
     } catch (err) {
       setNotice(err instanceof PoliciesApiError ? err.message : 'Something went wrong.');
     } finally {
