@@ -75,6 +75,14 @@ export interface AffinityFieldChange {
 export interface AffinityStatusMap {
   affinity_status: string;
   funnel_stage_id: number;
+  /**
+   * ADR-036 clause 1. Whether this Status means the company has LEFT the portfolio. Exactly one status carries it today. Separate from is_portfolio_member because an exited company is still on the roster -- it appears in the Exited view rather than vanishing.
+   */
+  is_exited: Generated<boolean>;
+  /**
+   * ADR-009, ADR-036. Whether an entry with this Status is a portfolio company at all. Was a hardcoded Set in the sync until F4. A status nobody has classified is not a member -- the safe default for an option added in Affinity without a deploy.
+   */
+  is_portfolio_member: Generated<boolean>;
   updated_at: Generated<Timestamp>;
 }
 
@@ -318,6 +326,10 @@ export interface CompanyState {
    * From Affinity Risk Assessment. A / B / C map to the green / yellow / red health display; ACC marks an accelerator investment and carries no risk grade.
    */
   risk_grade: string | null;
+  /**
+   * ADR-036 clause 3. Affinity's Status for this company, verbatim -- `Portfolio`, `Exited`, `Closed`. Dated, because when a company left the portfolio is a question the board asks. NULL means Affinity has not spoken for this company (the fixture path), which is a different state from any value and is what the `exited` fallback keys on. Not constrained: the vocabulary is Affinity's and changes without a deploy.
+   */
+  roster_status: string | null;
   set_at: Generated<Timestamp>;
   set_by: string;
   stage_id: number | null;

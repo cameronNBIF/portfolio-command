@@ -23,6 +23,7 @@ const facts = (over: Partial<CompanyFacts> = {}): CompanyFacts => ({
   fmvCents: 150_000_000, // $1,500,000
   riskGrade: 'B',
   lifecycleStatus: null,
+  rosterStatus: 'Portfolio',
   vehicle: 'VCF',
   firstKpiYear: 2021,
   ...over,
@@ -125,17 +126,38 @@ describe('planCompany', () => {
   });
 
   /**
-   * An FMV of zero is a write-down. A `company_exit` row is a separate and
-   * stronger assertion -- that the position is closed -- so it is written only
-   * where Affinity's own lifecycle status says the company is winding down.
-   * Fifteen companies on the real roster carry a zero FMV without that status,
-   * and calling them all exits would move "active / exited" on the dashboard.
+   * F4 REWROTE THIS TEST, AND THE REWRITE IS THE CORRECTION.
+   *
+   * It used to assert that an exit follows the LIFECYCLE status -- "Winding
+   * Down" -- which is a different Affinity field from the roster Status that
+   * decides membership. Under ADR-036 a company winding down is still a
+   * portfolio company until the roster says it has left, and seven companies on
+   * today's dashboard were counted as exited on the strength of the wrong
+   * field. The old assertion is what kept that in place.
    */
-  test('an exit row needs the lifecycle status, not just a zero FMV', () => {
+  test('an exit row follows the ROSTER status, not the lifecycle status', () => {
     expect(planCompany(facts({ fmvCents: 0 })).exit).toBeNull();
+
+    // Winding down and written to nil, and still a portfolio company.
     const windingDown = planCompany(facts({ fmvCents: 0, lifecycleStatus: 'Winding Down' }));
-    expect(windingDown.exit?.type).toBe('Shutdown / write-off');
+    expect(windingDown.exit).toBeNull();
     expect(windingDown.transactions.some((t) => t.type === 'write_off')).toBe(true);
+
+    const exited = planCompany(facts({ fmvCents: 0, rosterStatus: 'Exited' }));
+    expect(exited.exit?.type).toBe('Shutdown / write-off');
+    expect(exited.transactions.some((t) => t.type === 'write_off')).toBe(true);
+  });
+
+  /**
+   * ADR-036 clause 2, in the demo data rather than only in the ADR: Finance
+   * books the write-off in March and Affinity is updated in June, so a written
+   * -off position sitting on the roster is a state the dataset should contain.
+   * It is what the F6 reconciliation surface will have to find.
+   */
+  test('a written-off position still on the roster keeps its write-off and has no exit', () => {
+    const plan = planCompany(facts({ fmvCents: 0, lifecycleStatus: 'Winding Down' }));
+    expect(plan.transactions.filter((t) => t.type === 'write_off')).toHaveLength(1);
+    expect(plan.exit).toBeNull();
   });
 
   test('a write-off transaction does not count toward invested', () => {

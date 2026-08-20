@@ -348,6 +348,30 @@ try {
     );
   }
 
+  /**
+   * ADR-036, F4. WHICH STATUSES MEAN WHAT, and why the answer is seeded here
+   * rather than read from Affinity.
+   *
+   * The vocabulary is Affinity's -- these two sets are not. "A company with
+   * this Status is one of ours" and "a company with this Status has left" are
+   * NBIF's rules about Affinity's values, and there is no field in Affinity
+   * that states them. They live in `affinity_status_map` so that routing a
+   * renamed or newly added status is a row edit rather than a deploy (ADR-009),
+   * and they are seeded here so that a fresh database is correct before the
+   * first sync runs rather than after somebody notices the roster is empty.
+   *
+   * `Closed` is a member because the sync has always counted it. No live entry
+   * carries it -- NBIF's deals move from Approved straight to Portfolio -- and
+   * it is kept for the case where one does rather than dropped for being
+   * unobserved.
+   *
+   * A status in neither set is a member of nothing and exits nothing. That is
+   * the safe default for an option added in Affinity on a Tuesday: it changes
+   * no view until someone says what it means.
+   */
+  const PORTFOLIO_MEMBER_STATUSES = new Set(['Portfolio', 'Exited', 'Closed']);
+  const EXITED_STATUSES = new Set(['Exited']);
+
   // affinity_status_map is now an identity mapping, and still earns its place.
   // ADR-009 requires the Affinity-status-to-stage resolution to be a table
   // rather than code so that a change is a row edit; what that buys once the
@@ -356,11 +380,15 @@ try {
   // never by matching text against ref_funnel_stage directly.
   for (const o of optionsFor('status')) {
     await client.query(
-      `insert into affinity_status_map (affinity_status, funnel_stage_id)
-       select $1, funnel_stage_id from ref_funnel_stage where name = $1
+      `insert into affinity_status_map
+         (affinity_status, funnel_stage_id, is_portfolio_member, is_exited)
+       select $1, funnel_stage_id, $2, $3 from ref_funnel_stage where name = $1
        on conflict (affinity_status) do update
-         set funnel_stage_id = excluded.funnel_stage_id, updated_at = now()`,
-      [o.text],
+         set funnel_stage_id     = excluded.funnel_stage_id,
+             is_portfolio_member = excluded.is_portfolio_member,
+             is_exited           = excluded.is_exited,
+             updated_at          = now()`,
+      [o.text, PORTFOLIO_MEMBER_STATUSES.has(o.text), EXITED_STATUSES.has(o.text)],
     );
   }
 

@@ -48,7 +48,6 @@ import {
   type FieldValue,
   type ListEntry,
 } from './client.js';
-import { PORTFOLIO_STATUSES } from './map.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, '../../..');
@@ -110,6 +109,23 @@ async function main(): Promise<void> {
 
   const af = createAffinityClient(apiKey);
 
+  /* READ-ONLY, and enforced by the session rather than by intention: this
+     script exists to inform a decision, and a probe that could write is a probe
+     someone has to read carefully before running. */
+  const db = new pg.Client({ connectionString: databaseUrl });
+  await db.connect();
+  await db.query('set session characteristics as transaction read only');
+  await db.query('set search_path = pc, public');
+
+  /* The membership rule from `affinity_status_map`, which is where ADR-036 put
+     it -- not from a constant in this file. A probe that annotated the
+     vocabulary from its own copy of the rule would agree with itself and prove
+     nothing about what the sync will do tonight. */
+  const { rows: statusRules } = await db.query<{
+    affinity_status: string; is_portfolio_member: boolean; is_exited: boolean;
+  }>('select affinity_status, is_portfolio_member, is_exited from affinity_status_map');
+  const rule = new Map(statusRules.map((r) => [r.affinity_status, r]));
+
   // --- 1. the vocabulary, from field configuration ------------------------
   const fields = await af.collect<FieldMeta>(`/lists/${NBIF_MASTER_LIST_ID}/fields`);
   const statusField = fields.find((f) => f.name === 'Status');
@@ -123,7 +139,12 @@ async function main(): Promise<void> {
 
   log(`\nStatus — ${statusField.id}, ${statusField.valueType}, ${options.length} options in configuration`);
   for (const o of [...options].sort((a, b) => a.rank - b.rank)) {
-    const member = PORTFOLIO_STATUSES.has(o.text) ? '  ← counted as portfolio membership' : '';
+    const r = rule.get(o.text);
+    const member = r?.is_exited
+      ? '  ← portfolio membership, and EXITED'
+      : r?.is_portfolio_member
+        ? '  ← counted as portfolio membership'
+        : '';
     log(`  ${String(o.rank).padStart(2)}  ${o.text}${member}`);
   }
 
@@ -145,17 +166,13 @@ async function main(): Promise<void> {
   }
 
   // --- 3. the Exited entries, against the roster --------------------------
-  const exited = entries.filter(
-    (e) => (fieldValue<DropdownValue>(e, 'Status')?.text ?? null) === 'Exited',
-  );
-
-  /* READ-ONLY, and enforced by the session rather than by intention: this
-     script exists to inform a decision, and a probe that could write is a probe
-     someone has to read carefully before running. */
-  const db = new pg.Client({ connectionString: databaseUrl });
-  await db.connect();
-  await db.query('set session characteristics as transaction read only');
-  await db.query('set search_path = pc, public');
+  // Which status means exited is the table's answer too, for the reason given
+  // where `rule` is loaded: a probe carrying its own copy would agree with
+  // itself rather than with the sync.
+  const exited = entries.filter((e) => {
+    const status = fieldValue<DropdownValue>(e, 'Status')?.text ?? null;
+    return status !== null && rule.get(status)?.is_exited === true;
+  });
 
   const rows: ExitedEntry[] = [];
   for (const e of exited) {
@@ -186,7 +203,7 @@ async function main(): Promise<void> {
       affinityRowId: String(e.id),
       name: e.entity.name.trim(),
       domain: e.entity.domain,
-      status: 'Exited',
+      status: fieldValue<DropdownValue>(e, 'Status')?.text ?? '',
       affinityTotalInvestment: fieldValue<number>(e, 'Total Investment Amount'),
       affinityFmv: fieldValue<number>(e, 'FMV'),
       onRoster: hit !== null,
@@ -248,7 +265,8 @@ async function main(): Promise<void> {
     listId: NBIF_MASTER_LIST_ID,
     statusField: { id: statusField.id, valueType: statusField.valueType },
     statusOptions: [...options].sort((a, b) => a.rank - b.rank).map((o) => ({ rank: o.rank, text: o.text })),
-    membershipStatuses: [...PORTFOLIO_STATUSES],
+    membershipStatuses: statusRules.filter((r) => r.is_portfolio_member).map((r) => r.affinity_status),
+    exitedStatuses: statusRules.filter((r) => r.is_exited).map((r) => r.affinity_status),
     entriesByStatus: Object.fromEntries([...byStatus].sort((a, b) => b[1] - a[1])),
     entryCount: entries.length,
     exited: rows,
