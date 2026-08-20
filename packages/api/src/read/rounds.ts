@@ -38,6 +38,19 @@ export interface CoinvestorRow {
   edited: boolean;
 }
 
+/** One of our cheques, as the round sees it. */
+export interface RoundChequeRow {
+  id: string;
+  txnDate: string;
+  txnType: string;
+  /** DOLLARS, as booked. */
+  amount: string;
+  currency: string;
+  /** DOLLARS, converted. What `ourInvested` actually sums. */
+  amountCad: string;
+  isSynthetic: boolean;
+}
+
 export interface RoundRow {
   id: string;
   companyId: string;
@@ -60,6 +73,28 @@ export interface RoundRow {
 
   /** Our own cheque, summed from the live transactions tied to this round, in CAD. */
   ourInvested: string;
+
+  /**
+   * ADR-033. Whether we put money into this round.
+   *
+   * READ ALONGSIDE `ourInvested`, NEVER INSTEAD OF IT. The pair is the whole
+   * point of F1: `ourInvested` of $0 against `yes` is a cheque that is missing
+   * or unlinked and wants chasing, against `no` is a round we correctly sat
+   * out, and against `unknown` is a question nobody has answered. Before this
+   * column all three read $0 and looked identical (finding S-2).
+   */
+  nbifParticipated: 'yes' | 'no' | 'unknown';
+
+  /**
+   * The live cheques attached to this round, oldest first.
+   *
+   * Carried on the round rather than fetched per-row by the form, for the same
+   * reason the co-investors are: one query means the cheque list can never be
+   * read at a different instant from the `ourInvested` figure it has to add up
+   * to. A screen showing a total and a list that disagree is worse than one
+   * showing neither.
+   */
+  cheques: RoundChequeRow[];
 
   /** Set when a deal lead has been through the capture form for this round. */
   capturedAt: string | null;
@@ -145,9 +180,14 @@ export async function readRounds(
     round_total: string | null; nb_other: string | null; post_money: string | null;
     ownership_after_pct: string | null; lead_investor: string | null; note: string | null;
     source_document: string | null; our_invested: string; captured_at: string | null;
+    nbif_participated: string; cheques: ChequeRaw[] | null;
     captured_by_name: string | null; coinvestors: CoinvestorRaw[] | null;
     coinvestor_nb_total: string | null; is_synthetic: string; deleted_at: string | null;
     deleted_reason: string | null; edited: string; row_created_at: string; row_updated_at: string;
+  }
+  interface ChequeRaw {
+    id: string; txn_date: string; txn_type: string; amount: string;
+    currency: string; amount_cad: string; is_synthetic: boolean;
   }
   interface CoinvestorRaw {
     id: string; investor_name: string; fund_investment_id: string | null;
@@ -173,6 +213,8 @@ export async function readRounds(
            r.note,
            r.source_document,
            coalesce(ours.our_invested, 0)::text as our_invested,
+           r.nbif_participated,
+           coalesce(ours.cheques, '[]'::jsonb) as cheques,
            r.captured_at::text                as captured_at,
            cu.display_name                    as captured_by_name,
            co.coinvestors,
@@ -192,7 +234,26 @@ export async function readRounds(
         -- amount_cad, not amount: a round can carry a non-CAD tranche, and
         -- summing the booked figure would understate our cheque by the spread.
         -- Same correction as v_company_invested and the export adapter.
-        select sum(t.amount_cad) as our_invested
+        --
+        -- F1 widens this lateral to return the cheques as well as their sum,
+        -- FROM THE SAME SCAN AND THE SAME PREDICATE. A second lateral would
+        -- have been a second copy of the txn_type filter, and the day those two
+        -- copies drift is the day a round shows a list that does not add up to
+        -- the total printed beside it.
+        --
+        -- Realizations and write-offs are deliberately outside both. They can
+        -- carry a round link and they are not our cost in the round; including
+        -- them here would make the list disagree with our_invested instead.
+        select sum(t.amount_cad) as our_invested,
+               jsonb_agg(jsonb_build_object(
+                 'id',           t.transaction_id::text,
+                 'txn_date',     t.txn_date::text,
+                 'txn_type',     t.txn_type,
+                 'amount',       t.amount::text,
+                 'currency',     t.currency,
+                 'amount_cad',   t.amount_cad::text,
+                 'is_synthetic', t.is_synthetic)
+                 order by t.txn_date, t.transaction_id) as cheques
           from pc.v_transaction_live t
          where t.investment_round_id = r.investment_round_id
            and t.txn_type in ('investment','follow_on')) ours on true
@@ -247,6 +308,16 @@ export async function readRounds(
         note: r.note,
         sourceDocument: r.source_document,
         ourInvested,
+        nbifParticipated: r.nbif_participated as 'yes' | 'no' | 'unknown',
+        cheques: (r.cheques ?? []).map((t) => ({
+          id: t.id,
+          txnDate: t.txn_date,
+          txnType: t.txn_type,
+          amount: t.amount,
+          currency: t.currency,
+          amountCad: t.amount_cad,
+          isSynthetic: t.is_synthetic,
+        })),
         capturedAt: r.captured_at,
         capturedByName: r.captured_by_name,
         coinvestors: (r.coinvestors ?? []).map((c) => ({
@@ -276,6 +347,101 @@ export async function readRounds(
       };
     }),
   };
+}
+
+/**
+ * Every direct cheque a company has, with the round each is attached to.
+ *
+ * F1, and it exists for one screen interaction: the Deal Close form's *cheques
+ * in this round* section has to offer the cheques that COULD be attached, not
+ * only the ones already are. That set is "this company's direct transactions",
+ * and there is nowhere else to get it -- `readRounds` sees only cheques that are
+ * already linked, which is precisely the set the unlinked ones are missing from.
+ *
+ * WHY IT RETURNS LINKED CHEQUES TOO, rather than only the loose ones. Moving a
+ * cheque from the wrong round to the right one is the same reconciliation as
+ * attaching a loose one, and it is the more common correction -- finding S-1
+ * left every link in the database written by a generator, and the A6 dataset
+ * seeds one deliberately booked against another company's round. A picker that
+ * only ever showed unattached cheques would make the wrong-round case the one
+ * thing this screen cannot fix.
+ *
+ * DELETED AND VOIDED ROWS ARE OUT. A cheque that is not in `ourInvested` cannot
+ * change a round's `ourInvested` by moving, so offering it would be offering an
+ * action with no effect.
+ */
+export interface CompanyChequeRow {
+  id: string;
+  txnDate: string;
+  txnType: string;
+  amount: string;
+  currency: string;
+  amountCad: string;
+  /** Null means unattached — see `standaloneConfirmedAt` for whether that was deliberate. */
+  investmentRoundId: string | null;
+  roundLabel: string | null;
+  roundDate: string | null;
+  /** ADR-033 clause 4. Set when someone confirmed this cheque correctly has no round. */
+  standaloneConfirmedAt: string | null;
+  standaloneConfirmedByName: string | null;
+  isSynthetic: boolean;
+}
+
+export async function readCompanyCheques(
+  db: Kysely<DB>,
+  principal: Principal,
+  companyId: string,
+): Promise<CompanyChequeRow[]> {
+  requireRole(principal, CAN_READ);
+
+  interface Raw {
+    id: string; txn_date: string; txn_type: string; amount: string; currency: string;
+    amount_cad: string; investment_round_id: string | null; round_label: string | null;
+    round_date: string | null; standalone_confirmed_at: string | null;
+    standalone_confirmed_by_name: string | null; is_synthetic: boolean;
+  }
+
+  const { rows } = await sql<Raw>`
+    select t.transaction_id::text      as id,
+           t.txn_date::text            as txn_date,
+           t.txn_type,
+           t.amount::text              as amount,
+           t.currency,
+           t.amount_cad::text          as amount_cad,
+           t.investment_round_id::text as investment_round_id,
+           r.label                     as round_label,
+           r.round_date::text          as round_date,
+           x.standalone_confirmed_at::text as standalone_confirmed_at,
+           u.display_name              as standalone_confirmed_by_name,
+           t.is_synthetic
+      from pc.v_transaction_live t
+      -- v_transaction_live is deliberately NOT widened by migration 0008 (0002's
+      -- standing rule: a later migration must not silently widen a view the
+      -- ADR-001 export reads from), so the two confirmation columns are joined
+      -- back from the base table rather than selected from the view.
+      -- NOTE: no backticks anywhere inside this template literal.
+      join pc.transaction x on x.transaction_id = t.transaction_id
+      left join pc.investment_round r on r.investment_round_id = t.investment_round_id
+      left join pc.app_user u on u.user_id = x.standalone_confirmed_by
+     where t.company_id = ${companyId}
+       and t.txn_type in ('investment','follow_on')
+     order by t.txn_date, t.transaction_id
+  `.execute(db);
+
+  return rows.map((r) => ({
+    id: r.id,
+    txnDate: r.txn_date,
+    txnType: r.txn_type,
+    amount: r.amount,
+    currency: r.currency,
+    amountCad: r.amount_cad,
+    investmentRoundId: r.investment_round_id,
+    roundLabel: r.round_label,
+    roundDate: r.round_date,
+    standaloneConfirmedAt: r.standalone_confirmed_at,
+    standaloneConfirmedByName: r.standalone_confirmed_by_name,
+    isSynthetic: r.is_synthetic,
+  }));
 }
 
 /**
