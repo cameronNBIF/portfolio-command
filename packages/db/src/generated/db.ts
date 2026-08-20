@@ -41,7 +41,7 @@ export interface AffinityControlSnapshot {
   taken_at: Generated<Timestamp>;
   taken_by: string;
   /**
-   * A copy of company.affinity_total_investment, which is VC-team-maintained reference data and has never entered a calculation (ADR-020). Its value here is as an independent anchor, and it only has that value because it was taken before we overwrote the original.
+   * A copy of company.affinity_total_investment, which is VC-team-maintained reference data and has never entered a calculation (ADR-020). Its worth is as an anchor fixed at the instant the control totals were agreed, against a live column that moves nightly.
    */
   total_investment: Numeric | null;
 }

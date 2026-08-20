@@ -295,5 +295,17 @@ Funke proposed **commitment / commitment drawdown / distribution**. We want to r
 | **Q-1** | Retained value or write-down? | **Retained.** 100% holds, 75% takes 25% off. Compounding still to confirm. |
 | **Q-15** | Ownership between rounds? | Finance enters them, **ad hoc**, as word of an event arrives. No cadence. |
 | **Q-16** | The Concrete Ventures figures? | Transcription error. Disregard. The three-stage model is correct. |
-| **Q-17** | Affinity write-back? | Push at A13; the field becomes **read-only** in Affinity; the platform stops reading it. |
+| **Q-17** | Affinity write-back? | Push **after** A13 — refined 20 Aug 2026, see below; the field becomes **read-only** in Affinity; the platform stops reading it. |
 | **Q-18** | Keep NAV? | **Yes**, approved by Daniel — it informs LP TVPI, RVPI and IRR. |
+
+**Q-17, refined 20 August 2026.** The original answer read *"push at A13"*, and F0 built the roadmap and ADR-039 around that as a phase name. It is not one.
+
+The push extracts total invested per company from **live transaction history the finance team has verified**. That verification is A13's *exit criterion*, so the figures the push depends on are an **output** of the phase, not something available during it. Scheduling the platform's first irreversible write to a system it does not own inside the riskiest phase in the programme — on numbers whose trustworthiness that same phase is still establishing — inverts the dependency.
+
+**So the push has no date.** It happens when the platform's own figures are trustworthy, on its own decision, some time after A13. Until then:
+
+- ADR-009's one-way rule holds **in full**. Nothing outbound is built and none is scheduled.
+- The platform keeps **reading** `affinity_total_investment` and `affinity_fmv` nightly, and the A6 generator keeps calibrating synthetic transactions and marks against them so company-level figures roll up to what the VC team recognises. That workflow is retained deliberately, not by omission.
+- **The F0 snapshot stays**, and its justification is re-based rather than removed. It was raised as insurance against the write; the reason that survives the write being indefinite is that **the agreed control totals were agreed at an instant while the columns holding them are synced nightly and demonstrably volatile** (ADR-020 records a figure that moved five times in under a minute). Without a frozen copy, a reconciliation failure at A13 cannot be distinguished from Affinity having moved underneath it — and no other artefact in the programme answers that question.
+
+Recorded in full in ADR-039's amendment, which is the authority. FR-02's disposition in the register is updated to match.
