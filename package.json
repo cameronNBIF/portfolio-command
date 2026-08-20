@@ -21,6 +21,7 @@
     "fixture:purge": "tsx packages/api/src/import/purge-cli.ts",
     "affinity:probe": "tsx functions/src/affinity/probe.ts",
     "affinity:vocab": "tsx functions/src/affinity/vocabularies.ts",
+    "affinity:exits": "tsx functions/src/affinity/exit-probe.ts",
     "visible:probe": "tsx functions/src/visible/probe.ts",
     "visible:sync": "tsx functions/src/visible/sync-cli.ts",
     "lint": "eslint .",
