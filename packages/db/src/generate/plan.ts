@@ -442,18 +442,22 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
    * 2 says the two are allowed to disagree for a period, and the generated
    * dataset should contain that state rather than pretend it away. So the five
    * companies written to nil while still on the roster keep their write-offs
-   * and lose their exits -- which is exactly "Finance booked it in March,
-   * Affinity was updated in June", sitting in the demo data where the F6
-   * reconciliation surface will have something to find.
+   * AND their exit events, and stay in the Portfolio view -- which is exactly
+   * "Finance booked it in March, Affinity was updated in June", sitting in the
+   * demo data where the F6 reconciliation surface will have something to find.
+   * The `exited` flag ignores those events entirely, because the roster has
+   * spoken for those companies and says they are still ours.
    */
   const writtenOff = F === 0;
   const windingDown = facts.lifecycleStatus === 'Winding Down';
   const rosterExited = facts.rosterStatus === 'Exited';
   let exit: CompanyPlan['exit'] = null;
 
+  const eventDate = marks.length ? marks[marks.length - 1]!.date : rounds[rounds.length - 1]!.date;
+
   if (writtenOff && (windingDown || rosterExited)) {
     transactions.push({
-      date: marks.length ? marks[marks.length - 1]!.date : rounds[rounds.length - 1]!.date,
+      date: eventDate,
       type: 'write_off',
       amountCents: T,
       currency: 'CAD',
@@ -462,15 +466,19 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
       vehicle: facts.vehicle,
       note: 'Full write-off of cost basis.',
     });
-  }
-
-  if (rosterExited) {
-    const date = marks.length ? marks[marks.length - 1]!.date : rounds[rounds.length - 1]!.date;
     exit = {
-      date,
-      // Honest about its own provenance: the roster says the company left, and
-      // says nothing about how. Written to nil is what the figures show.
-      type: writtenOff ? 'Shutdown / write-off' : 'Acquisition',
+      date: eventDate,
+      type: 'Shutdown / write-off',
+      note: rosterExited
+        ? 'Position written to nil. The roster agrees.'
+        : 'Position written to nil. Affinity still lists the company as portfolio — the lag ADR-036 clause 2 describes.',
+    };
+  } else if (rosterExited) {
+    exit = {
+      date: eventDate,
+      // The roster says the company left and says nothing about how. With cost
+      // still carried, a write-off is the one thing it cannot have been.
+      type: 'Acquisition',
       note: 'Recorded from the Affinity roster status (ADR-036).',
     };
   }
