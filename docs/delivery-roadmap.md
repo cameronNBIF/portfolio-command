@@ -357,6 +357,12 @@ The storage model is robust to every answer available, and the manual review pat
 
 **Size: M**
 
+**Done, 20 August 2026** — see the F3 entry in `BUILD-LOG.md`. Migration 0010 linked 177 of 179 ownership rows to their causing round from evidence alone and moved no figure; portfolio FMV still reconciles to the frozen Affinity control total of **$42,030,272.00 to the cent**. 252 golden masters, 39 db tests and 63 functions tests pass unchanged; the API suite goes from 128 to 151.
+
+**Two things the spec did not settle, both decided and recorded.** `fund_accounting_policy` carries **no `fund_id`**, despite copying `fund_alert_policy` in every other respect: the flag is resolved from a company and a date, `company_ownership` has no fund dimension, and a `fund_id` would have to be filled in by an assumption written into SQL. And the new foreign key makes delete **order** load-bearing wherever a round is hard-deleted — the generator's clear step and the A8 test cleanup both had to name the children first. Nothing in the application hard-deletes a round, so no workflow changes.
+
+**One F2 claim did not survive contact with the code.** F2 recorded that Q-19's 0% retention option had become *"a one-row insert rather than a migration"*. It has not: `ref_fmv_retention_option` carries `check (factor > 0)`. The option list now has the editing surface F2 promised it, and a 0% entry is refused with that sentence rather than a constraint error — but answering Q-19 yes still costs a one-line migration.
+
 #### F4 · Exits and the Exited view
 
 *The one phase that starts with a question rather than a migration.*
@@ -428,7 +434,7 @@ Raised as **Proposed** at F0; each moves to **Accepted** as its phase lands.
 |---|---|---|
 | **ADR-033** ✅ | A round is an event in the company's life; participation is explicit, and the cheque-to-round link is writable from both surfaces through a narrow mutation. **Accepted 20 Aug 2026.** Clause 3 was amended on landing: the leverage guard had to go in the export as well as the view | F1 |
 | **ADR-034** ✅ | A valuation mark records the adjustment that produced it and stores the resulting absolute; the retention factor is the input and the absolute is the fact. **Accepted 20 Aug 2026.** Clause 3 gained the rule for a review applied to cost | F2 |
-| **ADR-035** | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag | F3 |
+| **ADR-035** ✅ | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag. **Accepted 20 Aug 2026.** Clause 2 was amended on landing: `fund_accounting_policy` carries no `fund_id`, because the flag is resolved from a company and ownership has no fund dimension | F3 |
 | **ADR-036** | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views | F4 |
 | **ADR-037** | LP commitments are dated events and `committed` becomes derived | F5 |
 | **ADR-038** | The version store distinguishes a correction from information arriving late | F6 |

@@ -236,6 +236,7 @@ Section visibility follows role: `vc` and `admin` see alert policies, `finance` 
 **Design note:** effective-date the threshold. This drives financial statement treatment, and a prior period's classification has to remain reproducible — the same reason `fund_alert_policy` is dated.
 **Depends on FR-36** — a derived flag is only as current as the ownership behind it.
 **Disposition:** Build the threshold, the derived flag and the report now. The manual override for board-seat grey areas waits on Q-7 and is additive.
+**BUILT — F3, 20 August 2026.** `fund_accounting_policy` holds the threshold, effective-dated and superseded rather than updated; `significant_influence_asof(company, date)` is the flag, three-valued, NULL where ownership is unrecorded or no policy is in force; the Policies tab carries both sections with the alert policy moved across from Alerts, and the schedule groups the three states with the ownership entry form on the same screen. **A 10% threshold was set through the screen** during the F3 walkthrough rather than by the migration, which is the point of ADR-035 clause 3 — it is in the development database only, its note says it was entered to exercise the surface, and it is cleared by emptying one box. Still open: the board-seat override (Q-7), which is additive.
 **Size:** M · **Schema:** Yes
 
 ---
@@ -366,6 +367,7 @@ The commitment being described as **adjustable** is the operative word, and it s
 **Gap:** A standalone, Finance-owned ownership entry surface. Also a reason field: an ad-hoc adjustment that does not say what caused it is a number nobody can defend six months later, and this table feeds MOIC, the waterfall and — once FR-21 lands — the significant-influence flag that drives accounting treatment.
 **Why this matters more than its size suggests:** it is the **prerequisite for FR-21**. A significant-influence flag derived from a stale ownership percentage is worse than no flag, because it looks authoritative. Ad-hoc maintenance is what keeps it current, and nothing currently permits it.
 **Disposition:** Build. Roadmap phase **F3**, ahead of the threshold work in the same phase.
+**BUILT — F3, 20 August 2026.** `company_ownership` gained `change_reason` and `investment_round_id`, and a standalone entry path (`/api/v1/ownership`, `CAN_CAPTURE_ROUND`) that refuses a figure with no reason. The deal-close path stores the round instead of prose, because there the round is the reason. 177 of 179 existing rows were linked to their causing round from evidence alone; the 2 that were not are real rows whose rounds were later soft-deleted, and they are visible on the schedule rather than absent from it.
 **Size:** M · **Schema:** Minor (a reason, and an optional link to the causing round)
 
 ---

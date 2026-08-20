@@ -1724,7 +1724,9 @@ A mark becomes an **event** carrying its cause, its basis, its input and its res
 
 ## ADR-035 — Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag
 
-**Status:** Proposed (19 August 2026). Raised at F0, lands with F3.
+**Status:** **Accepted (20 August 2026)**, landed with F3 in migration 0010. Raised as Proposed at F0.
+
+**One clause said less than the schema needed and one consequence was found only by running it.** Clause 2 specifies `fund_accounting_policy` on the `fund_alert_policy` pattern; that pattern is per fund and this table cannot be — see the amended clause 2. And the foreign key clause 1 adds makes delete **order** load-bearing wherever a round is hard-deleted; recorded under Consequences.
 
 **Context.** `company_ownership` is dated, structured and correct in shape — and is written **only** by the Deal Close capture form, as part of capturing a round. There is no way to record an ownership change that is not attached to a round we captured, and Q-15 established that those changes are real and routine: an option pool expansion, a round we did not participate in, a secondary. Finance enters them **ad hoc, as word of the event reaches them.** No cadence, no reporting period, no batch.
 
@@ -1738,6 +1740,8 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 
 2. **The threshold lives in `fund_accounting_policy`, effective-dated, on the `fund_alert_policy` pattern.** Same shape and same argument: this drives financial-statement treatment, a prior period's classification has to stay reproducible, and a policy that silently rewrote itself would reclassify a company in a board pack that was issued before the change. Setting a threshold **supersedes** the current row rather than updating it.
 
+   **Amended on landing: the table carries no `fund_id`, and that is the one place it departs from the pattern it copies.** `fund_alert_policy` is per fund because a watchlist is a fund's watchlist. Significant influence is not — it is a property of NBIF's holding in an investee, `company_ownership` has no fund dimension at all, and `significant_influence_asof()` takes a company and a date. A `fund_id` here would have to be resolved from a company that has no fund, and that resolution would be an assumption written into SQL: invisible, and wrong the day a second fund exists. The table keeps the name this ADR gave it; what it holds is the accounting policy of the reporting entity. One open row at a time is enforced by a unique index on a constant.
+
 3. **The migration inserts no policy row.** The behaviour change lands when someone sets the threshold on the Policies screen, deliberately, and not as a side effect of running a migration. Migration 0005 followed the same rule for the alert policy and for the same reason.
 
 4. **`significant_influence_asof()` returns NULL, never false, when ownership is unrecorded.** "We hold no ownership figure for this company" and "this company is below the threshold" are different statements, and reporting the second when the first is true is how a company quietly drops off a schedule an auditor expects to find it on. This is D-5's rule — non-reporters are excluded, never counted as zeros — applied where the stakes are highest. NULL is also returned when no policy is in force, for the same reason.
@@ -1747,7 +1751,10 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 6. **Standalone ownership entry is gated to `CAN_CAPTURE_ROUND`**, which is where the table is already permitted. Q-15's expectation is that Finance enters these and Finance already holds that capability; leaving the deal lead able to record a cap-table change they learn about first costs nothing.
 
 **Consequences.**
-- The significant-influence report groups companies with no ownership figure separately, under *ownership not recorded* — visible rather than silently absent, and actionable through the entry form on the same screen.
+- The significant-influence report groups companies with no ownership figure separately, under *ownership not recorded* — visible rather than silently absent, and actionable through the entry form on the same screen. **The heading names the cause**: with no threshold in force every company reads NULL and none of them is missing a figure, so in that state the group is headed *not determined — no threshold in force*. Heading it the other way would send Finance chasing 82 cap tables that are already recorded when what is missing is one policy.
+- **The causing-round link makes delete order load-bearing wherever a round is hard-deleted.** The foreign key is `no action`, checked at end of statement, so clearing rounds before the positions that name them now fails. That is the constraint doing its job — a round a cap-table position cites should not be destroyable out from under it — and the cost is that the A6 generator's clear step and the A8 test cleanup both had to name the children first. Nothing in the application hard-deletes a round; it soft-deletes, and a soft delete is unaffected.
+- **The effective dating is day-grained, in both directions.** A policy set and superseded on the same date covers no date at all, and a classification reproduced for that day reads *not determined* rather than guessing which of the two applied. `fund_alert_policy` behaves identically. Stated here because it looks like a bug the first time it is met and is the honest answer.
+- **The ownership figure's age travels with every row of the report.** This ADR's own argument is that a flag over a stale cap table looks exactly as authoritative as one over a current one; the schedule therefore states how old each figure is and leaves the judgement there. No staleness threshold is invented, because nobody has set one.
 - Until the board-seat override exists (Q-7) the report carries a note saying the flag is derived from ownership alone and that grey areas are known to exist. The override is additive to a flag that already works, so waiting costs no rework.
 - A company at exactly the threshold is flagged. The inclusive reading is what gets built and asserted; Pat confirms it rather than the code assuming it silently.
 

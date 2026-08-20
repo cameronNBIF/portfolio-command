@@ -28,6 +28,79 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-20 · F3 · Ownership between rounds, the policy behind the flag, and a schedule that names what it cannot classify
+
+**Closes FR-36 and FR-21 but for the board-seat override. Lands ADR-035.** Migration 0010, two write modules, two read modules, two endpoints, a tenth tab, twenty-three new tests.
+
+**No S-number, and that is worth saying rather than reaching for the nearest one.** The as-built baseline records ten findings and none of them is this: `company_ownership` being writable only as a by-product of capturing a round is a gap the **register** found, from Q-15, not one the S-review did.
+
+**No board number moved.** Portfolio FMV still reconciles to the frozen Affinity control total of **$42,030,272.00** exactly. 252 metrics golden masters, 39 db tests and 63 functions tests pass unchanged; the API suite goes from 128 to 151.
+
+### Built
+
+**Migration 0010 · an ownership row says what caused it.** `company_ownership` gains `change_reason` and an optional `investment_round_id`. **Two columns rather than one, because the two write paths know different things**: a standalone adjustment knows the reason and not the round, and a deal-close capture knows the round, where the round *is* the reason. Requiring prose from the second would get "Series B" typed into a box beside the Series B it already points at.
+
+**Backfilled from evidence and nothing else** — an ownership row dated to *exactly one* live round of the same company, which is the deal-close form's signature rather than a coincidence. **177 of 179 linked, none ambiguous, 2 left null.** Those two are real (not synthetic) rows entered through the A8 form on 18 August whose rounds were soft-deleted afterwards; they are the finding rather than a gap in it, and both appear on the new schedule with nothing in the *why it changed* column. The version trigger was scoped off for the statement on the F0/F1/F2 reading: **no version rows written, and nothing claims on screen to have been edited.**
+
+**Why there is no `check (change_reason is not null or investment_round_id is not null)`,** which is the constraint that section obviously wants. Those 2 rows satisfy neither predicate. A validated CHECK refuses the migration; a `not valid` one lets them sit and then fails the next UPDATE against either — **including a soft delete, which is how a row in that state gets tidied away.** The operator would meet a constraint error on the one action that resolves what the constraint is complaining about. So the rule lives in the write path, where it can say a sentence, and the report makes such a row visible rather than legal.
+
+**`fund_accounting_policy`, effective-dated, superseded rather than updated,** and **created empty** (ADR-035 clause 3): until someone sets a threshold on the screen, "nobody has decided" and "below the threshold" must not look alike.
+
+**`significant_influence_asof(company, date)`, three-valued.** true, false, or **NULL when ownership is unrecorded or no policy is in force** — never false in those cases. Both inputs are read as at the date, so passing last March reproduces last March's classification. Inclusive at the threshold, asserted in a test rather than assumed.
+
+**`write/ownership.ts`,** one table and one mutation, gated on `CAN_CAPTURE_ROUND` because that is where the table already sits. **Two reasons travel with the mutation and they are not the same reason**: `changeReason` says what moved the cap table and lives on the row, `reason` is the ADR-031 restatement explanation and lives in the version store. Collapsing them would mean either an ordinary adjustment demanding a restatement sentence, or a restatement explained by "option pool".
+
+**`write/finance-policy.ts`, behind a new `CAN_SET_FINANCE_POLICY`** — the same two roles as `CAN_WRITE_FINANCIAL` and still a separate list, because what it gates is not a financial row but the rule that classifies every one. It also gives `ref_fmv_retention_option` the editing path **F2 explicitly left to F3**.
+
+**The Policies tab**, two role-gated sections and the schedule. The alert policy card is a **move, not a copy** — the A9 card unchanged, still posting to `/api/v1/judgement` — and Alerts is better for losing it: that tab was built as the *working* view and configuration inside it was always slightly the wrong shape. What stays on an alert is where its threshold came from, which is the part that belongs there.
+
+**The schedule groups the three states rather than filtering to the interesting one,** with the unclassifiable group first because it is the only actionable one and the entry form is on the same screen. **Every row carries the age of its ownership figure** — 87 months on MESH/diversity, 2 on pHathom — because this ADR's own argument is that a flag over a stale cap table looks exactly as authoritative as one over a current one. No staleness threshold is invented; nobody has set one.
+
+### Changed
+
+**The heading of the unclassifiable group names its cause, and that was a defect found in the browser.** With no threshold in force, all 82 companies read NULL and **not one of them is missing an ownership figure**. Headed *ownership not recorded*, the screen would have sent Finance chasing 82 cap tables that are already recorded when what was missing was one policy. It now reads *not determined — no threshold in force* in that state.
+
+**Setting the threshold refreshes the schedule below it.** Two separate reads of two separate endpoints, only one of them written — and a screen showing a policy and its consequence at once must not show them disagreeing.
+
+**The schedule's date picker defaults to today, not to the document's `asOf`.** That default is derived from the latest valuation mark, and significant influence has nothing to do with when a position was last valued. Defaulting to a mark date showed a threshold set that morning as not yet in force: true, and useless. The API still requires the date and refuses to assume one.
+
+**Delete order became load-bearing, and the test suite found it.** The new foreign key is `no action`, checked at end of statement, so clearing rounds before the positions that name them fails. Eight A8 tests went red. **The constraint is right** — a round a cap-table position cites should not be destroyable out from under it — so the fix is ordering: the A6 generator's clear step and the A8 cleanup now name the children first. Nothing in the application hard-deletes a round; it soft-deletes, and a soft delete is unaffected.
+
+**The generator writes the round link at INSERT and the fixture importer records where its figure came from.** F1's lesson applied without waiting to relearn it: migration 0010 reads the database and the generator reads the plan, and without the second the first is undone by the next `db:generate`. The importer's `change_reason` is the honest one on the same reading that made F2 label imported marks `legacy` — the contract carries one percentage per company and no cap-table event behind it, so what the row can truthfully say is where it came from.
+
+### Decided
+
+**1. `fund_accounting_policy` carries no `fund_id`, which is the one place it departs from the pattern ADR-035 told it to copy.** `fund_alert_policy` is per fund because a watchlist is a fund's watchlist. Significant influence is not: it is a property of NBIF's holding in an investee, `company_ownership` has no fund dimension at all, and the function takes a company and a date. A `fund_id` here would have to be resolved from a company that has no fund — **an assumption written into SQL, invisible until the day a second fund exists.** One open row is enforced by a unique index on a constant. Recorded as an amendment to clause 2 rather than only here, because the omission reads as an oversight to anyone meeting the table cold.
+
+**2. The effective dating is day-grained in both directions, and that is stated rather than left to be discovered.** A policy set and superseded on the same date covers no date at all, so a classification reproduced for that day reads *not determined* rather than guessing which applied. `fund_alert_policy` behaves identically. It looks like a bug the first time it is met; it is the honest answer, and the test says so.
+
+**3. The retention-option editing came in with this phase**, though the F3 spec does not list it. F2's own outstanding item names F3 as the phase that closes it, and FR-21's design direction names the retention options as one of the finance policies the tab exists to hold. Add, retire and reinstate — never delete, because a factor already used is referenced by marks that must keep reconstructing.
+
+### Found
+
+**F2's claim that Q-19's 0% option had become "a one-row insert rather than a migration" is not true**, and the option list is exactly the surface that proves it. `ref_fmv_retention_option` carries `check (factor > 0 and factor <= 1)`. Every factor in (0, 1] can be added without a migration; **0 cannot**. The add path refuses it with that sentence and names Q-19, rather than letting a constraint violation reach the screen as an error nobody can act on. Migration 0009 was left alone: relaxing the bound would pre-empt an answer that is Finance's to give.
+
+### Verified
+
+Beyond the suite, the phase was run end to end through the interface.
+
+**A 10% threshold set through the Policies screen** moved all 82 companies out of *not determined* into **15 held and 67 below**, with **Triple Hair at exactly 10.00% landing in HELD** — the inclusive reading demonstrated rather than described.
+
+**An option-pool dilution recorded through the form** — Triple Hair to 9.20% as at today, reason attached — moved it to *below the threshold* (14 / 68). The stored row is exactly right: non-synthetic, `change_reason` set, `investment_round_id` **null** as an ad-hoc adjustment should be, `row_updated_at = row_created_at` so nothing claims to have been edited, and an `audit_log` row naming the actor. `significant_influence_asof('C028', today)` reads **false**; on 19 August, before the policy existed, it reads **NULL**.
+
+Portfolio FMV after: **$42,030,272.00**, unchanged and still equal to the frozen Affinity control total.
+
+### Outstanding
+
+- **The 10% threshold now sits in the development database.** It was entered to exercise the surface, its note says so, and it is cleared by emptying one box. **It is not a decision anybody has taken** — ADR-035 clause 3 exists precisely so that setting it is a deliberate act, and the real one belongs to Finance. The **inclusive reading at exactly the threshold still wants Pat's confirmation**; the code asserts it and the screen states it, which is what makes it confirmable rather than assumed.
+- **The board-seat override (Q-7) is not built**, as specified. The schedule carries the note saying the flag is derived from ownership alone and that grey areas are known to exist. Additive when it lands; no rework.
+- **The demo dataset has no "ownership not recorded" rows** — all 82 companies carry a figure — so that group is empty until a company is added without one. The group exists and is tested; what is missing is a case in the data, which is the good problem to have.
+- **Two real ownership rows name no cause at all**, C013 and C028's 18 August entries, because the rounds behind them were soft-deleted during A8 testing. They are visible on the schedule with an empty *why it changed* column, which is what the phase is for.
+- **`v_mandate_completeness` still does not count ownership coverage**, and now that a standalone entry path exists, "how many positions are current" is a question F6's reconciliation surface can actually ask. An F6 input, alongside the leverage-denominator question F1 left it.
+- Unchanged and repeated because the list is the point: **A-11** the Q-23 email to Funke (gates F5), **A-10** the second Finance meeting — Block 1 is still the most expensive thing on that agenda — and **A-12** the pedal report file.
+
+---
+
 ## 2026-08-20 · F2 · The valuation ledger — adjustment in, absolute out, and the first figure the platform computes
 
 **Closes S-3, the FR-16 storage half, FR-18 in full and the FR-19 read half. Lands ADR-034, amending ADR-007.** Migration 0009, a review path on `writeValuationMark`, a new read module, a fourth Finance surface, seventeen new tests. Track F's largest phase.
