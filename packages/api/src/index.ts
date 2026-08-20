@@ -24,6 +24,22 @@ export {
   type ReviewRound,
   type CurrentValuation,
 } from './read/fmv-review.js';
+// F3, FR-21/FR-36. The significant-influence schedule and the ownership history
+// behind it. The flag is three-valued and NULL is never collapsed to false
+// (ADR-035 clause 4).
+export {
+  readSignificantInfluence,
+  readOwnershipHistory,
+  type SignificantInfluenceReport,
+  type SignificantInfluenceRow,
+  type OwnershipRow,
+} from './read/ownership.js';
+export {
+  readFinancePolicies,
+  type FinancePolicies,
+  type AccountingPolicyRow,
+  type RetentionOptionRow,
+} from './read/policies.js';
 export {
   readRounds,
   readCompanyCheques,
@@ -50,6 +66,7 @@ export {
   CAN_EDIT_JUDGEMENT,
   CAN_WRITE_FINANCIAL,
   CAN_CAPTURE_ROUND,
+  CAN_SET_FINANCE_POLICY,
   type Principal,
   type Role,
 } from './auth/principal.js';
@@ -97,6 +114,23 @@ export {
   type LinkTransactionsMutation,
   type LinkTransactionsResult,
 } from './write/link-transactions.js';
+
+// F3, FR-36, ADR-035. Ownership maintained between rounds: one table, one
+// mutation, `CAN_CAPTURE_ROUND` because that is where the table already sits.
+export {
+  applyOwnershipMutation,
+  type OwnershipMutation,
+  type OwnershipAdjustmentInput,
+  type OwnershipWriteResult,
+} from './write/ownership.js';
+
+// F3, FR-21, ADR-035 clause 5. The finance policies, behind their own gate:
+// what this sets is not a financial row but the rule that classifies every one.
+export {
+  applyFinancePolicyEdit,
+  type FinancePolicyEdit,
+  type FinancePolicyResult,
+} from './write/finance-policy.js';
 
 export {
   applyRoundMutation,

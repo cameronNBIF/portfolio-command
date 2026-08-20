@@ -226,8 +226,14 @@ try {
   };
   await clear(`delete from transaction where is_synthetic`, 'transaction');
   await clear(`delete from valuation_mark where is_synthetic`, 'valuation_mark');
-  await clear(`delete from investment_round where is_synthetic`, 'investment_round');
+  // OWNERSHIP BEFORE ROUNDS, AND THE ORDER IS NOW LOAD-BEARING. F3 gave
+  // company_ownership a foreign key to investment_round, and the check runs at
+  // the end of each statement -- so clearing rounds first fails against the
+  // positions still naming them. The constraint is right: a hard delete of a
+  // round that a cap-table position cites should be refused. What it costs is
+  // that every place doing a two-statement clear has to say the children first.
   await clear(`delete from company_ownership where is_synthetic`, 'company_ownership');
+  await clear(`delete from investment_round where is_synthetic`, 'investment_round');
   await clear(`delete from fund_investment_nav where is_synthetic`, 'fund_investment_nav');
   await clear(`delete from reserve_allocation where set_by = '${SYSTEM_USER}'`, 'reserve_allocation');
   await clear(`delete from company_exit where recorded_by = '${SYSTEM_USER}'`, 'company_exit');
@@ -431,12 +437,26 @@ try {
 
     // --- ownership, reserves, exit ---
     for (const o of plan.ownership) {
+      // F3, ADR-035 clause 1. The causing round is written AT INSERT, for the
+      // reason F1 recorded when it did the same with participation: migration
+      // 0010's backfill reads the database and this reads the plan, and without
+      // the second the first is undone by the next `db:generate`. It is also
+      // why nothing here writes `change_reason` -- on this path the round IS
+      // the reason, and prose beside it would be a second, weaker copy.
       await client.query(
         `insert into company_ownership
-           (company_id, as_of_date, ownership_pct, pro_rata_rights, is_synthetic, entered_by)
-         values ($1,$2,$3,$4,true,$5)
+           (company_id, as_of_date, ownership_pct, pro_rata_rights, is_synthetic, entered_by,
+            investment_round_id)
+         values ($1,$2,$3,$4,true,$5,$6)
          on conflict (company_id, as_of_date) do nothing`,
-        [f.companyId, o.date, o.pct.toFixed(10), o.proRata, SYSTEM_USER],
+        [
+          f.companyId,
+          o.date,
+          o.pct.toFixed(10),
+          o.proRata,
+          SYSTEM_USER,
+          roundIdByKey.get(`${f.companyId}:${o.roundIndex}`) ?? null,
+        ],
       );
       bump('company_ownership');
     }

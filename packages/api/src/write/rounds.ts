@@ -440,7 +440,7 @@ async function writeRound(
   }
 
   const coinvestors = await writeCoinvestors(trx, roundId, v.coinvestors, m.op === 'create');
-  const ownershipWritten = await writeOwnership(trx, principal, companyId, v.ownership);
+  const ownershipWritten = await writeOwnership(trx, principal, companyId, roundId, v.ownership);
 
   return { id: roundId, restated, nbifParticipated, coinvestors, ownershipWritten };
 }
@@ -551,11 +551,19 @@ async function writeCoinvestors(
  * does not exclude soft-deleted rows, so without this a re-capture at a date
  * whose row had been deleted would silently write its values into a row that
  * stays invisible to every read.
+ *
+ * F3, ADR-035 clause 1: THE ROUND IS RECORDED AND THE REASON IS NOT. A position
+ * captured here was caused by the round being captured with it, and
+ * `investment_round_id` says so precisely; `change_reason` stays null because
+ * prose beside the link would be a second, weaker copy of the same fact. The
+ * standalone path in `ownership.ts` is the mirror image -- reason required,
+ * round usually absent -- and between them every row can say what moved it.
  */
 async function writeOwnership(
   trx: Kysely<DB>,
   principal: Principal,
   companyId: string,
+  roundId: string,
   ownership: OwnershipInput | null | undefined,
 ): Promise<boolean> {
   if (!ownership) return false;
@@ -566,18 +574,20 @@ async function writeOwnership(
   await sql`
     insert into pc.company_ownership
       (company_id, as_of_date, ownership_pct, pro_rata_rights, fully_diluted,
-       source_document, entered_by)
+       source_document, entered_by, investment_round_id)
     values (${companyId}, ${asOfDate}::date, ${ownershipPct}::numeric,
             ${ownership.proRataRights === true}, ${ownership.fullyDiluted !== false},
-            ${optional(ownership.sourceDocument)}, ${principal.userId}::uuid)
+            ${optional(ownership.sourceDocument)}, ${principal.userId}::uuid,
+            ${roundId}::bigint)
     on conflict (company_id, as_of_date) do update
-       set ownership_pct   = excluded.ownership_pct,
-           pro_rata_rights = excluded.pro_rata_rights,
-           fully_diluted   = excluded.fully_diluted,
-           source_document = excluded.source_document,
-           deleted_at      = null,
-           deleted_by      = null,
-           deleted_reason  = null
+       set ownership_pct       = excluded.ownership_pct,
+           pro_rata_rights     = excluded.pro_rata_rights,
+           fully_diluted       = excluded.fully_diluted,
+           source_document     = excluded.source_document,
+           investment_round_id = excluded.investment_round_id,
+           deleted_at          = null,
+           deleted_by          = null,
+           deleted_reason      = null
   `.execute(trx);
 
   return true;

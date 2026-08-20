@@ -57,11 +57,12 @@ import {
   type FinancialTableName,
 } from '../../lib/finance-api';
 import { FmvReviewSurface } from './FmvReviewSurface';
+import { SignificantInfluenceSurface } from './SignificantInfluence';
 // ADR-030's vehicle list, served by the A8 reference route. F1 adds the round
 // list the picker offers and the narrow mutation that writes the link.
 import { RoundsApiError, fetchReference, fetchRounds, linkTransactions } from '../../lib/rounds-api';
 
-type Surface = 'transactions' | 'marks' | 'review' | 'lp';
+type Surface = 'transactions' | 'marks' | 'review' | 'lp' | 'influence';
 
 const SURFACES: { id: Surface; label: string }[] = [
   { id: 'transactions', label: 'Transactions' },
@@ -71,6 +72,12 @@ const SURFACES: { id: Surface; label: string }[] = [
   // review path, that is the register.
   { id: 'review', label: 'FMV Review' },
   { id: 'lp', label: 'LP Activity' },
+  // F3, FR-21. The significant-influence schedule and the ownership entry
+  // behind it. Beside the entry surfaces rather than on the Policies tab with
+  // the threshold that drives it: what is set there is a rule, and this is the
+  // work the rule produces -- a schedule Finance reads and a cap table Finance
+  // maintains. Last because it is a consequence of the four before it.
+  { id: 'influence', label: 'Significant Influence' },
 ];
 
 export function FinanceTab({ db }: { db: PortfolioExport }) {
@@ -98,6 +105,7 @@ export function FinanceTab({ db }: { db: PortfolioExport }) {
       {surface === 'marks' && <MarksSurface db={db} />}
       {surface === 'review' && <FmvReviewSurface db={db} />}
       {surface === 'lp' && <LpSurface db={db} />}
+      {surface === 'influence' && <SignificantInfluenceSurface />}
     </>
   );
 }

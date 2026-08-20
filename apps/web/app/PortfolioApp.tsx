@@ -29,6 +29,7 @@ import { DealCloseTab } from '../components/tabs/DealCloseTab';
 import { FinanceTab } from '../components/tabs/FinanceTab';
 import { FundsTab } from '../components/tabs/FundsTab';
 import { PipelineTab } from '../components/tabs/PipelineTab';
+import { PoliciesTab } from '../components/tabs/PoliciesTab';
 import { MemoTab } from '../components/tabs/MemoTab';
 import { ModelingTab } from '../components/tabs/ModelingTab';
 import { PortfolioTab } from '../components/tabs/PortfolioTab';
@@ -103,6 +104,10 @@ function Tab({
       return <DataTab db={db} asOf={asOf} kpiCoverage={kpiCoverage} />;
     case 'alerts':
       return <AlertsTab db={db} asOf={asOf} />;
+    case 'policies':
+      // F3. Two role-gated sections and the significant-influence schedule.
+      // Gated in the nav and again per section; the API re-checks every write.
+      return <PoliciesTab db={db} />;
     case 'dealclose':
       // ADR-012's capture form (A8). Role-gated in the nav and re-checked by the
       // API on every write, like Finance below.

@@ -100,6 +100,25 @@ export const CAN_WRITE_FINANCIAL: readonly Role[] = ['finance', 'admin'];
  */
 export const CAN_CAPTURE_ROUND: readonly Role[] = ['vc', 'finance', 'admin'];
 
+/**
+ * Who may set a finance policy -- the significant-influence threshold, and the
+ * retention options the FMV review offers (F3, FR-21, ADR-035 clause 5).
+ *
+ * THE SAME TWO ROLES AS `CAN_WRITE_FINANCIAL`, AND STILL A SEPARATE LIST. What
+ * this gates is not a financial row: it is a rule that decides how every row is
+ * classified, and the two answer different questions -- "who may record what we
+ * paid" and "who may decide what counts as significant influence". They coincide
+ * today because Finance owns both; a list that happens to equal another is
+ * clearer than an alias that hides the day they stop being the same, which is
+ * the argument already made on `CAN_READ`.
+ *
+ * The VC roles are excluded even though `CAN_EDIT_JUDGEMENT` lets them configure
+ * the ALERT policy on the same screen. That is deliberate and it is the whole
+ * reason the Policies tab has two role-gated sections rather than one: an alert
+ * threshold changes a watchlist, and this changes financial-statement treatment.
+ */
+export const CAN_SET_FINANCE_POLICY: readonly Role[] = ['finance', 'admin'];
+
 export function requireRole(principal: Principal, allowed: readonly Role[]): void {
   if (!allowed.includes(principal.role)) throw new ForbiddenError(allowed, principal.role);
 }

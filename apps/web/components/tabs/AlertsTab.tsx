@@ -1,8 +1,14 @@
 'use client';
 
 /**
- * Alerts: the watchlist, the fund alert policy, and the risk-flag register
- * (A9, ADR-032).
+ * Alerts: the watchlist and the risk-flag register (A9, ADR-032).
+ *
+ * THE ALERT POLICY CARD LEFT AT F3, to the Policies tab. That is a move rather
+ * than a copy, and it improves this tab: it was deliberately built as the
+ * WORKING view -- the feed, the flags, the acknowledgements -- and the card that
+ * configured the thresholds was always slightly the wrong shape sitting inside
+ * it. Where a threshold came from is still shown on every alert, which is the
+ * part that belongs here.
  *
  * A NINTH TAB, ROLE-GATED, FOR THE REASON A7 AND A8 ADDED THEIRS. The prototype
  * has no alert configuration anywhere — the thresholds are literals in a
@@ -27,26 +33,10 @@ import { useMemo, useState } from 'react';
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { allAlerts, type HealthAlert } from '@portfolio-command/metrics';
 
-import {
-  acknowledgeAlert,
-  AlertsApiError,
-  revokeAcknowledgement,
-  setAlertPolicy,
-} from '../../lib/alerts-api';
+import { acknowledgeAlert, AlertsApiError, revokeAcknowledgement } from '../../lib/alerts-api';
 import { Field, FormGrid, Notice } from '../entry';
 import { useApp } from '../AppShell';
 import { Card, ConventionNote, Dot, Pill, ViewHeader } from '../ui';
-
-/** Labels for the five policy metrics, in the order they are shown. */
-const METRICS = [
-  { key: 'minRunwayMo', label: 'Minimum runway', unit: 'months', hint: 'The general floor. 12 is NBIF policy.' },
-  { key: 'maxBurnMult', label: 'Maximum burn multiple', unit: 'x', hint: 'Quarterly net burn ÷ quarterly net new revenue.' },
-  { key: 'minCashBalance', label: 'Minimum cash', unit: '$M', hint: 'An absolute floor, independent of self-reported runway.' },
-  { key: 'maxRevenueDeclinePct', label: 'Maximum revenue decline', unit: '% QoQ', hint: 'Quarter over quarter, on the period actual.' },
-  { key: 'minNrrPct', label: 'Minimum NRR', unit: '%', hint: 'Net revenue retention, where the company reports it.' },
-] as const;
-
-type MetricKey = (typeof METRICS)[number]['key'];
 
 export function AlertsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
   const { openCompany, toast } = useApp();
@@ -86,15 +76,14 @@ export function AlertsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
 
       <Notice text={error} onDismiss={() => setError(null)} />
 
-      <PolicyCard db={db} busy={busy} run={run} />
-
       <Card
         title="Open alerts"
         headerExtra={<Pill tone="red">{open.filter((a) => a.sev === 'red').length} critical</Pill>}
       >
         <ConventionNote>
-          Thresholds marked <em>policy</em> are inherited from the fund-wide setting above. A company can
-          override one on its own record, or set it to 0 to opt out of the alert entirely.
+          Thresholds marked <em>policy</em> are inherited from the fund-wide setting, which is on the{' '}
+          <b>Policies</b> tab. A company can override one on its own record, or set it to 0 to opt out
+          of the alert entirely.
         </ConventionNote>
         {open.length === 0 && <div className="small">No open alerts.</div>}
         {open.map((a) => (
@@ -219,138 +208,5 @@ function AlertLine({
         </div>
       )}
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-
-/**
- * The fund-wide alert policy.
- *
- * THE ANSWER TO "WHERE DO WE SAY THE RUNWAY THRESHOLD IS TWELVE MONTHS". Before
- * A9 there was nowhere: thresholds existed per company and a company nobody had
- * configured was silently unwatched.
- *
- * An empty box means the fund sets no policy for that metric, and NOT zero. The
- * two are different everywhere in this phase and the placeholder says so.
- */
-function PolicyCard({
-  db,
-  busy,
-  run,
-}: {
-  db: PortfolioExport;
-  busy: boolean;
-  run: (what: () => Promise<void>, done: string) => Promise<void>;
-}) {
-  const policy = db.alertPolicy;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Record<MetricKey, string>>(() => ({
-    minRunwayMo: policy?.minRunwayMo?.toString() ?? '',
-    maxBurnMult: policy?.maxBurnMult?.toString() ?? '',
-    minCashBalance: policy?.minCashBalance?.toString() ?? '',
-    maxRevenueDeclinePct: policy?.maxRevenueDeclinePct?.toString() ?? '',
-    minNrrPct: policy?.minNrrPct?.toString() ?? '',
-  }));
-  const [note, setNote] = useState('');
-
-  // An empty box is null — "no policy" — never 0. Collapsing the two here would
-  // silently disable an alert the author meant to leave unset.
-  const parse = (v: string): number | null => (v.trim() === '' ? null : Number(v));
-  const invalid = METRICS.some(({ key }) => {
-    const v = parse(draft[key]);
-    return v !== null && (!Number.isFinite(v) || v < 0);
-  });
-
-  return (
-    <Card
-      title="Portfolio alert policy"
-      headerExtra={
-        policy ? (
-          <Pill tone="gray">
-            in force since {policy.effectiveFrom} - {policy.setBy}
-          </Pill>
-        ) : (
-          <Pill tone="yellow">not set</Pill>
-        )
-      }
-    >
-      <ConventionNote>
-        Applies to every company that has not set its own threshold. Changing it supersedes the current
-        policy rather than overwriting it, so a board pack issued under the old one still reproduces.
-      </ConventionNote>
-
-      {!editing && (
-        <>
-          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', margin: '6px 0 10px' }}>
-            {METRICS.map(({ key, label, unit }) => {
-              const v = policy?.[key] ?? null;
-              return (
-                <div key={key}>
-                  <div className="small" style={{ fontWeight: 600 }}>{label}</div>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>
-                    {v == null ? <span className="flat">not set</span> : `${v} ${unit}`}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {policy?.note && <div className="hint">{policy.note}</div>}
-          <button className="btn small" onClick={() => setEditing(true)}>
-            {policy ? 'Change policy' : 'Set policy'}
-          </button>
-        </>
-      )}
-
-      {editing && (
-        <>
-          <FormGrid>
-            {METRICS.map(({ key, label, unit, hint }) => (
-              <Field key={key} label={`${label} (${unit})`} hint={hint}>
-                <input
-                  inputMode="decimal"
-                  value={draft[key]}
-                  placeholder="no policy"
-                  onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-                />
-              </Field>
-            ))}
-            <Field label="Note" hint="Why this policy, or which board minute set it.">
-              <input value={note} onChange={(e) => setNote(e.target.value)} />
-            </Field>
-          </FormGrid>
-          <div className="hint" style={{ margin: '8px 0' }}>
-            An empty box means no fund-wide policy for that metric — it is not the same as 0, which on a
-            company record means the alert is switched off.
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="btn primary small"
-              disabled={busy || invalid}
-              onClick={() =>
-                run(
-                  () =>
-                    setAlertPolicy({
-                      minRunwayMo: parse(draft.minRunwayMo),
-                      maxBurnMult: parse(draft.maxBurnMult),
-                      minCashBalance: parse(draft.minCashBalance),
-                      maxRevenueDeclinePct: parse(draft.maxRevenueDeclinePct),
-                      minNrrPct: parse(draft.minNrrPct),
-                      note: note.trim() || null,
-                    }),
-                  'Alert policy updated.',
-                )
-              }
-            >
-              Save policy
-            </button>
-            <button className="btn small" disabled={busy} onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-          </div>
-          {invalid && <div className="hint down" style={{ marginTop: 6 }}>Thresholds must be non-negative numbers.</div>}
-        </>
-      )}
-    </Card>
   );
 }

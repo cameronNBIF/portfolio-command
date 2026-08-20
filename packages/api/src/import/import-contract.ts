@@ -495,11 +495,24 @@ export async function importContract(
       bump('company_kpi');
     }
 
+    /* F3. The reason is the honest one and not a placeholder, on the same
+       reading that made F2 label imported marks `legacy`: the contract carries
+       one ownership percentage per company and no cap-table event behind it, so
+       what this row can truthfully say is where it came from. The causing round
+       is left null rather than guessed at from a matching date -- the fixture's
+       ownership is as at the document's asOf, which is not a round date. */
     await client.query(
       `insert into company_ownership (company_id, as_of_date, ownership_pct, pro_rata_rights,
-                                      is_synthetic, entered_by)
-       values ($1,$2,$3,$4,true,$5)`,
-      [c.id, asOf, toNumeric(c.ownershipPct), c.proRata, SYSTEM_USER_ID],
+                                      is_synthetic, entered_by, change_reason)
+       values ($1,$2,$3,$4,true,$5,$6)`,
+      [
+        c.id,
+        asOf,
+        toNumeric(c.ownershipPct),
+        c.proRata,
+        SYSTEM_USER_ID,
+        'Loaded from the ADR-001 contract document; the cap-table event behind this figure is not part of the contract.',
+      ],
     );
 
     await client.query(

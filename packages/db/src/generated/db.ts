@@ -260,6 +260,10 @@ export interface CompanyMilestone {
 
 export interface CompanyOwnership {
   as_of_date: Timestamp;
+  /**
+   * FR-36, ADR-035 clause 1. What moved the cap table: an option pool expansion, a round we sat out, a secondary. REQUIRED by the standalone entry path and left null by the deal-close path, where investment_round_id carries the same information and the round IS the reason.
+   */
+  change_reason: string | null;
   company_id: string;
   company_ownership_id: Generated<Int8>;
   deleted_at: Timestamp | null;
@@ -267,6 +271,10 @@ export interface CompanyOwnership {
   deleted_reason: string | null;
   entered_by: string;
   fully_diluted: Generated<boolean>;
+  /**
+   * ADR-035 clause 1. The round that caused this position, where one did. Null on an ad-hoc adjustment between rounds -- the case FR-36 exists to make possible -- and on a legacy row whose causing round cannot be identified from evidence.
+   */
+  investment_round_id: Int8 | null;
   is_synthetic: Generated<boolean>;
   ownership_pct: Numeric;
   pro_rata_rights: Generated<boolean>;
@@ -403,6 +411,19 @@ export interface Fund {
   reserves_policy: string | null;
   style: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface FundAccountingPolicy {
+  effective_from: Generated<Timestamp>;
+  effective_to: Timestamp | null;
+  fund_accounting_policy_id: Generated<Int8>;
+  note: string | null;
+  set_at: Generated<Timestamp>;
+  set_by: string;
+  /**
+   * The ownership percentage at or above which we hold significant influence. 10.000 = 10%, the standard rule Pat named. NULL means no threshold is set, which makes the derived flag NULL rather than false (see significant_influence_asof).
+   */
+  significant_influence_pct: Numeric | null;
 }
 
 export interface FundAlertPolicy {
@@ -894,6 +915,17 @@ export interface VFinancialChangeLog {
   table_name: string | null;
 }
 
+export interface VFundAccountingPolicyCurrent {
+  effective_from: Timestamp | null;
+  effective_to: Timestamp | null;
+  fund_accounting_policy_id: Int8 | null;
+  note: string | null;
+  set_at: Timestamp | null;
+  set_by: string | null;
+  set_by_name: string | null;
+  significant_influence_pct: Numeric | null;
+}
+
 export interface VFundAlertPolicyCurrent {
   effective_from: Timestamp | null;
   effective_to: Timestamp | null;
@@ -1054,6 +1086,7 @@ export interface DB {
   deal_gate: DealGate;
   financial_row_version: FinancialRowVersion;
   fund: Fund;
+  fund_accounting_policy: FundAccountingPolicy;
   fund_alert_policy: FundAlertPolicy;
   fund_distribution: FundDistribution;
   fund_investment: FundInvestment;
@@ -1084,6 +1117,7 @@ export interface DB {
   v_company_realized: VCompanyRealized;
   v_deal_stage_history: VDealStageHistory;
   v_financial_change_log: VFinancialChangeLog;
+  v_fund_accounting_policy_current: VFundAccountingPolicyCurrent;
   v_fund_alert_policy_current: VFundAlertPolicyCurrent;
   v_kpi_coverage: VKpiCoverage;
   v_lp_capital_to_direct: VLpCapitalToDirect;
