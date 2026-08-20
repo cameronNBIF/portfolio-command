@@ -28,7 +28,7 @@ These are settled architecture decisions. Do not work around them; if one seems 
 
 | Path | Contents |
 |---|---|
-| `docs/architecture-decisions.md` | 39 ADRs plus the decision log. **The authority for any "why is it like this" question.** ADR-033 to ADR-039 are **Proposed** — raised at F0 ahead of the code, accepted as each phase lands. |
+| `docs/architecture-decisions.md` | 39 ADRs plus the decision log. **The authority for any "why is it like this" question.** ADR-033 is **Accepted** (landed with F1, 20 Aug 2026); ADR-034 to ADR-039 are **Proposed** — raised at F0 ahead of the code, accepted as each phase lands. |
 | `docs/delivery-roadmap.md` | Phased build sequence, effort, exit criteria, risks. Four tracks: A platform, B data readiness, C process, **F finance model hardening — which gates A13** |
 | `docs/finance-current-state.md` | The S-numbered as-built baseline the finance requirements are measured against. **Cite the S-number in a Track F commit message** — a fix that names the seam it closes is a fix someone can trace. |
 | `docs/finance-requirements-register.md` | The FR-numbered requirements from the 19 Aug 2026 Finance meeting, with dispositions. **Living document — update dispositions as phases land, do not fork it.** |

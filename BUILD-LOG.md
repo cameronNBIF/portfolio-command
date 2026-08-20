@@ -28,6 +28,92 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-20 · F1 · The round–transaction link, explicit participation, and a guard that was pointing at the wrong target
+
+**Closes S-1 and S-2. Lands ADR-033, which moves to Accepted — with one clause amended on the way in.** Migration 0008, one new write module, both surfaces, sixteen new tests. **No board number moved**: 252 metrics golden masters, 39 db tests and 63 functions tests pass unchanged, and the API suite goes from 95 to 111.
+
+### Built
+
+**Migration 0008 · `investment_round.nbif_participated`,** three-state — `yes` / `no` / `unknown` — defaulting to `unknown`. Not to either answer: a backfilled 2011 round genuinely may not know, and unknown is not a synonym for no. This is the convention the codebase has now reached three times — a null round total is excluded from leverage rather than imputed, a null co-investor amount means the name is known and the figure is not.
+
+**Backfilled from evidence and nothing else**: a live linked `investment` or `follow_on`. **176 of 180 rounds became `yes`; 4 stayed `unknown`,** and those four are the finding rather than a gap in it. One is the A6 generator's deliberate cross-company round, whose only cheque was repointed elsewhere; three are rounds captured through the A8 form during testing and since soft-deleted. Before F1 all four read `ourInvested` of $0 and were indistinguishable from a round we sat out.
+
+**Migration 0008 · `transaction.standalone_confirmed_at` / `_by`,** the mirror of the same idea on the other table. `investment_round_id is null` was also two states wearing one face — a bridge note that correctly has no round, and a cheque nobody has got to. **Without this the F6 unlinked-cheque check can never reach zero**, because a surface that reports the same 31 correct cheques every month is a surface people stop reading. Three check constraints keep the statement true: both columns or neither, only when there is no round link, and only on a direct cheque.
+
+**`packages/api/src/write/link-transactions.ts`** — the narrowest write path in the codebase, and the narrowness is the argument rather than a nicety. It sets or clears `transaction.investment_round_id` and touches no other column on that table, which is what puts it behind `CAN_CAPTURE_ROUND` instead of `CAN_WRITE_FINANCIAL`. A deal lead attaching a cheque to a round they closed is doing reconciliation, and an operation that can move a foreign key and nothing else cannot restate Finance's figures. **That claim is asserted over the whole row rather than over the columns someone remembered to name.**
+
+**Both surfaces, one mutation.** The Finance transaction form's round picker is enabled, with an explicit *No round — standalone* option, and **it saves separately from the rest of the card** — one form, two saves, because the two halves sit on opposite sides of a permission boundary and folding them into one Save would put the wider permission over both and dissolve the distinction the phase rests on. The Deal Close form gets a *cheques in this round* section, which is the only place the `vc` role can reach at all.
+
+**Sixteen tests, `packages/api/test/round-transaction-link.test.ts`.** Everything F1 installs is a guard against data that does not exist yet, so every predicate is exercised against a round built for the purpose. The two properties ADR-031's amendment says come for free — version capture on a link, and restatement detection — are asserted rather than assumed.
+
+### Changed
+
+**ADR-033 clause 3 was incomplete, and this is the substantive finding of the phase.** As raised, it puts the leverage guard in `v_round_leverage`. **That view is marked CONVENIENCE ONLY under ADR-021 and nothing in the API reads it.** The published leverage KPI is `fundMetrics` over the ADR-001 export, and its predicate is `roundTotal && roundTotal >= invested` — a round we sat out arrives with `invested` of 0, passes that test, and adds its whole total to `capitalAttracted` with nothing of ours in the denominator. **The ratio rises because we did less.** The Capital Attracted chart has the same shape. The guard as specified would have gone into the one place it could never trip.
+
+**So the predicate is in `read/export.ts` as well, and that is not a change to the frozen contract.** `packages/metrics` cannot apply it — ADR-001 freezes the shape and there is no participation field — and it does not need to, because the contract's own type settles it: `Round` is documented as *"one financing round we participated in"*. A round we did not participate in was never in scope for that array. Excluding it is the export layer reading the contract correctly, and it is the same category as the soft-delete exclusion already sitting beside it. The array stays **unfiltered by the leverage predicate**, which is the property ADR-021 and ADR-023 actually protect. Raised with Cameron before any code was written; ADR-033 carries the reasoning and the cost.
+
+**The A6 generator and the fixture importer both set participation at INSERT,** not in a pass afterwards. At insert because the evidence is already in the plan — every planned round with a cheque has a transaction carrying its index. Not afterwards because **an UPDATE is not exempt from the version trigger even for synthetic rows**: a closing sweep would write a version row per round on every `db:generate` and set `row_updated_at`, making the whole synthetic spine display an "edited" pill it has not earned. Without either, the F1 backfill would be silently undone by the next regeneration — the same trap F0 hit with `instrument_id`.
+
+**The version trigger is scoped off for the backfill statement,** exactly the F0 precedent and for the F0 reason: `row_updated_at` is read by the Deal Close screen as "edited since captured", and 180 rounds would have claimed on screen to have been edited by someone. The ADR-031 guarantee is untouched — the statement initialises a column added in the same migration, by a rule stated in the same migration, from rows the round already points at. **Verified after the fact: 6 version rows for `investment_round`, unchanged, and 3 rounds showing as edited, also unchanged.**
+
+**A live UI defect, found in the browser and not by a test.** The Finance tab's new Round column was flagging every **write-off** as "Not linked", because the condition used `DIRECT_TXN_TYPES`. A write-off is a direct transaction and never funds a round, so that put **thirty-odd permanent false targets into the exact count `standalone_confirmed_at` exists to let reach zero.** Narrowed to a new `ROUND_TXN_TYPES` — `investment` and `follow_on` — which is the same pair `v_round_leverage`, the export's per-round lateral and `readCompanyCheques` all use. The picker itself stays available on every direct type, so a wrong link can still be removed; only the nag is narrowed.
+
+**And a second one in the same pass:** the round picker's Save button compared the selection against a fallback that resolved to the selection itself, so **every change looked like no change and the button never enabled.** The draft now carries `storedRoundId` — what the database holds — beside `investmentRoundId`, which is what the picker shows and what the row save round-trips. They have to be two fields, because one cannot tell a change from a reload. Both defects were in code the tests did not reach: the write path has sixteen tests and neither of these was a write-path problem.
+
+### Decided
+
+Four judgement calls the F1 spec did not settle. Each is here because it is a place a future reader would otherwise have to reverse-engineer an intention.
+
+**1. Linking upgrades `unknown` to `yes`, and never touches `no`.** ADR-033 clause 2 makes the migration backfill read evidence; a rule that reads evidence once and stops leaves `unknown` accumulating on rounds whose evidence is sitting right there. So the live path applies the same rule. **It stops at `no`, which is somebody's statement** — silently overwriting it would be the exact collapse this phase exists to prevent — and the link is refused instead, with a message saying where to change it.
+
+This does mean the mutation writes to `investment_round`. **That is not a breach of its own narrowness rule**, which is scoped to "no other column *on that table*", and `investment_round` is behind the same `CAN_CAPTURE_ROUND` gate.
+
+**2. Restatement is checked against three dates, not one.** ADR-031's amendment says `checkRestatement` keys on `txn_date`, and that catches the common case. It misses the one worth catching: **detaching a cheque changes the round it is leaving.** A 2025 cheque coming off a 2024 round restates 2024, and `txn_date` alone would never see it. Both the old and new round dates are passed, following `session.ts`'s own rule that every date a change touches goes in. Asserted.
+
+**3. The refusals are refusals, and the line is the one this codebase has drawn before.** A round total below our own cheque is *accepted and flagged*, never refused, because it is a figure the deal lead genuinely holds and refusing it gets the number fudged or the round not recorded. **None of F1's refusals are figures anybody holds** — a cheque pointing at another company's round, a deleted row, an LP cashflow, a round contradicting its own cheque. There is no legitimate workflow on the other side of any of them.
+
+**4. A no-op is skipped — but the link is not the whole state.** Re-saving a form without changing the picker must not write a version row or restamp `standalone_confirmed_at`, which answers "when was this looked at". **Comparing only the foreign key was a bug, and the test suite caught it**: an unreviewed loose cheque and a confirmed-standalone one both have a null link, which is the entire reason the column exists. Confirming a loose cheque was a no-op, which would have left the F6 check exactly as unable to reach zero as before the phase.
+
+### Found by running `npm run db:generate` — and it was not F1
+
+**`db:generate` and `db:reset` have been broken since migration 0005 (A9), and nobody knew.** The regeneration was run to confirm F1's generator change was not silently undone. It failed before reaching any of that:
+
+```
+null value in column "risk_flag_category_id" of relation "company_risk_flag"
+  violates not-null constraint
+```
+
+0005 added `risk_flag_category_id`, backfilled it through `classify_risk_flag_category`, and set it `NOT NULL` — and never updated the generator's insert, which still wrote the pre-A9 four-column row. **The whole run is one transaction, so the failure rolled back cleanly and the database came back byte-identical to the pre-run snapshot.** That is the only reason this cost nothing.
+
+**Why it matters more than a one-line fix suggests.** Track F's entire sequencing argument is that a schema change *"costs an afternoon against 284 synthetic transactions regenerable from a seed, and costs a data migration over fifteen years of history once A13 has run"* — and F0's own entry warns that a backfill left out of the generator is *"an exit criterion that holds until someone runs `db:reset`"*. **Regenerability is the premise the cost argument rests on, and it had quietly stopped holding four migrations ago.** It was invisible because nothing runs `db:generate` in CI and no test covers it.
+
+**Fixed by giving the generator's flag pool an explicit category** rather than routing it through `classify_risk_flag_category`. That function's own comment names its two callers and says the A9 form does not use one, because a person raising a flag picks the category — and **the generator is in the form's position, authoring rows, not the migration's, interpreting somebody else's.** The practical difference is what happens to a flag string added later: through the classifier an unmatched string falls silently to `other` and the demo data quietly degrades; written out it is a missing key, caught by the compiler or by an explicit throw. Checked against the classifier first: all nine pool strings resolve to exactly the codes now written down, so **no existing demo row changes.**
+
+### What the re-run then proved about F1
+
+Every property held, and one improved.
+
+| | before | after |
+|---|---|---|
+| rounds / rounds looking edited | 180 / 3 | 180 / 3 |
+| `v_round_leverage` rows | 149 | 149 |
+| transactions / linked / with instrument | 284 / 180 / 180 | 284 / 180 / 180 |
+| `financial_row_version` rows for `investment_round` | 6 | 6 |
+
+**The backfill is not undone**, F0's `instrument_id` backfill survives alongside it, and the generator wrote **no version rows and no phantom "edited" pills** — which is the specific thing setting participation at INSERT rather than in a closing sweep was designed to avoid.
+
+**Participation moved from 176/4 to 177/3, and the new answer is the better one.** The four `unknown` rounds were three soft-deleted A8 test rounds plus the generator's deliberate cross-company round. That last one is now `yes` with no cheque, because the generator reads the **plan** — where the round does have a cheque — while migration 0008 read the **database**, after the dirt step had already repointed that cheque onto another company's round. So the migration could only say "we do not know", and the generator can say what is actually true: **we participated, and the cheque is booked somewhere it should not be.** That is ADR-033's data-error state rather than an absence, and the Deal Close screen now draws it in red as *Cheque missing* instead of yellow as *Participation unknown*. The dirt reads as the defect it is.
+
+### Outstanding
+
+- **`v_mandate_completeness` is deliberately not changed, and the inconsistency is named rather than left to be found.** Its `pct_leverage_coverage` is documented as *the share of rounds the leverage figure can see*, and it counts every round carrying a total — including, now, rounds participation has just removed from that figure. Once a `no` round has a total, coverage will overstate itself. Left alone because it moves no number today, because a round we sat out still legitimately wants its total captured (that total is the dilution context ADR-033 exists to preserve), and because **what the completeness denominator should be is a question F6 has to answer anyway.** It is an explicit F6 input.
+- **A round we sat out will not appear in the company drawer's round history**, which reads the export. Its ownership and FMV consequences are captured and visible on the Deal Close tab. Giving it a home on the ported screens is a phase-2 conversation under ADR-014.
+- **FR-06 is only mostly closed.** The workflow is merged and the tables are not, as recommended. **The explicit Finance confirmation state on the round is still outstanding** — the other half of what Pat described. It is a state machine on `investment_round` rather than a link, and it belongs with F6's reconciliation surface.
+- ~~`npm run db:generate` has not been re-run.~~ **Run, and it found something — see below.**
+- Unchanged from F0 and repeated because the list is the point: **A-11** the Q-23 email to Funke (gates F5), **A-10** the second Finance meeting, **A-12** the pedal report file, and FR-25's equity-versus-loan categorisation waiting on Q-20.
+
+---
+
 ## 2026-08-20 · F0.1 · The as-built baseline lands, and ADR-039 loses its date
 
 Two things, one of which is a correction to a decision raised yesterday. **No code, no schema, no number moves** — migration 0007 rewrites two comments and nothing else.
