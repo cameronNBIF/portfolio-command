@@ -14,7 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type TabId =
   | 'dashboard' | 'portfolio' | 'funds' | 'pipeline'
-  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose' | 'alerts';
+  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose' | 'alerts' | 'policies';
 
 /**
  * Label and order exactly as the prototype's `#mainnav` (:163-172), plus the two
@@ -47,6 +47,12 @@ export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
   // this tab configures are the ones who see it. Leadership reads the board
   // feed on the Dashboard, which is unchanged and needs no gate.
   { id: 'alerts', label: 'Alerts', roles: ['vc', 'admin'] },
+  // F3. The UNION of the two sections it holds: alert policies for the
+  // investment team, finance policies for Finance, each gated again inside the
+  // tab. A tab visible to nobody but `admin` would have made the split
+  // pointless, and one visible to everybody would offer leadership two cards
+  // they cannot use.
+  { id: 'policies', label: 'Policies', roles: ['vc', 'finance', 'admin'] },
   // Matches CAN_CAPTURE_ROUND (ADR-012). Sits before Finance because a round is
   // captured at close, which is upstream of the cheque being booked.
   { id: 'dealclose', label: 'Deal Close', roles: ['vc', 'finance', 'admin'] },
