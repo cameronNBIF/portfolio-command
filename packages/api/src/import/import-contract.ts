@@ -432,10 +432,13 @@ export async function importContract(
       }
       seenMarkDates.add(m.date);
       await client.query(
+        // `legacy`, matching the generator and for the same reason: a
+        // schemaVersion 1 document carries an absolute FMV and no record of how
+        // it was arrived at, which is precisely what `legacy` means (ADR-034).
         `insert into valuation_mark (company_id, effective_date, fmv, valuation_method_id,
                                      method_label, rationale, prepared_by_label, is_synthetic,
-                                     status)
-         values ($1,$2,$3,$4,$5,$6,$7,true,'final')`,
+                                     status, adjustment_type)
+         values ($1,$2,$3,$4,$5,$6,$7,true,'final','legacy')`,
         [
           c.id,
           m.date,

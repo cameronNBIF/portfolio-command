@@ -413,8 +413,8 @@ try {
         await client.query(
           `insert into valuation_mark
              (company_id, effective_date, fmv, method_label, rationale, prepared_by_label,
-              is_synthetic, status, supersedes_id)
-           values ($1,$2,$3,$4,$5,$6,true,'superseded',$7)`,
+              is_synthetic, status, supersedes_id, adjustment_type)
+           values ($1,$2,$3,$4,$5,$6,true,'superseded',$7,'legacy')`,
           [
             f.companyId,
             m.date,
@@ -705,11 +705,26 @@ async function insertMark(
   status: string,
   methods: Map<string, number>,
 ) {
+  // ADR-034. `legacy` on every generated mark, and the label is the honest one
+  // rather than a placeholder.
+  //
+  // NOT `review`, which would be the tempting choice for exercising F2's new
+  // columns in the demo. A review stores a retention factor constrained to the
+  // approved list -- 1.00 / 0.75 / 0.50 / 0.25 -- and `fmv` computed from it.
+  // The generated FMV path is calibrated to company.affinity_fmv per company to
+  // the cent (ADR-020, ADR-030), so the ratio between consecutive marks is
+  // whatever that calibration produces and is essentially never one of four
+  // exact factors. Labelling those marks `review` would assert a factor that
+  // did not produce them.
+  //
+  // `legacy` says what is true: these stand in for history the platform did not
+  // compute and A13 will replace. The F2 surfaces are exercised by running an
+  // actual review, which is also the honest way to demonstrate them.
   await client.query(
     `insert into valuation_mark
        (company_id, effective_date, fmv, valuation_method_id, method_label, rationale,
-        prepared_by_label, is_synthetic, status)
-     values ($1,$2,$3,$4,$5,$6,$7,true,$8)
+        prepared_by_label, is_synthetic, status, adjustment_type)
+     values ($1,$2,$3,$4,$5,$6,$7,true,$8,'legacy')
      on conflict do nothing`,
     [companyId, date, toDollars(fmvCents), methods.get(method) ?? null, method, rationale, by, status],
   );
