@@ -199,7 +199,7 @@ These are findings from reading the current build, not requests from the meeting
 
 **S-2 · A round with no transaction is four states collapsed into one.** ~~*As built.*~~ **Closed 20 August 2026 by F1** — `nbif_participated` separates (a), and `transaction.standalone_confirmed_at` separates (c) from a cheque nobody has reviewed. The original finding is kept below. It may mean: (a) we did not participate; (b) we participated and the cheque is not yet booked; (c) we participated, the cheque is booked, and nobody linked it (see S-1); (d) an entry error. `ourInvested` reads $0 in all four cases. There is no participation flag.
 
-**S-3 · One final mark per company per effective date blocks legitimate same-day marks.** Two follow-ons on one date, or a transaction landing on a review date, cannot both produce a mark under the current unique index.
+**S-3 · One final mark per company per effective date blocks legitimate same-day marks.** ~~*As built.*~~ **Closed 20 August 2026 by F2** — the index now constrains one *review* per company per date, and gained `deleted_at is null` so it agrees with the application check. The original finding is kept below. Two follow-ons on one date, or a transaction landing on a review date, cannot both produce a mark under the current unique index.
 
 **S-4 · `company_exit` has no write path.** The table, the `exit_type` vocabulary and the `write_off` / `realization` transaction types all exist. No interface creates an exit, and no view filters the active portfolio on one.
 

@@ -121,9 +121,9 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - **The reporting lag has a visible consequence.** Between an effective date and the date Finance books the exercise, the platform shows the *previous* mark as current. A report run in March for a 31 January as-of date will differ from the same report run in April, once the January marks are entered. Board-facing views therefore carry a stamp reading "marks as at *[effective date]*, booked *[booked date]*", and `fund_nav_snapshot.frozen_at` fixes the figures actually issued so a re-run never restates a published number.
 - Marks are entered by Finance and treated as final on entry (ADR-008). A `supersedes_id` chain preserves any later restatement.
 
-**Amended 19 August 2026 by ADR-034 (Proposed, lands with F2). Nothing above is
-reversed, and the sign-off principle in particular survives untouched — which is
-the point.**
+**Amended 19 August 2026 by ADR-034, which was Accepted and landed on 20 August
+2026 with F2. Nothing above is reversed, and the sign-off principle in
+particular survives untouched — which is the point.**
 
 - **The entry screen changes; the authority does not.** Finance asked to enter FMV
   as an adjustment against the last known value rather than as a new absolute.
@@ -1680,7 +1680,9 @@ Worse, **no interface writes `transaction.investment_round_id` at all.** The Fin
 
 ## ADR-034 — A valuation mark records the adjustment that produced it; the retention factor is the input and the absolute is the fact
 
-**Status:** Proposed (19 August 2026). Raised at F0, lands with F2. Amends ADR-007.
+**Status:** **Accepted (20 August 2026)**, landed with F2 in migration 0009. Raised as Proposed at F0. Amends ADR-007.
+
+**One clause needed a decision it did not contain, and it is recorded in clause 3 below:** what a review is applied to when the company has never been marked.
 
 **Context.** Finance asked to record FMV **adjustments against the last known value** rather than new absolute figures. The platform stores absolutes, and every metric, view, export and golden master reads them. `company_fmv_asof()` — which is the definition of NAV, and therefore of TVPI, RVPI and IRR — is a single query for the latest final mark.
 
@@ -1696,6 +1698,10 @@ A mark becomes an **event** carrying its cause, its basis, its input and its res
 
 3. **`basis_fmv` is stored rather than looked up.** If a 2019 mark is later corrected, every subsequent mark's arithmetic silently becomes wrong under a lookup and nothing says so. Storing the basis at write time turns that into a **detectable** condition — `basis_fmv` no longer matching its predecessor — which becomes a line on the reconciliation screen instead of a number nobody can explain.
 
+   **A review may be applied to cost, and therefore a basis VALUE is required where a basis ROW is not (decided at F2).** ADR-007 holds a company with no mark yet at cost, so cost *is* its carrying value — and the first review of a company between its first cheque and its first formal mark is an ordinary thing to run, not an edge case. The constraint is therefore one-directional: `basis_mark_id` may be null while `basis_fmv` is set, and a review must always carry `basis_fmv`. The alternative — refusing, and telling Finance to work out cost × 0.75 by hand and enter it as an absolute — reintroduces exactly the re-entry FR-19 exists to remove, on the path where the platform knows the answer perfectly well.
+
+   The first draft of migration 0009 made the two columns strictly co-null, which made that review unreachable. It was corrected before anything depended on it; the reasoning is here rather than in the build log because the asymmetry looks like an oversight to anyone reading the schema cold.
+
 4. **The retention vocabulary lives in a reference table, not a CHECK constraint,** so Finance can add or retire an option through the Policies surface without a migration. The meeting's intent was a constrained list rather than free entry; what changes is who is able to change the list, not whether it is constrained. Validation is server-side against the active rows, not by the shape of a drop-down.
 
 5. **`impairment` and `hold` are one type, not two.** Once 100% is an option on the same drop-down, "we reviewed this and held it" and "we reviewed this and took 25% off" are the same action with different inputs — one type, one control, one row. This is a simplification the FR-18 answer bought rather than a shortcut: under a write-down reading, "no change" would have had no entry in the list at all and would have needed a mechanism of its own.
@@ -1710,7 +1716,9 @@ A mark becomes an **event** carrying its cause, its basis, its input and its res
 - ADR-007 is amended, not reversed. Entry by the Director of Finance is still the sign-off; what changes is what the entry screen asks for.
 - FMV becomes a downward ratchet between transactions: an impaired company that recovers stays impaired until a new round or investment reprices it. That is a defensible conservative position and is almost certainly intended, but it is stated here because it is the kind of rule that surprises someone two years later.
 - Impairment compounds — 50% then 50% leaves a position at 25% of where it started. That is the natural reading of "relative to its previous valuation"; Q-1 is a one-line confirmation, not a discussion.
-- There is no 0% option, so a position can be impaired to a quarter but not to nil except through the wind-down path. Whether Finance wants to mark a company worthless before it is formally wound up is Q-19.
+- There is no 0% option, so a position can be impaired to a quarter but not to nil except through the wind-down path. Whether Finance wants to mark a company worthless before it is formally wound up is Q-19 — **and because the vocabulary is a table, the answer is now a one-row insert through the Policies surface rather than a migration.** That is most of the argument for clause 4.
+- **Impairment compounding is asserted in a test rather than left as a reading.** Q-1 is a confirmation rather than an open question, and D-3 calls it "almost certainly what is intended" — but "almost certainly" is not a property, and a successive 50% / 50% impairment landing at 25% of the original is now something the suite would notice stopping.
+- **The review path is where the platform first computes a stored figure rather than receiving one.** The arithmetic is done in `numeric` inside Postgres, not in JavaScript: ADR-008 keeps money as strings end to end precisely so it never becomes a double, and `basis × factor` is the one place that has to multiply two of them. Doing it in the application would put a float in the middle of the only computed board number in the schema.
 
 ---
 
