@@ -137,6 +137,15 @@ export interface MappedCompany {
   riskGrade: string | null;
   health: string | null;
   lifecycleStatus: string | null;
+  /**
+   * ADR-036. Affinity's Status, verbatim -- `Portfolio`, `Exited`, `Closed`.
+   *
+   * NOT the same field as `lifecycleStatus`, which is Affinity's *Portfolio
+   * Status* and carries values like "Winding Down". Conflating the two is the
+   * defect F4 exists to correct: a company winding down is still a portfolio
+   * company until the roster says otherwise.
+   */
+  rosterStatus: string;
   lastEmailDate: string | null;
   lastMeetingDate: string | null;
   tags: { tag: string; source: string }[];
@@ -160,19 +169,26 @@ export interface MappedDeal {
   lastMeetingDate: string | null;
   owners: { affinityPersonId: number; name: string }[];
   passReasons: { text: string; optionId: number | null }[];
-  isPortfolio: boolean;
 }
 
 /**
- * Portfolio membership. ADR-009's "one list, not two": these are the Status
- * values the Portfolio saved view filters on, and the platform derives
- * membership from Status rather than from which view an entry came back in.
+ * WHERE MEMBERSHIP IS DECIDED, AND WHY IT IS NOT DECIDED HERE ANY MORE.
  *
- * There is no Affinity Status of "Closed" in the live data -- deals move from
- * Approved straight to Portfolio -- so this set is what feeds the board's
- * terminal Closed column.
+ * This module used to carry `PORTFOLIO_STATUSES = {Portfolio, Exited, Closed}`
+ * as a hardcoded Set, and F4 needed a SECOND question of exactly the same kind:
+ * which status means the company has *left* the portfolio. ADR-009 already
+ * requires status routing to be a table rather than code, so that a renamed or
+ * newly added option is a row edit rather than a deploy -- and answering the
+ * new question in `affinity_status_map` while the old one stayed in a literal
+ * would have left the two rules a file apart. The day they disagree is the day
+ * a company is on the roster and in neither view.
+ *
+ * So `mapEntry` now maps and does not judge: it returns the company shape for
+ * every entry that has a Status, and **the caller decides whether to write it**
+ * from `affinity_status_map.is_portfolio_member`. A status nobody has
+ * classified is a member of nothing, which is the safe default for an option
+ * added in Affinity on a Tuesday.
  */
-export const PORTFOLIO_STATUSES = new Set(['Portfolio', 'Exited', 'Closed']);
 
 /** Affinity Risk Assessment -> the prototype's health display (ADR-009). */
 const RISK_TO_HEALTH: Record<string, { grade: string; health: string | null }> = {
@@ -234,8 +250,6 @@ export function mapEntry(entry: ListEntry): { company: MappedCompany | null; dea
     })),
   ];
 
-  const isPortfolio = status !== null && PORTFOLIO_STATUSES.has(status);
-
   const deal: MappedDeal = {
     affinityRowId: String(entry.id),
     affinityOrgId: String(entry.entity.id),
@@ -261,10 +275,11 @@ export function mapEntry(entry: ListEntry): { company: MappedCompany | null; dea
       text: v.text,
       optionId: v.dropdownOptionId,
     })),
-    isPortfolio,
   };
 
-  if (!isPortfolio) return { company: null, deal };
+  /* No Status, no entry: membership, funnel stage and terminality all derive
+     from it, and the sync names such a row rather than inventing one. */
+  if (status === null) return { company: null, deal };
 
   const company: MappedCompany = {
     affinityOrgId: String(entry.entity.id),
@@ -290,6 +305,7 @@ export function mapEntry(entry: ListEntry): { company: MappedCompany | null; dea
     riskGrade: mappedRisk?.grade ?? null,
     health: mappedRisk?.health ?? null,
     lifecycleStatus: value<DropdownValue>(entry, 'Portfolio Status')?.text ?? null,
+    rosterStatus: status,
     lastEmailDate,
     lastMeetingDate,
     tags,

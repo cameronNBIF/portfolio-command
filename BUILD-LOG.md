@@ -28,6 +28,84 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-20 · F4 · Exits, the roster that decides them, and a number that was wrong on the dashboard
+
+**Closes S-4, FR-28, FR-29 and FR-30. Lands ADR-036, amending ADR-009.** A read-only probe, migration 0011, two API modules, an eleventh tab, ten new tests. The one phase that began with a question rather than a schema change.
+
+**A BOARD-VISIBLE NUMBER MOVED, DELIBERATELY: 7 exited companies became 2.** All seven were derived from Affinity's *lifecycle* status "Winding Down" — a different field from the roster *Status* that decides membership — and under ADR-036 every one of them is still a portfolio company. The dashboard reads **80 active / 2 exited** where it read 75 / 7.
+
+**Nothing else moved.** Portfolio FMV still reconciles to the frozen Affinity control total of **$42,030,272.00**, invested to **$47,216,678.00**, both equal to the F0 baseline to the cent. 252 metrics golden masters and 64 functions tests pass unchanged; the API suite goes from 151 to 161 and the db suite from 40 to 41.
+
+### The probe, and the gate it cleared
+
+**F4 did not begin with a migration** (ADR-036 clause 5). If Affinity's Exited companies brought organisations onto the roster that were not on it, the invested and FMV control totals would move — the same totals A6 reconciles to and A13 must tie to — and that is a decision to take with numbers on the table rather than a consequence to discover.
+
+`npm run affinity:exits` answers it empirically: the Status vocabulary **from field configuration** rather than observed values, every list entry counted by Status, and each Exited entry resolved against the local roster with Affinity's own figures beside it. GET-only client, read-only database session, report gitignored because it carries the real roster.
+
+**354 entries. 2 carry `Exited` — Potential Motors and Alongside — and both are already on the roster**, because `PORTFOLIO_STATUSES` has counted `Exited` as membership since A4. The gate was clear before the first line of SQL was written.
+
+**The register's own risk assessment was wrong in the reassuring direction**, and that is worth recording: FR-29 warned that *"widening the sync will pull in companies from the Exited view that are not currently on the 82-company roster at all"*. It will not. The measurement is the reason the phase was cheap.
+
+### Built
+
+**Migration 0011 · `company_state.roster_status`,** Affinity's Status verbatim, on the **dated** table (ADR-036 clause 3) — "when did this company leave the portfolio" is a question the board asks and it deserves an answer with a date on it. Not constrained: the vocabulary is Affinity's and changes without a deploy, so a CHECK here would turn a new option into a failed sync at 2am.
+
+**Backfilled from evidence already in the database.** `pipeline_deal.funnel_label` is the verbatim Affinity Status and `converted_company_id` is the company that entry became — one row per company, no inference. 80 `Portfolio`, 2 `Exited`. Updated in place on the current state row rather than appended, because a new dated row would assert that something changed tonight and nothing did.
+
+**`affinity_status_map` gains `is_portfolio_member` and `is_exited`.** ADR-009 requires status routing to be a table so a renamed or newly added option is a row edit rather than a deploy, and the sync's own comment says it: *"resolved through affinity_status_map, never by matching text"*. **Membership did not follow that rule** — it was a hardcoded Set in `map.ts` — and F4 adds a second question of exactly the same kind. Answering the new one in a table while the old one stayed in a literal would leave the two rules a file apart. `mapEntry` now maps and does not judge; the sync decides membership from the table; the seed states the rule so a fresh database is right before the first sync; the probe reads it from there rather than from its own copy.
+
+**`significant_influence_asof`'s sibling: the `exited` derivation** (clause 4).
+
+```
+exited = (the roster says exited)
+      or (the roster has not spoken, and Finance recorded an exit)
+```
+
+**The fallback is not a hedge.** `exited` is in the frozen ADR-001 contract and the golden masters assert against a fixture with no Affinity roster status anywhere in it. The fallback keeps that path and every golden master untouched while making Affinity authoritative wherever it actually speaks. Resolved through the map rather than against the literal `'Exited'`, and an **unmapped** status falls back to the exit event rather than asserting false — "we do not know what this status means" is not evidence that a company is still in the portfolio.
+
+**`write/exits.ts`, the write path S-4 said did not exist.** `company_exit` has had its vocabulary and its metric treatment since migration 0001 and nothing but the generator has ever been able to write to it. Gated on `CAN_WRITE_FINANCIAL`: the exit is a financial event and Finance owns it, while the VC team owns the roster in Affinity. **There is no way to mark a company exited from this endpoint, by construction rather than omission.**
+
+**The exit-type vocabulary is read from the CHECK constraint at both ends**, so the form cannot offer a value the write refuses. FR-30 leaves open whether it is the vocabulary Finance reports on; when that is answered it is a migration, not two copies that have to change together.
+
+**The Exited tab, and it is two groups because there are two facts with two owners.** *Off the roster* is what Affinity says — exit event or not, and a missing one is stated on the row rather than filled in with a plausible date. *Exit recorded, still on the roster* is Finance's half arriving first, which is ADR-036 clause 2 exactly. The screen says on its face that recording an exit does not move a company between views, because that is the first thing anyone will expect it to do.
+
+### Changed
+
+**The generator drives the exit event from the write-off and the exit *membership* from nothing at all.** It used to write a `company_exit` row wherever the lifecycle status read "Winding Down", which is where the seven came from. Now a written-off position gets an exit event whether or not the roster has caught up, and **membership is not the planner's to decide** — six of the eight generated exit events sit against companies the roster still calls ours. That is the clause 2 lag, in the demo data, where F6's reconciliation surface will have something real to find.
+
+**The Portfolio tab is untouched.** It keeps the prototype's own *active / include exited / exited only* control (ADR-014). The new tab is the exit as an **event**, which the prototype has no concept of anywhere, and it is appended with the other additions rather than slotted in beside Portfolio — which would have reordered the ported eight in the nav.
+
+### Found by running the generator, and it was not F4
+
+**`npm run db:generate` failed** against `round_coinvestor_fund_fk`:
+
+```
+update or delete on table "fund_investment" violates foreign key constraint
+  "round_coinvestor_fund_fk" on table "round_coinvestor"
+```
+
+A co-investor captured through the A8 Deal Close form and resolved to an LP position (ADR-026 exact match) is a **real row pointing at a synthetic one**, and the generator's clear step hard-deleted `fund_investment` underneath it — taking the whole run down, because it is one transaction. **Reproduced on the pre-F4 tree before anything was changed**, so this is the second time regenerability has quietly stopped holding between phases; F1 found the first.
+
+LP positions are now **upserted on their deterministic ids** rather than deleted and reinserted. The ids were always stable (F001…), so the delete bought nothing and cost the link. Verified after the fix: co-investor 1567 is still there, still pointing at F007.
+
+### Verified
+
+Beyond the suite, the phase was run end to end through the interface.
+
+**Recording an exit for Chinova Bioworks** — a company the roster calls ours — put it in *exit recorded, still on the roster* and **left it in the Portfolio view**, with the response saying so in as many words. **Removing it** required a reason and left both the insert and the delete in `audit_log` against the person who did it. No residue: 8 exit events before, 8 after.
+
+**The sync's convergence property still holds.** A dry run after the migration created **zero `company_state` rows** — the backfill wrote exactly what the sync would have written, so a status that has not changed does not append a dated row saying it did.
+
+### Outstanding
+
+- **The two Exited companies are both written off, so realized proceeds read $0.** Nothing on the Exited view is wrong, but the screen will look thin until a real acquisition lands on it. That is the data, not the surface.
+- **FR-30 is only half closed.** The note and the vocabulary are captured; **whether the five values are the ones Finance reports on is still a question for the second Finance meeting**, and it is now a one-migration answer.
+- **`v_mandate_completeness` and the F6 reconciliation surface** gain a real input from this phase: six companies where Finance's exit event and Affinity's roster disagree. That is the list F6 should be reading, alongside the leverage-denominator question F1 left and the ownership-coverage question F3 left.
+- **The Exited tab has no role gate**, deliberately — who left the portfolio and when is a board figure. The entry form inside is `finance` and `admin` only, and the API re-checks it.
+- Unchanged and repeated because the list is the point: **A-11** the Q-23 email to Funke (gates F5), **A-10** the second Finance meeting, and **A-12** the pedal report file.
+
+---
+
 ## 2026-08-20 · F3 · Ownership between rounds, the policy behind the flag, and a schedule that names what it cannot classify
 
 **Closes FR-36 and FR-21 but for the board-seat override. Lands ADR-035.** Migration 0010, two write modules, two read modules, two endpoints, a tenth tab, twenty-three new tests.

@@ -135,7 +135,10 @@ export interface CompanyFacts {
   /** Control total, cents. `company.affinity_fmv`. */
   fmvCents: number;
   riskGrade: string | null;
+  /** Affinity's *Portfolio Status* — "Winding Down", "Exit Path". NOT the roster. */
   lifecycleStatus: string | null;
+  /** ADR-036. Affinity's *Status* — `Portfolio`, `Exited`. The roster itself. */
+  rosterStatus: string | null;
   /** VCF / SIF / ACC, or null where the roster row is absent from the export. */
   vehicle: string | null;
   /** Earliest calendar year in `company_kpi`, when there is any. */
@@ -424,19 +427,37 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
   // --- marks ---
   const marks = planMarks(facts, rounds, rng);
 
-  // --- write-off and exit ---
+  /* --- write-off and exit -------------------------------------------------
+   *
+   * ADR-036, AND THE DEFECT IT EXPOSED. This block used to derive an exit from
+   * `lifecycleStatus === 'Winding Down'`, which is Affinity's *Portfolio
+   * Status* -- a different field from the roster *Status* that decides
+   * membership. Under ADR-036 a company winding down is still a portfolio
+   * company until the roster says otherwise, so those exits were an artefact:
+   * seven of them on the dashboard, none of them true.
+   *
+   * THE EXIT ROW NOW FOLLOWS THE ROSTER. The write-off TRANSACTION does not,
+   * and the difference is deliberate. A write-off is an economic event Finance
+   * books; the roster status is the VC team's fact in Affinity; ADR-036 clause
+   * 2 says the two are allowed to disagree for a period, and the generated
+   * dataset should contain that state rather than pretend it away. So the five
+   * companies written to nil while still on the roster keep their write-offs
+   * AND their exit events, and stay in the Portfolio view -- which is exactly
+   * "Finance booked it in March, Affinity was updated in June", sitting in the
+   * demo data where the F6 reconciliation surface will have something to find.
+   * The `exited` flag ignores those events entirely, because the roster has
+   * spoken for those companies and says they are still ours.
+   */
   const writtenOff = F === 0;
   const windingDown = facts.lifecycleStatus === 'Winding Down';
+  const rosterExited = facts.rosterStatus === 'Exited';
   let exit: CompanyPlan['exit'] = null;
-  if (writtenOff && windingDown) {
-    const date = marks.length ? marks[marks.length - 1]!.date : rounds[rounds.length - 1]!.date;
-    exit = {
-      date,
-      type: 'Shutdown / write-off',
-      note: 'Position written to nil. Recorded from the Affinity lifecycle status.',
-    };
+
+  const eventDate = marks.length ? marks[marks.length - 1]!.date : rounds[rounds.length - 1]!.date;
+
+  if (writtenOff && (windingDown || rosterExited)) {
     transactions.push({
-      date,
+      date: eventDate,
       type: 'write_off',
       amountCents: T,
       currency: 'CAD',
@@ -445,6 +466,21 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
       vehicle: facts.vehicle,
       note: 'Full write-off of cost basis.',
     });
+    exit = {
+      date: eventDate,
+      type: 'Shutdown / write-off',
+      note: rosterExited
+        ? 'Position written to nil. The roster agrees.'
+        : 'Position written to nil. Affinity still lists the company as portfolio — the lag ADR-036 clause 2 describes.',
+    };
+  } else if (rosterExited) {
+    exit = {
+      date: eventDate,
+      // The roster says the company left and says nothing about how. With cost
+      // still carried, a write-off is the one thing it cannot have been.
+      type: 'Acquisition',
+      note: 'Recorded from the Affinity roster status (ADR-036).',
+    };
   }
 
   // --- ownership history ---

@@ -6,7 +6,7 @@
 import { describe, expect, test } from 'vitest';
 
 import type { FieldValue, ListEntry } from '../src/affinity/client.js';
-import { mapEntry, pacificDate, primarySector, PORTFOLIO_STATUSES } from '../src/affinity/map.js';
+import { mapEntry, pacificDate, primarySector } from '../src/affinity/map.js';
 
 function fv(name: string, type: string, data: unknown): FieldValue {
   return { id: `field-${name}`, name, type: 'list', enrichmentSource: null, value: data === null ? null : { type, data } };
@@ -78,23 +78,45 @@ describe('primarySector', () => {
 });
 
 describe('mapEntry', () => {
-  test('a pipeline entry yields a deal and no company', () => {
+  test('a pipeline entry yields a deal, and the company shape the caller may discard', () => {
+    /**
+     * F4 CHANGED WHAT THIS ASSERTS, and the change is the point rather than an
+     * accommodation. `mapEntry` no longer decides membership: it maps, and the
+     * sync writes a company row only where `affinity_status_map` says the
+     * status is a member (ADR-036). The status still travels with the mapping,
+     * verbatim, which is what that decision is made from.
+     */
     const { company, deal } = mapEntry(entry([fv('Status', 'ranked-dropdown', dd('Reached Out', 22359697))]));
-    expect(company).toBeNull();
-    expect(deal.isPortfolio).toBe(false);
+    expect(company?.rosterStatus).toBe('Reached Out');
     expect(deal.affinityStatus).toBe('Reached Out');
     expect(deal.name).toBe('EZOX'); // trimmed
     expect(deal.affinityRowId).toBe('249393104');
     expect(deal.affinityOrgId).toBe('313686777');
   });
 
-  test('a portfolio entry yields both, and Portfolio/Exited both count', () => {
-    for (const status of ['Portfolio', 'Exited']) {
-      const { company } = mapEntry(entry([fv('Status', 'ranked-dropdown', dd(status, 1))]));
-      expect(company).not.toBeNull();
-    }
-    expect(PORTFOLIO_STATUSES.has('Watchlist')).toBe(false);
-    expect(PORTFOLIO_STATUSES.has('Passed')).toBe(false);
+  test('the roster status travels verbatim, and is not the lifecycle status', () => {
+    /**
+     * The two fields F4 exists to stop conflating. `Status` is the roster --
+     * Portfolio, Exited -- and `Portfolio Status` is the lifecycle, which
+     * carries "Winding Down". A company winding down is still a portfolio
+     * company until the roster says otherwise, and reading the wrong one is
+     * what put 7 companies in the Exited count that belonged in neither.
+     */
+    const { company } = mapEntry(
+      entry([
+        fv('Status', 'ranked-dropdown', dd('Exited', 23941611)),
+        fv('Portfolio Status', 'dropdown', dd('Winding Down', 5)),
+      ]),
+    );
+    expect(company?.rosterStatus).toBe('Exited');
+    expect(company?.lifecycleStatus).toBe('Winding Down');
+  });
+
+  test('an entry with no Status maps to no company at all', () => {
+    // Membership, funnel stage and terminality all derive from it; the sync
+    // names such a row rather than inventing a stage for it.
+    const { company } = mapEntry(entry([]));
+    expect(company).toBeNull();
   });
 
   /**

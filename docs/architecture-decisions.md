@@ -1764,7 +1764,11 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 
 ## ADR-036 — Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views
 
-**Status:** Proposed (19 August 2026). Raised at F0, lands with F4. Amends ADR-009.
+**Status:** **Accepted (20 August 2026)**, landed with F4 in migration 0011. Raised as Proposed at F0. Amends ADR-009.
+
+**The probe clause 5 demanded was run first, and it cleared the gate.** 354 list entries, 2 carrying `Exited`, both already on the roster — so the control totals did not move and F4 was a derivation change rather than a data change. The measurement is in the F4 build-log entry and reproducible with `npm run affinity:exits`.
+
+**One clause needed more than it said**, and it is amended in place below: clause 1 decides membership from the roster status, and the rule for *which* status meant what was a hardcoded Set in the sync. See the amended clause 1.
 
 **Context.** The platform needs an Exited view, and the first design for it was wrong. It proposed that the platform hold its own exited state, reasoning that the Affinity sync never deletes, so a company removed from the active view would keep arriving every night. The premise was right and the conclusion did not follow: the sync's own rule — **membership from Status rather than from which saved view a row arrived in** — already handles this. A company arriving every night with Status `Exited` is not a problem to work around; it is the answer.
 
@@ -1776,6 +1780,8 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 | **Exit event** | We realized, or wrote off, this position on this date for this reason | Finance, in the platform | `company_exit` plus a `realization` / `write_off` transaction |
 
 1. **A company with Status `Portfolio` is a portfolio company, regardless of a zero FMV and regardless of a Portfolio Status of "Winding Down".** Those are different Affinity fields. It becomes an exited company when, and only when, its Affinity Status changes to `Exited`. **There is no platform-side membership state.**
+
+   **Amended on landing: which status means what is answered by `affinity_status_map`, not by a literal.** Membership was a hardcoded Set in `map.ts` — `{Portfolio, Exited, Closed}` — and this clause adds a second question of exactly the same kind. ADR-009 already requires status routing to be a table so a renamed or newly added option is a row edit rather than a deploy; answering the new question in a table while the old one stayed in code would leave the two rules a file apart, and the day they disagree is the day a company is on the roster and in neither view. Both are now columns on that table (`is_portfolio_member`, `is_exited`), the seed states them, and **a status nobody has classified is a member of nothing and exits nothing** — the safe default for an option added in Affinity on a Tuesday.
 
 2. **They will usually agree, and they do not have to agree at every instant.** Finance may book a write-off in March; the roster status may not change until someone updates Affinity in June. Under a platform-side flag that lag would silently move a company out of the portfolio view. Under this model it is visible: the company sits in the Portfolio view carrying an exit event, which is exactly the sort of thing the reconciliation screen should list.
 
@@ -1794,6 +1800,8 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 - This follows the rule ADR-009 already sets and ADR-032 reaffirmed when the health-rating workflow was cut: Affinity is the system of record for company identity and status, the sync is one-way, and the platform does not build an edit box that would disagree with it. An exited flag maintained in two places would have the nightly sync silently winning the argument — the precise failure the health workflow was cancelled to avoid.
 - **The A6 generator has a defect this exposes.** It writes a `company_exit` row wherever Affinity's *lifecycle* status reads "Winding Down" — a different field entirely — so **the 7 exited companies on today's dashboard are a generator artefact**, and under this model every one of them is still a portfolio company. Correcting it moves a visible number on the dashboard. That is a correction rather than a regression, and it is merged deliberately with the before and after recorded, not discovered by someone in a meeting.
 - The exit-entry screen says on its face that recording an exit does not move the company between views. Otherwise the first person to use it will expect that it does.
+- **The Exited view is two groups, and the second one is the point.** *Off the roster* is what Affinity says; *exit recorded, still on the roster* is Finance's half arriving first. Merging them would answer a different question from the one an auditor asks, and hiding the second would put the platform back in the business of picking a winner between two sources. The generated dataset now contains six of them, so the F6 reconciliation surface has something real to find.
+- **The exit-type vocabulary is read from the CHECK constraint at both ends** — the form offers what the database accepts and the write path validates against the same list. FR-30 leaves open whether it is the vocabulary Finance reports on; when that is answered it is a migration, rather than two copies that have to be changed together.
 - `company_state` appends only on genuine change, so a status transition produces exactly one new row on the night it happens. That convergence property is re-verified after the sync widens: a second run must create zero new rows.
 
 ---

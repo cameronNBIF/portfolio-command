@@ -201,7 +201,7 @@ These are findings from reading the current build, not requests from the meeting
 
 **S-3 · One final mark per company per effective date blocks legitimate same-day marks.** ~~*As built.*~~ **Closed 20 August 2026 by F2** — the index now constrains one *review* per company per date, and gained `deleted_at is null` so it agrees with the application check. The original finding is kept below. Two follow-ons on one date, or a transaction landing on a review date, cannot both produce a mark under the current unique index.
 
-**S-4 · `company_exit` has no write path.** The table, the `exit_type` vocabulary and the `write_off` / `realization` transaction types all exist. No interface creates an exit, and no view filters the active portfolio on one.
+**S-4 · `company_exit` has no write path.** ~~*As built.*~~ **Closed 20 August 2026 by F4** — `/api/v1/exits` and the Exited tab, gated on `CAN_WRITE_FINANCIAL`. The original finding is kept below because it is what the fix was measured against. The second half of it was answered differently than it was posed: no view filters the active portfolio on an exit event, and none should — membership follows Affinity's roster status (ADR-036), and the exit event is a separate fact that deliberately does not move a company between views. The table, the `exit_type` vocabulary and the `write_off` / `realization` transaction types all exist. No interface creates an exit, and no view filters the active portfolio on one.
 
 **S-5 · Transactions carry no instrument.** `instrument_id` is on the *round*, and `company.instrument_id` is a separate independent fact. A cheque itself has no debt/equity classification, so a company holding both equity and a loan cannot be split at transaction level.
 

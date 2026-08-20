@@ -383,6 +383,14 @@ Then: `company_state.roster_status`, on the dated state table rather than on `co
 
 **Size: L** — mostly because of the discovery step and the blast radius, not the code.
 
+**Done, 20 August 2026** — see the F4 entry in `BUILD-LOG.md`. **The probe cleared the gate**: 354 list entries, 2 carrying `Exited`, both already on the roster, so the control totals did not move — 82 companies, invested **$47,216,678.00**, FMV **$42,030,272.00**, equal to the frozen F0 baseline to the cent. Migration 0011 then corrected the derivation. 252 golden masters and 64 functions tests pass unchanged; the API suite goes from 151 to 161 and the db suite from 40 to 41.
+
+**The number moved, as this spec said it would: 7 exited companies became 2.** All seven were derived from Affinity's *lifecycle* status "Winding Down"; the two that remain are the ones whose roster *Status* is `Exited`. Nothing else moved — the dashboard reads 80 active where it read 75.
+
+**One thing the spec did not settle.** Membership was a hardcoded Set in `map.ts` and F4 added a second question of the same kind, so both moved into `affinity_status_map` where ADR-009 already put the funnel routing. `mapEntry` now maps and does not judge.
+
+**And one defect found by running the generator, which was not F4's.** `db:generate` failed against `round_coinvestor_fund_fk`: a co-investor captured through the A8 form and resolved to an LP position is a real row pointing at a synthetic one, and the clear step hard-deleted `fund_investment` underneath it. Reproduced on the pre-F4 tree before being fixed. LP positions are upserted on their deterministic ids now, so the row and the link survive a regeneration.
+
 #### F5 · The LP three-stage model
 
 **Closes:** S-7 (commitment is a scalar) · FR-32 · FR-33 · FR-34 · an outstanding ADR-002 debt. **Lands ADR-037.**
@@ -437,7 +445,7 @@ Raised as **Proposed** at F0; each moves to **Accepted** as its phase lands.
 | **ADR-033** ✅ | A round is an event in the company's life; participation is explicit, and the cheque-to-round link is writable from both surfaces through a narrow mutation. **Accepted 20 Aug 2026.** Clause 3 was amended on landing: the leverage guard had to go in the export as well as the view | F1 |
 | **ADR-034** ✅ | A valuation mark records the adjustment that produced it and stores the resulting absolute; the retention factor is the input and the absolute is the fact. **Accepted 20 Aug 2026.** Clause 3 gained the rule for a review applied to cost | F2 |
 | **ADR-035** ✅ | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag. **Accepted 20 Aug 2026.** Clause 2 was amended on landing: `fund_accounting_policy` carries no `fund_id`, because the flag is resolved from a company and ownership has no fund dimension | F3 |
-| **ADR-036** | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views | F4 |
+| **ADR-036** ✅ | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views. **Accepted 20 Aug 2026.** Clause 1 was amended on landing: which status means member and which means exited moved out of a hardcoded Set and into `affinity_status_map` | F4 |
 | **ADR-037** | LP commitments are dated events and `committed` becomes derived | F5 |
 | **ADR-038** | The version store distinguishes a correction from information arriving late | F6 |
 | **ADR-039** | Total invested is pushed to Affinity at cutover and becomes read-only there; the pre-cutover figures are frozen before the first write | F0 / A13 |

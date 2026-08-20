@@ -26,6 +26,7 @@ import { AlertsTab } from '../components/tabs/AlertsTab';
 import { DashboardTab } from '../components/tabs/DashboardTab';
 import { DataTab } from '../components/tabs/DataTab';
 import { DealCloseTab } from '../components/tabs/DealCloseTab';
+import { ExitedTab } from '../components/tabs/ExitedTab';
 import { FinanceTab } from '../components/tabs/FinanceTab';
 import { FundsTab } from '../components/tabs/FundsTab';
 import { PipelineTab } from '../components/tabs/PipelineTab';
@@ -102,6 +103,9 @@ function Tab({
       return <ReportsTab db={db} asOf={asOf} />;
     case 'data':
       return <DataTab db={db} asOf={asOf} kpiCoverage={kpiCoverage} />;
+    case 'exited':
+      // F4. Membership follows Affinity; what is recorded here is the event.
+      return <ExitedTab db={db} />;
     case 'alerts':
       return <AlertsTab db={db} asOf={asOf} />;
     case 'policies':

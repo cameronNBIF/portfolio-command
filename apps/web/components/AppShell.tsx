@@ -14,7 +14,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type TabId =
   | 'dashboard' | 'portfolio' | 'funds' | 'pipeline'
-  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose' | 'alerts' | 'policies';
+  | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose' | 'alerts' | 'policies'
+  | 'exited';
 
 /**
  * Label and order exactly as the prototype's `#mainnav` (:163-172), plus the two
@@ -43,6 +44,15 @@ export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
   { id: 'memo', label: 'Memo Builder' },
   { id: 'reports', label: 'Reports' },
   { id: 'data', label: 'Data' },
+  // F4, FR-29. Complements the Portfolio tab rather than changing it: that tab
+  // keeps the prototype's own active / include exited / exited only control
+  // (ADR-014), and this is the exit as an EVENT, which the prototype has no
+  // concept of. Appended with the other additions rather than slotted in beside
+  // Portfolio, which would reorder the ported eight in the nav.
+  //
+  // No role gate. Who left the portfolio and when is a board figure; the entry
+  // form inside is gated to finance and admin, and the API re-checks it.
+  { id: 'exited', label: 'Exited' },
   // A9. Matches CAN_EDIT_JUDGEMENT: the people who own the judgement records
   // this tab configures are the ones who see it. Leadership reads the board
   // feed on the Dashboard, which is unchanged and needs no gate.

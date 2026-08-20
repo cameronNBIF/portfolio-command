@@ -27,6 +27,13 @@ export {
 // F3, FR-21/FR-36. The significant-influence schedule and the ownership history
 // behind it. The flag is three-valued and NULL is never collapsed to false
 // (ADR-035 clause 4).
+// F4, FR-29, ADR-036. The Exited view: two facts with two owners, and the
+// surface that shows them disagreeing rather than picking a winner.
+export {
+  readExitedView,
+  type ExitedView,
+  type ExitRow,
+} from './read/exits.js';
 export {
   readSignificantInfluence,
   readOwnershipHistory,
@@ -123,6 +130,15 @@ export {
   type OwnershipAdjustmentInput,
   type OwnershipWriteResult,
 } from './write/ownership.js';
+
+// F4, S-4, FR-28. The exit event -- Finance's economic fact. It does NOT move
+// the company between views; membership follows the Affinity roster (ADR-036).
+export {
+  applyExitMutation,
+  type ExitMutation,
+  type ExitEventInput,
+  type ExitWriteResult,
+} from './write/exits.js';
 
 // F3, FR-21, ADR-035 clause 5. The finance policies, behind their own gate:
 // what this sets is not a financial row but the rule that classifies every one.

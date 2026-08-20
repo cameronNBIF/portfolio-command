@@ -131,6 +131,21 @@ export async function syncAffinity(
     'select funnel_stage_id as id, affinity_status as name from affinity_status_map',
   )) as Map<string, number>;
   /**
+   * ADR-036. Membership from the SAME table, for the reason the comment above
+   * gives about the funnel stage. It was a hardcoded Set in `map.ts` until F4,
+   * which needed a second question of the same kind -- which status means
+   * EXITED -- and two rules a file apart is how a company ends up on the roster
+   * and in neither view.
+   *
+   * A status with no row, or a row saying false, is not a member. That is the
+   * safe default for an option added in Affinity without a deploy: it changes
+   * no view until somebody says what it means.
+   */
+  const { rows: statusRules } = await client.query<{
+    affinity_status: string; is_portfolio_member: boolean; is_exited: boolean;
+  }>('select affinity_status, is_portfolio_member, is_exited from affinity_status_map');
+  const membership = new Map(statusRules.map((r) => [r.affinity_status, r]));
+  /**
    * Matched on DISPLAY NAME, not email (decision, 12 Aug 2026). Affinity merges
    * Person entities, so a person's primary address is not reliably their
    * @nbif.ca one and joining on it silently failed. For an eight-person team
@@ -208,8 +223,14 @@ export async function syncAffinity(
         continue;
       }
 
+      /* THE MEMBERSHIP DECISION, in one place, from the table. `mapEntry`
+         returns the company shape for every entry carrying a Status and leaves
+         this to the caller (ADR-036); what makes a row a portfolio company is
+         `is_portfolio_member`, and nothing else. */
+      const isMember = membership.get(deal.affinityStatus)?.is_portfolio_member === true;
+
       let companyId: string | null = null;
-      if (company) {
+      if (company && isMember) {
         companyId = companyIdByOrg.get(company.affinityOrgId) ?? nextCompanyId();
         companyIdByOrg.set(company.affinityOrgId, companyId);
         await upsertCompany(client, companyId, company, { sectors, channels, users, resolve });
@@ -376,12 +397,24 @@ async function upsertCompany(
  * 347 identical rows a day.
  */
 async function upsertCompanyState(client: pg.Client, companyId: string, c: MappedCompany): Promise<boolean> {
-  if (c.health === null && c.riskGrade === null && c.lifecycleStatus === null) return false;
+  /* `rosterStatus` joins the guard, and it is the one field here that is never
+     null for a company the sync writes -- membership derives from it. Left out,
+     a company whose only Affinity fact is its Status would get no state row at
+     all, and ADR-036's derivation would read the exit event instead. */
+  if (
+    c.health === null &&
+    c.riskGrade === null &&
+    c.lifecycleStatus === null &&
+    c.rosterStatus === ''
+  ) {
+    return false;
+  }
 
   const { rows } = await client.query<{
-    company_state_id: string; health: string | null; risk_grade: string | null; lifecycle_status: string | null;
+    company_state_id: string; health: string | null; risk_grade: string | null;
+    lifecycle_status: string | null; roster_status: string | null;
   }>(
-    `select company_state_id, health, risk_grade, lifecycle_status
+    `select company_state_id, health, risk_grade, lifecycle_status, roster_status
        from company_state where company_id = $1 and effective_to is null`,
     [companyId],
   );
@@ -390,7 +423,12 @@ async function upsertCompanyState(client: pg.Client, companyId: string, c: Mappe
     current &&
     current.health === c.health &&
     current.risk_grade === c.riskGrade &&
-    current.lifecycle_status === c.lifecycleStatus
+    current.lifecycle_status === c.lifecycleStatus &&
+    /* ADR-036 clause 5's convergence property, extended to the new column: a
+       second run must create zero rows. A status that has not changed must not
+       append a dated row saying it did -- that would bury real transitions,
+       which is the whole reason this comparison exists. */
+    current.roster_status === c.rosterStatus
   ) {
     return false;
   }
@@ -404,9 +442,10 @@ async function upsertCompanyState(client: pg.Client, companyId: string, c: Mappe
     );
   }
   await client.query(
-    `insert into company_state (company_id, effective_from, health, risk_grade, lifecycle_status, set_by, note)
-     values ($1, current_date, $2, $3, $4, $5, 'Affinity sync')`,
-    [companyId, c.health, c.riskGrade, c.lifecycleStatus, SYSTEM_USER_ID],
+    `insert into company_state (company_id, effective_from, health, risk_grade, lifecycle_status,
+                                roster_status, set_by, note)
+     values ($1, current_date, $2, $3, $4, $5, $6, 'Affinity sync')`,
+    [companyId, c.health, c.riskGrade, c.lifecycleStatus, c.rosterStatus, SYSTEM_USER_ID],
   );
   return true;
 }

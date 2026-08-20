@@ -157,11 +157,12 @@ try {
     affinity_fmv: string | null;
     risk_grade: string | null;
     lifecycle_status: string | null;
+    roster_status: string | null;
     first_kpi_year: number | null;
   }>(`
     select c.company_id, c.affinity_org_id, c.name, c.year_founded,
            c.affinity_total_investment, c.affinity_fmv,
-           cs.risk_grade, cs.lifecycle_status,
+           cs.risk_grade, cs.lifecycle_status, cs.roster_status,
            k.first_kpi_year
       from company c
       left join company_state cs
@@ -189,6 +190,7 @@ try {
       fmvCents: toCents(r.affinity_fmv ?? 0),
       riskGrade: r.risk_grade,
       lifecycleStatus: r.lifecycle_status,
+      rosterStatus: r.roster_status,
       vehicle: r.affinity_org_id ? (vehicleByOrgId.get(r.affinity_org_id) ?? null) : null,
       firstKpiYear: r.first_kpi_year,
     });
@@ -242,7 +244,14 @@ try {
   await clear(`delete from company_milestone where updated_by = '${SYSTEM_USER}'`, 'company_milestone');
   await clear(`delete from company_gov_funding where updated_by = '${SYSTEM_USER}'`, 'company_gov_funding');
   await clear(`delete from board_seat`, 'board_seat');
-  await clear(`delete from fund_investment`, 'fund_investment');
+  /* fund_investment IS NOT CLEARED, AND THAT IS A FIX RATHER THAN AN OMISSION.
+     It used to be deleted and reinserted with the same deterministic ids, which
+     worked only for as long as nothing else pointed at one. A co-investor
+     captured through the A8 Deal Close form and resolved to an LP position
+     (ADR-026 exact match) is a real row referencing a synthetic one, and the
+     DELETE fails against `round_coinvestor_fund_fk` -- taking the whole run
+     down, because it is one transaction. The LP write below upserts on the id
+     instead, so the row survives the regeneration and the link with it. */
   // Never clears a FROZEN snapshot: once a board report has been issued the
   // numbers in it are history and a regeneration must not restate them.
   await clear(`delete from fund_nav_snapshot where frozen_at is null`, 'fund_nav_snapshot');
@@ -575,11 +584,25 @@ try {
 
   // --- LP positions -------------------------------------------------------
   for (const lp of lpPlans) {
+    // Upserted, not inserted: see the note where fund_investment left the clear
+    // list. The ids are deterministic (F001..), so this rewrites the same row
+    // rather than allocating a new one, and anything referencing it stays valid.
     await client.query(
       `insert into fund_investment
          (fund_investment_id, name, manager_name, strategy, vintage_year, committed, currency,
           co_invest_rights, women_senior_gp, next_call_est, agm_date, ir_contact, rationale, created_by)
-       values ($1,$2,$3,$4,$5,$6,'CAD',$7,null,$8,$9,$10,$11,$12)`,
+       values ($1,$2,$3,$4,$5,$6,'CAD',$7,null,$8,$9,$10,$11,$12)
+       on conflict (fund_investment_id) do update
+         set name             = excluded.name,
+             manager_name     = excluded.manager_name,
+             strategy         = excluded.strategy,
+             vintage_year     = excluded.vintage_year,
+             committed        = excluded.committed,
+             co_invest_rights = excluded.co_invest_rights,
+             next_call_est    = excluded.next_call_est,
+             agm_date         = excluded.agm_date,
+             ir_contact       = excluded.ir_contact,
+             rationale        = excluded.rationale`,
       [
         lp.fundInvestmentId, lp.name, lp.managerName, lp.strategy, lp.vintageYear,
         toDollars(lp.committedCents), lp.coInvestRights, lp.nextCallEst, lp.agmDate,
