@@ -15,6 +15,8 @@
 import {
   applyFinancialMutation,
   db,
+  readFmvReview,
+  readFmvReviewQueue,
   readLpNav,
   readTransactions,
   readValuationMarks,
@@ -96,6 +98,26 @@ export async function GET(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
     const q = new URL(request.url).searchParams;
     const includeDeleted = q.get('includeDeleted') === 'true';
+
+    /**
+     * F2, FR-19. The review workspace.
+     *
+     * On the financial endpoint rather than a route of its own because it is
+     * the read behind Finance's own screen and shares its gate. `asOf` is
+     * REQUIRED, not defaulted to today: the cycle date is 31 January or 31 July
+     * (ADR-007), and a default would make the same screen show different work
+     * depending on when it was opened -- the drift ADR-021 exists to prevent.
+     */
+    const reviewAsOf = q.get('asOf');
+    if (q.get('review') === 'queue') {
+      if (!reviewAsOf) throw new ValidationError('"asOf" is required — the review cycle date, as YYYY-MM-DD.');
+      return { rows: await readFmvReviewQueue(db(), principal, reviewAsOf) };
+    }
+    const reviewCompany = q.get('review');
+    if (reviewCompany) {
+      if (!reviewAsOf) throw new ValidationError('"asOf" is required — the review cycle date, as YYYY-MM-DD.');
+      return readFmvReview(db(), principal, reviewCompany, reviewAsOf);
+    }
 
     if (q.get('table') === 'valuation_mark') {
       return { rows: await readValuationMarks(db(), principal, {

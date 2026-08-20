@@ -16,7 +16,9 @@
  */
 import type {
   ChangeLogEntry,
+  FmvReview,
   LpNavRow,
+  ReviewQueueRow,
   TransactionPage,
   ValuationMarkRow,
 } from '@portfolio-command/api';
@@ -56,11 +58,60 @@ export const fetchLpNav = (params: Record<string, string>): Promise<{ rows: LpNa
 export const fetchHistory = (table: string, recordId: string): Promise<{ entries: ChangeLogEntry[] }> =>
   call(`/api/v1/financial/history?${new URLSearchParams({ table, recordId })}`);
 
+/** F2, FR-19. The review cycle as a list Finance can work down. */
+export const fetchReviewQueue = (asOf: string): Promise<{ rows: ReviewQueueRow[] }> =>
+  call(`/api/v1/financial?${new URLSearchParams({ review: 'queue', asOf })}`);
+
+/** F2, FR-19. Everything a reviewer would otherwise look up, for one company. */
+export const fetchReview = (companyId: string, asOf: string): Promise<FmvReview> =>
+  call(`/api/v1/financial?${new URLSearchParams({ review: companyId, asOf })}`);
+
+/**
+ * The valuation cycle a date falls in: the most recent 31 January or 31 July on
+ * or before it (ADR-007).
+ *
+ * A DEFAULT FOR THE PICKER, NOT A SUBSTITUTE FOR ONE. The API requires `asOf`
+ * and refuses to assume today, because a screen that shows different work
+ * depending on when it was opened is the drift ADR-021 removed. What this does
+ * is spare Finance from typing the date they are almost always going to want —
+ * and because the exercise is reported two to three months after its effective
+ * date, that is usually the cycle just gone rather than the one approaching.
+ */
+export function currentValuationCycle(today = new Date()): string {
+  const y = today.getUTCFullYear();
+  const md = `${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+  if (md >= '07-31') return `${y}-07-31`;
+  if (md >= '01-31') return `${y}-01-31`;
+  return `${y - 1}-07-31`;
+}
+
+/** The retention factor as the sentence Finance uses. "0.7500" -> "75% retained, a 25% decrease". */
+export function retentionSentence(factor: string | null): string {
+  if (!factor) return '—';
+  const retained = Math.round(Number(factor) * 100);
+  return retained === 100
+    ? 'Reviewed, held at 100%'
+    : `Retained ${retained}% — a ${100 - retained}% decrease`;
+}
+
 export interface MutationResult {
   ok: true;
   id: string;
   /** True when this change moved a figure inside an already-issued period. */
   restated: boolean;
+  /**
+   * F2, ADR-034. Present on a review: what the SERVER computed and stored.
+   *
+   * Reported back rather than assumed, so the screen can say the figure that
+   * actually landed instead of the one it previewed. The two agree; echoing the
+   * stored one is what makes that checkable from the interface.
+   */
+  mark?: {
+    fmv: string;
+    basisFmv: string;
+    basisMarkId: string | null;
+    retentionFactor: string;
+  };
 }
 
 export function mutate(body: {
