@@ -274,12 +274,35 @@ export interface ValuationMarkRow {
   companyId: string;
   companyName: string | null;
   effectiveDate: string;
+  /** When Finance completed entry, as distinct from what the mark is "as at". */
+  bookedAt: string;
   fmv: string;
   methodLabel: string;
   rationale: string;
   status: string;
   preparedByLabel: string;
   sourceDocument: string | null;
+  /**
+   * F2, ADR-034. What produced this mark. `legacy` on everything written before
+   * the ledger existed, which is most of the table and honestly so.
+   */
+  adjustmentType: string;
+  /** The RETAINED proportion on a review — "0.7500" is a 25% impairment. */
+  retentionFactor: string | null;
+  /** What the factor was applied to. Present on reviews, null elsewhere. */
+  basisFmv: string | null;
+  /** Null on a review run against cost, which ADR-007 makes a real basis. */
+  basisMarkId: string | null;
+  /**
+   * ADR-034 clause 3, made visible. The basis mark's FMV **as it stands now**,
+   * against the copy taken when this mark was written.
+   *
+   * These disagreeing means an earlier mark was corrected after this one was
+   * derived from it, so this mark's arithmetic no longer reproduces. It is
+   * reported rather than repaired: F6 owns the reconciliation, and silently
+   * re-deriving would destroy the evidence that anything happened.
+   */
+  basisFmvNow: string | null;
   isSynthetic: boolean;
   deletedAt: string | null;
   deletedReason: string | null;
@@ -305,18 +328,29 @@ export async function readValuationMarks(
 
   const { rows } = await sql<{
     id: string; company_id: string; company_name: string | null; effective_date: string;
-    fmv: string; method_label: string; rationale: string; status: string;
+    booked_at: string; fmv: string; method_label: string; rationale: string; status: string;
     prepared_by_label: string; source_document: string | null; is_synthetic: string;
+    adjustment_type: string; retention_factor: string | null; basis_fmv: string | null;
+    basis_mark_id: string | null; basis_fmv_now: string | null;
     deleted_at: string | null; deleted_reason: string | null; edited: string;
   }>`
     select vm.valuation_mark_id::text as id, vm.company_id, c.name as company_name,
-           vm.effective_date::text as effective_date, vm.fmv::text as fmv,
+           vm.effective_date::text as effective_date, vm.booked_at::text as booked_at,
+           vm.fmv::text as fmv,
            vm.method_label, vm.rationale, vm.status, vm.prepared_by_label,
            vm.source_document, vm.is_synthetic::text as is_synthetic,
+           vm.adjustment_type,
+           vm.retention_factor::text as retention_factor,
+           vm.basis_fmv::text as basis_fmv,
+           vm.basis_mark_id::text as basis_mark_id,
+           basis.fmv::text as basis_fmv_now,
            vm.deleted_at::text as deleted_at, vm.deleted_reason,
            (vm.row_updated_at > vm.row_created_at)::text as edited
       from pc.valuation_mark vm
       left join pc.company c on c.company_id = vm.company_id
+      -- The basis mark AS IT STANDS NOW, so a later correction to it becomes
+      -- visible here rather than silently invalidating this row's arithmetic.
+      left join pc.valuation_mark basis on basis.valuation_mark_id = vm.basis_mark_id
      where (${filters.companyId ?? null}::text is null or vm.company_id = ${filters.companyId ?? null})
        and (${filters.includeDeleted ?? false}::boolean or vm.deleted_at is null)
      order by vm.effective_date desc, vm.valuation_mark_id desc
@@ -328,12 +362,18 @@ export async function readValuationMarks(
     companyId: r.company_id,
     companyName: r.company_name,
     effectiveDate: r.effective_date,
+    bookedAt: r.booked_at,
     fmv: r.fmv,
     methodLabel: r.method_label,
     rationale: r.rationale,
     status: r.status,
     preparedByLabel: r.prepared_by_label,
     sourceDocument: r.source_document,
+    adjustmentType: r.adjustment_type,
+    retentionFactor: r.retention_factor,
+    basisFmv: r.basis_fmv,
+    basisMarkId: r.basis_mark_id,
+    basisFmvNow: r.basis_fmv_now,
     isSynthetic: r.is_synthetic === 'true',
     deletedAt: r.deleted_at,
     deletedReason: r.deleted_reason,
