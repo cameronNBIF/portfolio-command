@@ -290,6 +290,7 @@ Section visibility follows role: `vc` and `admin` see alert policies, `finance` 
 **Current state:** `realization` and `write_off` are **already valid `txn_type` values** and already have correct metric treatment — `v_company_realized` picks up realizations, and a write-off does not count toward invested. `ref_valuation_method` already carries `Write-off` and `Realized`. `company_exit` exists with a five-value `exit_type` vocabulary.
 **Gap:** Much smaller than it appears. The types exist; **no interface creates an exit record** (finding S-4), and no view filters the active portfolio on one.
 **Disposition:** Build the workflow over existing schema. Confirm the `exit_type` vocabulary against how Finance reports it.
+**BUILT — F4, 20 August 2026.** `/api/v1/exits` records, corrects and removes an exit event, gated on `CAN_WRITE_FINANCIAL`, with the reason required on removal and both writes in `audit_log`. S-4 is closed: the table has a write path. The `exit_type` vocabulary is still the one the CHECK holds — the read and write paths both take it from the constraint, so confirming it with Finance is one migration rather than three edits that have to agree.
 **Size:** M · **Schema:** Minor
 
 ### FR-29 · An Exited view, with membership driven by Affinity
@@ -308,12 +309,17 @@ What the platform needs is an **Exited tab complementing the Portfolio tab**, wi
 - Widening the sync will pull in companies from the Exited view that **are not currently on the 82-company roster at all.** Roster size, and possibly the invested and FMV control totals, will move.
 
 **Disposition:** Build, with a **read-only discovery step first** — probe Affinity for the actual Status vocabulary and the Exited-view membership, report the counts, and decide before anything is written. Then store the roster status as dated history, split the views, and correct the generator. Roadmap phase **F4**.
+
+**BUILT — F4, 20 August 2026, and the discovery step changed the risk assessment.** The probe (`npm run affinity:exits`) found **354 list entries, 2 carrying `Exited` — Potential Motors and Alongside — and both already on the roster**, because the sync has counted `Exited` as membership since A4. So the bullet above about the roster and the control totals moving was wrong in the reassuring direction: nothing moved. 82 companies, invested $47,216,678.00, FMV $42,030,272.00, unchanged.
+
+What did move is the number the generator defect was producing: **7 exited companies became 2.** `company_state.roster_status` now carries Affinity's Status as dated history, `company_current_asof` derives `exited` from it with a fallback to the exit event where the roster has not spoken, and the Exited tab shows both that group and the companies whose exit Finance has recorded while Affinity still lists them.
 **Size:** L · **Schema:** Yes (roster status on the dated state table)
 
 ### FR-30 · Capture the reason for departure
 **Said by:** The group, for reporting purposes.
 **Current state:** `company_exit.exit_type` and `note` exist.
 **Gap:** Confirm the vocabulary is the one Finance reports on. The fixture already carries a value (`Strategic acquisition`) that sits outside the original constraint, so the list has moved once already.
+**BUILT — F4, 20 August 2026.** The note is captured on the entry form and shown on the Exited view. The five-value list is offered from the CHECK constraint itself rather than from a copy in the code, so **the open half of this requirement is a conversation rather than a code change**: when Finance names the vocabulary they report on, it is a migration and both ends follow.
 **Size:** S · **Schema:** Minor
 
 ### FR-31 · Support the write-off mechanics Pat described
