@@ -98,3 +98,20 @@ export const TXN_TYPE_LABELS: Record<string, string> = {
 
 /** Which subject a transaction type attaches to. Mirrors the DDL check constraints. */
 export const DIRECT_TXN_TYPES = ['investment', 'follow_on', 'realization', 'write_off'];
+
+/**
+ * The types that are OUR CHEQUE INTO A ROUND, which is a narrower question than
+ * "is this a direct transaction".
+ *
+ * The same two values are the predicate in `v_round_leverage`, in the export
+ * adapter's per-round `invested` lateral, and in `readCompanyCheques`. A
+ * realization or a write-off is a direct transaction and can legally carry a
+ * round link, but neither funds a round — so neither is ever MISSING one, and
+ * neither belongs in a chasing list.
+ *
+ * Getting this wrong is not cosmetic: the F1 screens flag an unlinked cheque
+ * nobody has reviewed, and flagging every write-off would put thirty permanent
+ * false targets into the exact count `standalone_confirmed_at` exists to let
+ * reach zero (ADR-033 clause 4).
+ */
+export const ROUND_TXN_TYPES = ['investment', 'follow_on'];

@@ -26,7 +26,13 @@
  */
 import { useCallback, useMemo, useState } from 'react';
 
-import type { MandateCompleteness, ReferenceData, RoundPage, RoundRow } from '@portfolio-command/api';
+import type {
+  CompanyChequeRow,
+  MandateCompleteness,
+  ReferenceData,
+  RoundPage,
+  RoundRow,
+} from '@portfolio-command/api';
 import type { PortfolioExport } from '@portfolio-command/contract';
 
 import { useApp } from '../AppShell';
@@ -36,9 +42,11 @@ import { money } from '../../lib/finance-api';
 import {
   RoundsApiError,
   captureRound,
+  fetchCompanyCheques,
   fetchCompleteness,
   fetchReference,
   fetchRounds,
+  linkTransactions,
   pct,
 } from '../../lib/rounds-api';
 
@@ -53,6 +61,11 @@ interface CoinvestorDraft {
 
 const EMPTY_ROUND: Draft = {
   companyId: '', roundDate: '', label: '', instrumentId: '', investmentVehicleId: '',
+  // ADR-033. Blank IS `unknown`, and the picker below says so rather than
+  // leaving the reader to infer it from an empty select. Not defaulted to `yes`
+  // on the theory that most rounds are ones we joined: the whole reason the
+  // column has three states is that a guess and a fact must not look the same.
+  nbifParticipated: '',
   roundTotal: '', nbOther: '', postMoney: '', ownershipAfterPct: '',
   leadInvestor: '', note: '', sourceDocument: '',
   ownershipAsOfDate: '', ownershipPct: '', proRataRights: '', fullyDiluted: 'yes',
@@ -119,6 +132,7 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
         label: r.label,
         instrumentId: r.instrumentId ? String(r.instrumentId) : '',
         investmentVehicleId: r.investmentVehicleId ? String(r.investmentVehicleId) : '',
+        nbifParticipated: r.nbifParticipated,
         roundTotal: r.roundTotal ?? '',
         nbOther: r.nbOther ?? '',
         postMoney: r.postMoney ?? '',
@@ -158,6 +172,10 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
           label: d['label'],
           instrumentId: d['instrumentId'] ? Number(d['instrumentId']) : null,
           investmentVehicleId: d['investmentVehicleId'] ? Number(d['investmentVehicleId']) : null,
+          // Blank goes to the server as blank and lands as `unknown` there. The
+          // form does not translate it, so there is one place that decides what
+          // an unanswered question means.
+          nbifParticipated: d['nbifParticipated'] || null,
           roundTotal: d['roundTotal'] || null,
           nbOther: d['nbOther'] || null,
           postMoney: d['postMoney'] || null,
@@ -307,6 +325,7 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
           formError={formError}
           onSubmit={submit}
           onCancel={() => setEditing(null)}
+          onLinked={(m) => { setNotice(m); reload(); }}
         />
       )}
 
@@ -383,6 +402,16 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
                         shows both should say which is which. */}
                     {r.excludedFromLeverage && <Pill tone="red">Total below our cheque</Pill>}
                     {!r.capturedAt && <Pill tone="yellow">Never captured</Pill>}
+                    {/* F1. The three cases that used to read as one $0. Only
+                        the third is a chasing target; the first is correct and
+                        the second is a question nobody has answered. */}
+                    {r.nbifParticipated === 'no' && <Pill tone="gray">We sat this one out</Pill>}
+                    {r.nbifParticipated === 'unknown' && Number(r.ourInvested) === 0 && (
+                      <Pill tone="yellow">Participation unknown</Pill>
+                    )}
+                    {r.nbifParticipated === 'yes' && Number(r.ourInvested) === 0 && (
+                      <Pill tone="red">Cheque missing</Pill>
+                    )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
@@ -426,6 +455,7 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
 
 function CaptureForm({
   editing, setEditing, companies, fundInvestments, reference, formError, onSubmit, onCancel,
+  onLinked,
 }: {
   editing: Editing;
   setEditing: (e: Editing) => void;
@@ -435,6 +465,7 @@ function CaptureForm({
   formError: string | null;
   onSubmit: () => void;
   onCancel: () => void;
+  onLinked: (message: string) => void;
 }) {
   const d = editing.draft;
   const set = (k: string, v: string) => setEditing({ ...editing, draft: { ...d, [k]: v } });
@@ -517,6 +548,25 @@ function CaptureForm({
             {(reference?.investmentVehicles ?? []).map((v) => (
               <option key={v.id} value={String(v.id)}>{v.code} — {v.name}</option>
             ))}
+          </select>
+        </Field>
+        {/* ADR-033. The round is an event in the COMPANY'S life, not ours — a
+            Series B happens whether or not we write a cheque. This is the field
+            that makes "a round with no transaction" legible: legitimate when we
+            sat it out, a data error when we did not. `no` takes the round out
+            of the leverage figure, because a round we did not join contributes
+            capital attracted with no cost of ours to match it. */}
+        <Field
+          label="Did NBIF participate?"
+          hint="A round we sat out still moves ownership and FMV, so it still belongs here. Leave it unanswered if you do not know — unknown is a real answer and is not counted as no."
+        >
+          <select
+            value={d['nbifParticipated'] ?? ''}
+            onChange={(e) => set('nbifParticipated', e.target.value)}
+          >
+            <option value="">Unknown — not established</option>
+            <option value="yes">Yes — we invested in this round</option>
+            <option value="no">No — we did not participate</option>
           </select>
         </Field>
         <Field
@@ -666,6 +716,9 @@ function CaptureForm({
         )}
       </div>
 
+      {/* --- cheques in this round (ADR-033, F1) -------------------------- */}
+      <RoundCheques editing={editing} onLinked={onLinked} />
+
       {/* --- cap-table position ------------------------------------------- */}
       <div className="vsub" style={{ margin: '16px 0 6px', fontWeight: 700, color: 'var(--slate)' }}>
         CAP-TABLE POSITION AFTER THIS ROUND
@@ -713,5 +766,189 @@ function CaptureForm({
         <button className="btn ghost" onClick={onCancel}>Cancel</button>
       </div>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cheques in this round — ADR-033's second surface
+// ---------------------------------------------------------------------------
+
+/**
+ * The cheque-to-round link, from the deal lead's side.
+ *
+ * WHY IT IS HERE AS WELL AS ON THE FINANCE TAB. ADR-033 clause 5 says the link
+ * is writable from both surfaces through one mutation, and the reason is that
+ * the two people who know the answer sit on opposite sides of the ADR-005 role
+ * split. Finance books the wire and knows the amount; the deal lead holds the
+ * closing documents and knows which round it funded. Before F1 neither could
+ * record it: the Finance tab drew the field read-only and pointed here, and this
+ * tab did not write `transaction` at all (finding S-1).
+ *
+ * `vc` REACHES THIS SCREEN AND NOT THE FINANCE TAB, which is the practical form
+ * of the same point. This section is the only place a deal lead can attach their
+ * own cheque, and it works because `link-transactions` moves a foreign key and
+ * nothing else.
+ *
+ * IT SHOWS CHEQUES ALREADY ON ANOTHER ROUND, deliberately. Moving one from the
+ * wrong round to the right one is the more common correction — every link in the
+ * database was written by a generator, and the A6 dataset seeds one booked
+ * against another company's round on purpose. A list of only unattached cheques
+ * would make the wrong-round case the one thing this screen cannot fix.
+ *
+ * ONLY ONCE THE ROUND EXISTS. There is nothing to attach a cheque to until the
+ * capture has been saved, and a control that silently queued the link until then
+ * would be a second, invisible write path.
+ */
+function RoundCheques({
+  editing, onLinked,
+}: {
+  editing: Editing;
+  onLinked: (message: string) => void;
+}) {
+  const roundId = editing.id;
+  const companyId = editing.draft['companyId'] ?? '';
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(
+    () => (companyId ? fetchCompanyCheques(companyId) : Promise.resolve({ rows: [] })),
+    [companyId],
+  );
+  const { data, reload } = useRowState<{ rows: CompanyChequeRow[] }>(load);
+
+  const apply = async (transactionId: string, target: string | null, verb: string) => {
+    setError(null);
+    setBusy(transactionId);
+    try {
+      const result = await linkTransactions({
+        transactionIds: [transactionId],
+        investmentRoundId: target,
+        reason: editing.reason || null,
+      });
+      reload();
+      onLinked(
+        `${verb}.` +
+          (result.participationSetToYes ? ' This round now records that we participated.' : '') +
+          (result.restated
+            ? ' Recorded as a restatement: it falls inside a period already reported to the board.'
+            : ''),
+      );
+    } catch (e) {
+      setError(e instanceof RoundsApiError ? e.message : 'Could not change the round link.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const rows = data?.rows ?? [];
+  const mine = rows.filter((r) => r.investmentRoundId === roundId);
+  const others = rows.filter((r) => r.investmentRoundId !== roundId);
+
+  return (
+    <>
+      <div className="vsub" style={{ margin: '16px 0 6px', fontWeight: 700, color: 'var(--slate)' }}>
+        CHEQUES IN THIS ROUND
+      </div>
+      <div className="hint" style={{ marginBottom: 8 }}>
+        Our own money in this round, summed from the transactions Finance has booked. Attaching a
+        cheque here is a reconciliation, not a change to Finance&rsquo;s figures — it moves the link
+        and nothing else, and it is recorded against your name (ADR-033).
+      </div>
+
+      {!roundId && (
+        <div className="hint" style={{ marginBottom: 8 }}>
+          Save the round first. There is nothing to attach a cheque to until it exists.
+        </div>
+      )}
+      {error && (
+        <div className="alertrow" style={{ marginBottom: 8, color: 'var(--red)' }}>{error}</div>
+      )}
+
+      {roundId && (
+        <div className="tblwrap">
+          <table className="dt">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th className="num">Amount</th>
+                <th>Currently</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {mine.map((c) => (
+                <tr key={c.id}>
+                  <td className="mono">{c.txnDate}</td>
+                  <td className="num mono">
+                    {money(c.amountCad)}
+                    {c.currency !== 'CAD' && <span className="hint"> {c.currency}</span>}
+                  </td>
+                  <td className="small">In this round</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn ghost sm"
+                      disabled={busy === c.id}
+                      onClick={() => apply(c.id, null, 'Detached, and recorded as standalone')}
+                    >
+                      Detach
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {others.map((c) => (
+                <tr key={c.id} style={{ opacity: 0.75 }}>
+                  <td className="mono">{c.txnDate}</td>
+                  <td className="num mono">
+                    {money(c.amountCad)}
+                    {c.currency !== 'CAD' && <span className="hint"> {c.currency}</span>}
+                  </td>
+                  {/* Three states, said plainly. Only the last is a chasing
+                      target, and before F1 all three read as an absence. */}
+                  <td className="small">
+                    {c.roundLabel ? (
+                      <>
+                        {c.roundLabel} <span className="hint">({c.roundDate})</span>
+                      </>
+                    ) : c.standaloneConfirmedAt ? (
+                      <span className="hint">
+                        Standalone
+                        {c.standaloneConfirmedByName ? ` · ${c.standaloneConfirmedByName}` : ''}
+                      </span>
+                    ) : (
+                      <Pill tone="yellow">Not linked</Pill>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn ghost sm"
+                      disabled={busy === c.id}
+                      onClick={() =>
+                        apply(
+                          c.id,
+                          roundId,
+                          c.roundLabel
+                            ? `Moved from ${c.roundLabel} to this round`
+                            : 'Attached to this round',
+                        )}
+                    >
+                      {c.roundLabel ? 'Move here' : 'Attach'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="hint">
+                    Finance has booked no cheques against this company yet. A round can be captured
+                    before the wire clears — the two records have different authors on different
+                    clocks, and neither waits for the other (ADR-033).
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }

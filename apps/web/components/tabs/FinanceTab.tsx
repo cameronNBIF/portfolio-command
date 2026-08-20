@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type {
   LpNavRow,
   ReferenceData,
+  RoundPage,
   TransactionPage,
   ValuationMarkRow,
 } from '@portfolio-command/api';
@@ -44,6 +45,7 @@ import {
 } from '../entry';
 import {
   DIRECT_TXN_TYPES,
+  ROUND_TXN_TYPES,
   FinanceApiError,
   TXN_TYPE_LABELS,
   fetchLpNav,
@@ -53,8 +55,9 @@ import {
   mutate,
   type FinancialTableName,
 } from '../../lib/finance-api';
-// ADR-030's vehicle list, served by the A8 reference route.
-import { fetchReference } from '../../lib/rounds-api';
+// ADR-030's vehicle list, served by the A8 reference route. F1 adds the round
+// list the picker offers and the narrow mutation that writes the link.
+import { RoundsApiError, fetchReference, fetchRounds, linkTransactions } from '../../lib/rounds-api';
 
 type Surface = 'transactions' | 'marks' | 'lp';
 
@@ -183,16 +186,35 @@ function RowActions({
  * investments and loans are tracked separately on the balance sheet. Blank
  * means unrecorded and is never filled in on the operator's behalf.
  *
- * The round link stays read-only for now, and F1 is the phase that changes
- * that. The note below it is currently a dead end — it points at the Deal Close
- * tab, which does not write this column either. Nothing does (finding S-1);
- * every link in the database was written by the A6 generator.
+ * THE ROUND PICKER IS ENABLED, AND F1 IS WHY (ADR-033). It shipped read-only
+ * with a note pointing at the Deal Close tab, and that note was a dead end: the
+ * Deal Close capture does not write this column either. Nothing did (finding
+ * S-1); every link in the database was written by the A6 generator.
+ *
+ * IT SAVES SEPARATELY FROM THE REST OF THE FORM, and the seam is deliberate
+ * rather than an accident of implementation. The link goes through
+ * `link-transactions`, which is gated on `CAN_CAPTURE_ROUND` and writes the
+ * foreign key and nothing else; every other field on this card is
+ * `CAN_WRITE_FINANCIAL`. Folding the two into one Save would put the wider
+ * permission over both and throw away the argument that lets a deal lead do
+ * this at all. So: one card, two saves, and a heading that says which is which.
+ *
+ * ON A NEW TRANSACTION THE PICKER IS PART OF THE CREATE, because a row that
+ * does not exist yet has nothing to reconcile against — the create writes every
+ * other column of it already, and the person entering a cheque knows which
+ * round it is for. The narrow mutation is for changing a link that exists.
  */
 const EMPTY_TXN: Draft = {
   txnDate: '', txnType: 'investment', companyId: '', fundInvestmentId: '',
   amount: '', currency: 'CAD', fxRateToCad: '', sourceDocument: '', note: '',
   investmentRoundId: '', investmentVehicleId: '', vehicleName: '',
   instrumentId: '', instrumentName: '',
+  roundLabel: '', roundDate: '', standaloneConfirmedAt: '', standaloneConfirmedByName: '',
+  // What the database holds, kept beside what the picker shows. RoundLink
+  // compares the two to decide whether there is anything to save; without a
+  // stored value to compare against, the fallback made every change look like
+  // no change and the Save button never enabled.
+  storedRoundId: '',
 };
 
 function TransactionsSurface({ db }: { db: PortfolioExport }) {
@@ -243,7 +265,11 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
           fxRateToCad: d['fxRateToCad'] || null,
           sourceDocument: d['sourceDocument'] || null,
           note: d['note'] || null,
-          // Preserved, not edited. See the note on EMPTY_TXN.
+          // On a create this is the picker's value; on an update it is the
+          // stored link being round-tripped so the complete-row write does not
+          // null it, and the picker's own Save is what changes it. Either way
+          // the draft is the single source, which is why RoundLink writes back
+          // into it after a successful link (ADR-033).
           investmentRoundId: d['investmentRoundId'] || null,
           investmentVehicleId: d['investmentVehicleId'] ? Number(d['investmentVehicleId']) : null,
           // Cleared alongside companyId when the type flips to LP activity, for
@@ -438,12 +464,12 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
             />
           </FormGrid>
 
-          {editing.id && editing.draft['investmentRoundId'] && (
-            <div className="hint" style={{ marginTop: 10 }}>
-              Linked to round <span className="mono">#{editing.draft['investmentRoundId']}</span>, which
-              this edit preserves. Which round a cheque belongs to is a deal-capture decision rather
-              than a Finance correction — it is set on the Deal Close tab.
-            </div>
+          {isDirect && editing.draft['companyId'] && (
+            <RoundLink
+              editing={editing}
+              setEditing={setEditing}
+              onSaved={(m) => { setNotice(m); reload(); }}
+            />
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button className="btn" onClick={submit}>{editing.id ? 'Save changes' : 'Add transaction'}</button>
@@ -461,6 +487,7 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                 <th>Date</th>
                 <th>Type</th>
                 <th>Subject</th>
+                <th>Round</th>
                 <th className="num">Amount</th>
                 <th className="num">CAD</th>
                 <th>Flags</th>
@@ -475,6 +502,30 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                   <td>
                     {r.companyName ?? r.fundName ?? '—'}
                     {r.deletedReason && <div className="hint">Deleted: {r.deletedReason}</div>}
+                  </td>
+                  {/* F1. The three states that used to look identical, said
+                      out loud: attached, deliberately standalone, and nobody
+                      has looked. Only the third is a chasing target, and it is
+                      the one F6 counts. */}
+                  <td className="small">
+                    {r.roundLabel ? (
+                      <>
+                        {r.roundLabel}
+                        <div className="hint mono">{r.roundDate}</div>
+                      </>
+                    ) : !ROUND_TXN_TYPES.includes(r.txnType) ? (
+                      // A write-off, a realization or an LP cashflow does not
+                      // fund a round, so it is never missing one. See
+                      // ROUND_TXN_TYPES.
+                      <span className="hint">—</span>
+                    ) : r.standaloneConfirmedAt ? (
+                      <span className="hint">
+                        Standalone
+                        {r.standaloneConfirmedByName ? ` · ${r.standaloneConfirmedByName}` : ''}
+                      </span>
+                    ) : (
+                      <Pill tone="yellow">Not linked</Pill>
+                    )}
                   </td>
                   <td className="num mono">
                     {money(r.amount)}
@@ -505,6 +556,11 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                             sourceDocument: r.sourceDocument ?? '',
                             note: r.note ?? '',
                             investmentRoundId: r.investmentRoundId ?? '',
+                            storedRoundId: r.investmentRoundId ?? '',
+                            roundLabel: r.roundLabel ?? '',
+                            roundDate: r.roundDate ?? '',
+                            standaloneConfirmedAt: r.standaloneConfirmedAt ?? '',
+                            standaloneConfirmedByName: r.standaloneConfirmedByName ?? '',
                             investmentVehicleId: r.investmentVehicleId ? String(r.investmentVehicleId) : '',
                             vehicleName: r.vehicleName ?? '',
                             instrumentId: r.instrumentId ? String(r.instrumentId) : '',
@@ -518,13 +574,173 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
                 </tr>
               ))}
               {data?.rows.length === 0 && (
-                <tr><td colSpan={7} className="hint">No transactions match this filter.</td></tr>
+                <tr><td colSpan={8} className="hint">No transactions match this filter.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </Card>
     </>
+  );
+}
+
+/**
+ * The cheque-to-round link, on the Finance surface (ADR-033, F1).
+ *
+ * ITS OWN SAVE BUTTON, INSIDE SOMEBODY ELSE'S FORM, and the oddness is the
+ * point. Everything else on this card is `CAN_WRITE_FINANCIAL`; this one control
+ * is `CAN_CAPTURE_ROUND`, because ADR-033 holds that attaching a cheque to a
+ * round is reconciliation rather than restatement. One Save over both would put
+ * the wider permission over the narrower operation and dissolve the distinction
+ * the whole phase rests on. So the seam stays visible: a heading, a picker, and
+ * a button that says what it writes.
+ *
+ * It also means a link change is not lost if the row save fails validation, and
+ * a row save is not lost if the link is refused — which is the practical half of
+ * the same argument.
+ *
+ * ON A NEW TRANSACTION there is no row to reconcile yet, so the picker just
+ * edits the draft and the create writes it along with every other column. The
+ * button appears only once the row exists.
+ */
+function RoundLink({
+  editing, setEditing, onSaved,
+}: {
+  editing: { id: string | null; draft: Draft; reason: string };
+  setEditing: (e: { id: string | null; draft: Draft; reason: string }) => void;
+  onSaved: (message: string) => void;
+}) {
+  const companyId = editing.draft['companyId'] ?? '';
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Rebuilt when the company changes, which is what tells useRowState to
+  // refetch. A cheque can only join a round of its own company, so the list
+  // offered must follow the company picker above it.
+  const load = useCallback(
+    () => fetchRounds({ companyId, limit: '200' }),
+    [companyId],
+  );
+  const { data: rounds } = useRowState<RoundPage>(load);
+
+  // `storedRoundId` is what the database holds; `investmentRoundId` is what the
+  // picker shows. They are separate fields rather than one, because the row save
+  // round-trips the second and the link save writes the first — collapsing them
+  // would mean the Save button could not tell a change from a reload.
+  const selected = editing.draft['investmentRoundId'] ?? '';
+  const stored = editing.draft['storedRoundId'] ?? '';
+  const dirty = editing.id !== null && selected !== stored;
+
+  const save = async () => {
+    if (!editing.id) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const result = await linkTransactions({
+        transactionIds: [editing.id],
+        investmentRoundId: selected || null,
+        reason: editing.reason || null,
+      });
+      // The draft is the single source the row save round-trips from, so it has
+      // to learn what just happened — otherwise a later "Save changes" would
+      // write the stale link straight back over this one.
+      const round = rounds?.rows.find((r) => r.id === selected);
+      setEditing({
+        ...editing,
+        draft: {
+          ...editing.draft,
+          investmentRoundId: selected,
+          storedRoundId: selected,
+          roundLabel: round?.label ?? '',
+          roundDate: round?.roundDate ?? '',
+          standaloneConfirmedAt: selected ? '' : new Date().toISOString(),
+        },
+      });
+      onSaved(
+        (result.linked > 0
+          ? 'Cheque attached to the round.'
+          : 'Recorded as standalone — this cheque correctly belongs to no round.') +
+          (result.participationSetToYes
+            ? ' The round now records that we participated.'
+            : '') +
+          (result.restated
+            ? ' Recorded as a restatement: this falls inside a period already reported to the board.'
+            : ''),
+      );
+    } catch (e) {
+      setError(e instanceof RoundsApiError ? e.message : 'Could not change the round link.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+      <div className="vsub" style={{ fontWeight: 700, color: 'var(--slate)', marginBottom: 6 }}>
+        ROUND LINK
+      </div>
+      <div className="hint" style={{ marginBottom: 8 }}>
+        Which financing round this cheque funded. Saved on its own, because it is a reconciliation
+        rather than a change to the figures — the deal lead who closed the round can make it too
+        (ADR-033). <b>No round — standalone</b> is a positive statement, not a blank: it records that
+        somebody checked, which is what keeps the reconciliation screen able to reach zero.
+      </div>
+
+      {error && (
+        <div className="alertrow" style={{ marginBottom: 8, color: 'var(--red)' }}>{error}</div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 320px' }}>
+          <Field label="Round">
+            <select
+              value={selected}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  draft: { ...editing.draft, investmentRoundId: e.target.value },
+                })}
+            >
+              <option value="">No round — standalone</option>
+              {(rounds?.rows ?? [])
+                .filter((r) => !r.deletedAt)
+                .map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.roundDate} · {r.label}
+                    {r.nbifParticipated === 'no' ? ' (we did not participate)' : ''}
+                  </option>
+                ))}
+            </select>
+          </Field>
+        </div>
+        {editing.id && (
+          <button className="btn" disabled={!dirty || saving} onClick={save}>
+            {saving ? 'Saving…' : 'Save round link'}
+          </button>
+        )}
+      </div>
+
+      {!editing.id && (
+        <div className="hint" style={{ marginTop: 6 }}>
+          Saved with the transaction below — there is nothing to reconcile until the row exists.
+        </div>
+      )}
+      {editing.id && !selected && editing.draft['standaloneConfirmedAt'] && (
+        <div className="hint" style={{ marginTop: 6 }}>
+          Confirmed standalone
+          {editing.draft['standaloneConfirmedByName']
+            ? ` by ${editing.draft['standaloneConfirmedByName']}`
+            : ''}
+          .
+        </div>
+      )}
+      {editing.id && !selected && !editing.draft['standaloneConfirmedAt'] && (
+        <div className="hint" style={{ marginTop: 6 }}>
+          Not linked, and nobody has confirmed that it should not be. Save this control to say
+          either way.
+        </div>
+      )}
+    </div>
   );
 }
 
