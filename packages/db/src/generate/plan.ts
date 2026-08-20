@@ -187,7 +187,8 @@ export interface CompanyPlan {
   rounds: PlannedRound[];
   transactions: PlannedTransaction[];
   marks: PlannedMark[];
-  ownership: { date: string; pct: number; proRata: boolean }[];
+  /** `roundIndex` is what F3's `investment_round_id` link resolves against. */
+  ownership: { date: string; pct: number; proRata: boolean; roundIndex: number }[];
   exit: { date: string; type: string; note: string } | null;
   /** Current stage, for `company_state.stage_id`. */
   stage: string;
@@ -447,10 +448,14 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
   }
 
   // --- ownership history ---
+  // Every generated position comes from a round, so every one of them can name
+  // it (F3, ADR-035 clause 1). The ad-hoc adjustment FR-36 exists for is a
+  // human act between rounds and the generator does not invent one.
   const ownership = rounds.map((r) => ({
     date: r.date,
     pct: r.ownershipAfterPct,
     proRata: rng.chance(0.55),
+    roundIndex: r.index,
   }));
 
   /**

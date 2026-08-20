@@ -431,12 +431,26 @@ try {
 
     // --- ownership, reserves, exit ---
     for (const o of plan.ownership) {
+      // F3, ADR-035 clause 1. The causing round is written AT INSERT, for the
+      // reason F1 recorded when it did the same with participation: migration
+      // 0010's backfill reads the database and this reads the plan, and without
+      // the second the first is undone by the next `db:generate`. It is also
+      // why nothing here writes `change_reason` -- on this path the round IS
+      // the reason, and prose beside it would be a second, weaker copy.
       await client.query(
         `insert into company_ownership
-           (company_id, as_of_date, ownership_pct, pro_rata_rights, is_synthetic, entered_by)
-         values ($1,$2,$3,$4,true,$5)
+           (company_id, as_of_date, ownership_pct, pro_rata_rights, is_synthetic, entered_by,
+            investment_round_id)
+         values ($1,$2,$3,$4,true,$5,$6)
          on conflict (company_id, as_of_date) do nothing`,
-        [f.companyId, o.date, o.pct.toFixed(10), o.proRata, SYSTEM_USER],
+        [
+          f.companyId,
+          o.date,
+          o.pct.toFixed(10),
+          o.proRata,
+          SYSTEM_USER,
+          roundIdByKey.get(`${f.companyId}:${o.roundIndex}`) ?? null,
+        ],
       );
       bump('company_ownership');
     }
