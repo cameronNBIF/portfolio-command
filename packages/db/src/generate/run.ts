@@ -226,8 +226,14 @@ try {
   };
   await clear(`delete from transaction where is_synthetic`, 'transaction');
   await clear(`delete from valuation_mark where is_synthetic`, 'valuation_mark');
-  await clear(`delete from investment_round where is_synthetic`, 'investment_round');
+  // OWNERSHIP BEFORE ROUNDS, AND THE ORDER IS NOW LOAD-BEARING. F3 gave
+  // company_ownership a foreign key to investment_round, and the check runs at
+  // the end of each statement -- so clearing rounds first fails against the
+  // positions still naming them. The constraint is right: a hard delete of a
+  // round that a cap-table position cites should be refused. What it costs is
+  // that every place doing a two-statement clear has to say the children first.
   await clear(`delete from company_ownership where is_synthetic`, 'company_ownership');
+  await clear(`delete from investment_round where is_synthetic`, 'investment_round');
   await clear(`delete from fund_investment_nav where is_synthetic`, 'fund_investment_nav');
   await clear(`delete from reserve_allocation where set_by = '${SYSTEM_USER}'`, 'reserve_allocation');
   await clear(`delete from company_exit where recorded_by = '${SYSTEM_USER}'`, 'company_exit');

@@ -132,8 +132,10 @@ describe.skipIf(!hasDb)('ADR-012 deal-close capture', () => {
 
     await sql`select set_config('pc.actor_id', ${LEAD.userId}, false)`.execute(db());
     await sql`delete from pc.transaction where company_id = ${COMPANY}`.execute(db());
-    await sql`delete from pc.investment_round where company_id = ${COMPANY}`.execute(db());
+    // Ownership before rounds: F3's investment_round_id link means a round
+    // cannot be hard-deleted while a position still names it.
     await sql`delete from pc.company_ownership where company_id = ${COMPANY}`.execute(db());
+    await sql`delete from pc.investment_round where company_id = ${COMPANY}`.execute(db());
     // Scoped to this suite's actor for the same reason the A7 suite is: ids are
     // handed out again after a RESTART IDENTITY truncate, and version rows keyed
     // on an old id would read as history belonging to a new row.
@@ -143,8 +145,8 @@ describe.skipIf(!hasDb)('ADR-012 deal-close capture', () => {
 
   afterAll(async () => {
     await sql`delete from pc.transaction where company_id = ${COMPANY}`.execute(db()).catch(() => {});
-    await sql`delete from pc.investment_round where company_id = ${COMPANY}`.execute(db()).catch(() => {});
     await sql`delete from pc.company_ownership where company_id = ${COMPANY}`.execute(db()).catch(() => {});
+    await sql`delete from pc.investment_round where company_id = ${COMPANY}`.execute(db()).catch(() => {});
     await sql`delete from pc.company where company_id = ${COMPANY}`.execute(db()).catch(() => {});
     await closeDb();
   });
