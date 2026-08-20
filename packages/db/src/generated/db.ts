@@ -512,6 +512,10 @@ export interface InvestmentRound {
    * Capital from OTHER New Brunswick investors in this round, excluding ours. DRIVES THE NB CO-INVESTMENT MANDATE KPI.
    */
   nb_other: Numeric | null;
+  /**
+   * ADR-033. Did NBIF put money into this round: yes / no / unknown, defaulting to unknown because a backfilled round genuinely may not know and unknown is not a synonym for no. `no` is EXCLUDED from v_round_leverage and from the ADR-001 export's rounds array -- a round we sat out contributes a round total with no matching cost and would inflate the ratio. `unknown` is included, on the same reasoning that a null round total is excluded rather than imputed: the two absences are different and neither is guessed at.
+   */
+  nbif_participated: Generated<string>;
   note: string | null;
   ownership_after_pct: Numeric | null;
   post_money: Numeric | null;
@@ -760,6 +764,11 @@ export interface Transaction {
   row_created_at: Generated<Timestamp>;
   row_updated_at: Generated<Timestamp>;
   source_document: string | null;
+  /**
+   * ADR-033. Set when someone has confirmed that this cheque correctly belongs to no round -- a bridge note, a standalone convertible, a secondary purchase. Distinguishes that from a cheque nobody has reviewed, which is the distinction the F6 unlinked-cheque check needs in order to ever reach zero. Cleared automatically when a round is attached: the two statements cannot both be true.
+   */
+  standalone_confirmed_at: Timestamp | null;
+  standalone_confirmed_by: string | null;
   transaction_id: Generated<Int8>;
   txn_date: Timestamp;
   txn_type: string;

@@ -255,12 +255,35 @@ try {
           ? Math.round(r.chequeCents * 0.7)
           : r.roundTotalCents;
 
+      // ADR-033. Resolved AT INSERT rather than by a pass afterwards, and both
+      // halves of that matter.
+      //
+      // At insert, because the evidence is already in the plan: every planned
+      // round that has a cheque has a PlannedTransaction carrying its index, so
+      // the same rule migration 0008's backfill applied to rows in the database
+      // applies here to rows about to be written. Nothing is assumed.
+      //
+      // Not by a pass afterwards, because an UPDATE is NOT exempt from the
+      // version trigger even for synthetic rows (migration 0002 is explicit
+      // that only INSERT and DELETE are). A closing sweep would write a version
+      // row per round on every `npm run db:generate` and would set
+      // `row_updated_at`, making the whole synthetic spine display an "edited"
+      // pill it has not earned.
+      //
+      // Without this the F1 backfill would be silently undone by the next
+      // `db:generate`, which deletes and reinserts the entire spine -- the same
+      // trap F0 hit with `instrument_id`, and an exit criterion that holds only
+      // until someone runs `db:reset` is not one.
+      const participated = plan.transactions.some((t) => t.roundIndex === r.index)
+        ? 'yes'
+        : 'unknown';
+
       const { rows } = await client.query<{ investment_round_id: string }>(
         `insert into investment_round
            (company_id, round_date, label, instrument_id, investment_vehicle_id,
             is_synthetic, round_total, nb_other, post_money, ownership_after_pct,
-            lead_investor, note, captured_by, captured_at)
-         values ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10,$11,$12, now())
+            lead_investor, note, captured_by, captured_at, nbif_participated)
+         values ($1,$2,$3,$4,$5,true,$6,$7,$8,$9,$10,$11,$12, now(), $13)
          returning investment_round_id`,
         [
           f.companyId,
@@ -277,6 +300,7 @@ try {
           r.lead,
           r.note || null,
           SYSTEM_USER,
+          participated,
         ],
       );
       const roundId = Number(rows[0]!.investment_round_id);

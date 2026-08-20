@@ -303,11 +303,20 @@ export async function importContract(
     let roundInvestedTotal = 0;
     for (const [i, r] of c.rounds.entries()) {
       const { rows } = await client.query<{ investment_round_id: string }>(
+        // `nbif_participated` is 'yes' by the same evidence rule migration 0008's
+        // backfill used, and the evidence is the transaction this loop inserts
+        // three lines below: the contract's `Round` is documented as "one
+        // financing round we participated in" and carries `invested`, so every
+        // round in this document is one we were in by definition. Set here
+        // rather than left to default, because the export now excludes
+        // participation='no' -- and a fixture that imported as 'unknown' would
+        // still round-trip today while leaving the column meaningless for the
+        // one dataset every other test is built on.
         `insert into investment_round (company_id, round_date, label, instrument_id,
                                        is_synthetic, round_total, nb_other, post_money,
                                        ownership_after_pct, lead_investor, note, captured_by,
-                                       captured_at)
-         values ($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10,$11,now()) returning investment_round_id`,
+                                       captured_at, nbif_participated)
+         values ($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10,$11,now(),'yes') returning investment_round_id`,
         [
           c.id,
           r.date,
