@@ -353,9 +353,23 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
       referrals: number | null; capital_to_direct: string | null; women_senior_gp: boolean | null;
       next_call_est: Date | string | null; agm_date: Date | string | null;
       ir_contact: string | null; rationale: string | null;
+      /* F5, ADR-037 clauses 2 and 3. `committed` is no longer a column: it is the
+         commitment IN FORCE at the report's own as-at date, read through
+         `fund_committed_asof` with the explicit date this export was asked for
+         rather than through the view's `current_date` (ADR-021). The contract is
+         unchanged -- `FundInvestment.committed` is still a $M scalar and
+         `packages/metrics/lp.ts` never learns the difference.
+
+         COALESCED TO 0 HERE and nowhere earlier. The function returns NULL when no
+         commitment exists on or before the date, because "nothing committed yet"
+         and "committed nil" are different facts and the function is not the place
+         to collapse them. This IS that place: the contract requires a number, and
+         as at a date before any commitment was made the number is zero. The
+         migration's backfill guarantees no live position is in that state today. */
     }>(sql`
       select fi.fund_investment_id, fi.name, fi.manager_name, fi.strategy, fi.vintage_year,
-             fi.committed, lp.called, lp.distributions, lp.nav,
+             coalesce(fund_committed_asof(fi.fund_investment_id, ${asOf}::date), 0) as committed,
+             lp.called, lp.distributions, lp.nav,
              fi.co_invest_rights, fi.co_invests_done, fi.referrals, fi.capital_to_direct,
              fi.women_senior_gp, fi.next_call_est, fi.agm_date, fi.ir_contact, fi.rationale
         from fund_investment fi
@@ -723,8 +737,8 @@ export async function buildExport(db: Kysely<DB>, { asOf }: ExportOptions): Prom
     cashflows: (cashflows.get(f.fund_investment_id) ?? []).map((cf) => ({
       date: asDate(cf.txn_date)!,
       // Direction is implied by txn_type in storage and by sign in the
-      // contract: a call is negative, a distribution positive.
-      amount: (cf.txn_type === 'capital_call' ? -1 : 1) * toMillions(cf.amount),
+      // contract: a drawdown is negative, a distribution positive.
+      amount: (cf.txn_type === 'capital_drawdown' ? -1 : 1) * toMillions(cf.amount),
     })),
   }));
 

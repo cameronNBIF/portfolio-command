@@ -87,7 +87,7 @@ export function ReportsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) 
       `${m.revenue ? `Portfolio revenue ${fmt.m(m.revenue)} for the quarter as reported${m.revQoQ != null ? ` (${signedPct(m.revQoQ)} same-store QoQ)` : ''}. ` : ''}` +
       `${m.fte ? `Jobs ${count(m.fteNB)} in NB of ${count(m.fte)}${m.fteAtEntry ? ` (+${count(m.fte - m.fteAtEntry)} since entry)` : ''}. ` : ''}` +
       `${diversity.womenCosPct != null ? `Women in C-suite at ${Math.round(diversity.womenCosPct)}% of the ${diversity.reported} companies reporting.` : ''}\n` +
-      `Strategic fund investments (separate): ${fm.n} LP positions, ${fmt.m(fm.committed)} committed (${fmt.m(fm.unfunded)} unfunded), NAV ${fmt.m(fm.nav)}, TVPI ${fmt.x(fm.tvpi)}, pooled IRR ${fmt.pct(fm.irr)}.`;
+      `Strategic fund investments (separate): ${fm.n} LP positions, ${fmt.m(fm.committed)} committed capital (${fmt.m(fm.unfunded)} unfunded), NAV ${fmt.m(fm.nav)}, TVPI ${fmt.x(fm.tvpi)}, pooled IRR ${fmt.pct(fm.irr)}.`;
     void navigator.clipboard.writeText(txt).then(() => toast('Exec summary copied'));
   };
 
@@ -323,8 +323,13 @@ export function ReportsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) 
                 <th>Fund</th>
                 <th>Strategy</th>
                 <th>Vintage</th>
-                <th className="num">Committed</th>
-                <th className="num">Called</th>
+                {/* F5, FR-33. The LP three in NBIF's words -- the third
+                    sanctioned ADR-014 content exception, and note that the
+                    Committed/Called pair in the fund KPI row above is NOT this:
+                    that one is the fund's own closed-end capital, a different
+                    concept with a legitimate claim to the same two words. */}
+                <th className="num">Committed Capital</th>
+                <th className="num">Drawn</th>
                 <th className="num">Unfunded</th>
                 <th className="num">NAV</th>
                 <th className="num">Dist.</th>
@@ -385,7 +390,7 @@ export function ReportsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) 
             Strategic value to date: {fmt.m(fm.toDirect)} deployed into our direct portfolio via co-invest and
             syndication; {fm.coInvests} co-investments executed; {fm.referrals} pipeline referrals; women in GP
             leadership at {fm.womenGPs} of {fm.n} managers. The indirect sleeve exists to attract capital to the direct
-            strategy. Multiples on called capital per LP convention.
+            strategy. Multiples on drawn capital per LP convention.
           </div>
         </Card>
       )}

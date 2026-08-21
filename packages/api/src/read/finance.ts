@@ -443,6 +443,95 @@ export async function readLpNav(
   }));
 }
 
+export interface FundCommitmentRow {
+  id: string;
+  fundInvestmentId: string;
+  fundName: string | null;
+  asOfDate: string;
+  /** DOLLARS. The LEVEL in force from `asOfDate`, not the change. */
+  committed: string;
+  changeReason: string | null;
+  sourceDocument: string | null;
+  /**
+   * True when this is the level currently in force for its position — the
+   * latest undeleted row on or before today.
+   *
+   * Computed here rather than left to the screen because "which of these three
+   * rows is the live one" is a question with exactly one right answer, and it
+   * is `fund_committed_asof`'s answer. A table that lets the reader infer it
+   * from the dates will eventually let them infer it wrongly.
+   */
+  inForce: boolean;
+  isSynthetic: boolean;
+  deletedAt: string | null;
+  deletedReason: string | null;
+  edited: boolean;
+}
+
+/**
+ * The commitment ledger (F5, ADR-037, closing S-7).
+ *
+ * Newest first, because the level in force is the one people come here to check
+ * and the history is what they scroll to. A position's rows read as a sequence
+ * of absolutes — $500,000 from 2017, $750,000 from 2024 — never as deltas to be
+ * added up, which is ADR-037 clause 1 showing through to the screen.
+ */
+export async function readFundCommitments(
+  db: Kysely<DB>,
+  principal: Principal,
+  filters: { fundInvestmentId?: string | null; includeDeleted?: boolean; limit?: number } = {},
+): Promise<FundCommitmentRow[]> {
+  requireRole(principal, CAN_READ);
+
+  const { rows } = await sql<{
+    id: string; fund_investment_id: string; fund_name: string | null; as_of_date: string;
+    committed: string; change_reason: string | null; source_document: string | null;
+    in_force: string; is_synthetic: string; deleted_at: string | null;
+    deleted_reason: string | null; edited: string;
+  }>`
+    select c.fund_commitment_id::text as id, c.fund_investment_id, fi.name as fund_name,
+           c.as_of_date::text as as_of_date, c.committed::text as committed,
+           c.change_reason, c.source_document,
+           /* The live row, decided by the same function every read uses. Not
+              "the newest row": a future-dated commitment is legitimate — a
+              second close signed today, effective next quarter — and it is not
+              yet in force. */
+           (c.deleted_at is null
+            and c.as_of_date <= current_date
+            and c.fund_commitment_id = (
+              select f2.fund_commitment_id from pc.fund_commitment f2
+               where f2.fund_investment_id = c.fund_investment_id
+                 and f2.deleted_at is null
+                 and f2.as_of_date <= current_date
+               order by f2.as_of_date desc, f2.fund_commitment_id desc
+               limit 1))::text as in_force,
+           c.is_synthetic::text as is_synthetic, c.deleted_at::text as deleted_at,
+           c.deleted_reason, (c.row_updated_at > c.row_created_at)::text as edited
+      from pc.fund_commitment c
+      left join pc.fund_investment fi on fi.fund_investment_id = c.fund_investment_id
+     where (${filters.fundInvestmentId ?? null}::text is null
+            or c.fund_investment_id = ${filters.fundInvestmentId ?? null})
+       and (${filters.includeDeleted ?? false}::boolean or c.deleted_at is null)
+     order by c.as_of_date desc, c.fund_commitment_id desc
+     limit ${Math.min(Math.max(filters.limit ?? 200, 1), 500)}
+  `.execute(db);
+
+  return rows.map((r) => ({
+    id: r.id,
+    fundInvestmentId: r.fund_investment_id,
+    fundName: r.fund_name,
+    asOfDate: r.as_of_date,
+    committed: r.committed,
+    changeReason: r.change_reason,
+    sourceDocument: r.source_document,
+    inForce: r.in_force === 'true',
+    isSynthetic: r.is_synthetic === 'true',
+    deletedAt: r.deleted_at,
+    deletedReason: r.deleted_reason,
+    edited: r.edited === 'true',
+  }));
+}
+
 export interface ChangeLogEntry {
   id: string;
   table: string;

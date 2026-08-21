@@ -2,6 +2,12 @@
 
 /**
  * LP position drawer, ported from `openFundInv` (vc-toolkit.html :1025-1060).
+ *
+ * Carries the third sanctioned ADR-014 content exception with it (F5, FR-33):
+ * the three LP stages are named Committed Capital, Capital Drawdown and Capital
+ * Distribution here as everywhere else, because Funke's point is that a capital
+ * call is the GP's word for it and a drawdown is ours. Layout and behaviour are
+ * the prototype's, unchanged. See ADR-014 and ADR-037.
  */
 import type { FundInvestment } from '@portfolio-command/contract';
 import { fiDpi, fiIrr, fiTvpi, fmt } from '@portfolio-command/metrics';
@@ -27,9 +33,9 @@ export function FundInvestmentDrawer({ position: f, asOf }: { position: FundInve
       <DrawerBody>
         <DrawerSection>
           <KvGrid>
-            <Kv label="COMMITTED" value={fmt.m(f.committed)} />
+            <Kv label="COMMITTED CAPITAL" value={fmt.m(f.committed)} />
             <Kv
-              label="CALLED"
+              label="DRAWN"
               value={`${fmt.m(f.called)} (${f.committed > 0 ? fmt.pct0((f.called / f.committed) * 100) : '-'})`}
             />
             <Kv label="UNFUNDED" value={fmt.m(f.committed - f.called)} />
@@ -37,7 +43,7 @@ export function FundInvestmentDrawer({ position: f, asOf }: { position: FundInve
             <Kv label="DISTRIBUTIONS" value={fmt.m(f.distributions)} />
             <Kv label="TVPI / DPI" value={`${fmt.x(tvpi)} / ${fmt.x(fiDpi(f))}`} valueClass={moicClass(tvpi)} />
             <Kv label="NET IRR" value={fmt.pct(fiIrr(f, asOf))} />
-            <Kv label="NEXT CALL (EST.) / AGM" value={`${fmt.d(f.nextCallEst)} / ${fmt.d(f.agm)}`} />
+            <Kv label="NEXT DRAWDOWN (EST.) / AGM" value={`${fmt.d(f.nextCallEst)} / ${fmt.d(f.agm)}`} />
           </KvGrid>
         </DrawerSection>
 
@@ -56,7 +62,7 @@ export function FundInvestmentDrawer({ position: f, asOf }: { position: FundInve
           </div>
         </DrawerSection>
 
-        <DrawerSection title="Cashflow History (calls negative, distributions positive)">
+        <DrawerSection title="Cashflow History (drawdowns negative, distributions positive)">
           <table className="dt">
             <thead>
               <tr>
@@ -80,7 +86,7 @@ export function FundInvestmentDrawer({ position: f, asOf }: { position: FundInve
                     {c.amount < 0 ? '' : '+'}
                     {c.amount.toFixed(1)}
                   </td>
-                  <td className="small">{c.amount < 0 ? 'Capital call' : 'Distribution'}</td>
+                  <td className="small">{c.amount < 0 ? 'Capital Drawdown' : 'Capital Distribution'}</td>
                 </tr>
               ))}
             </tbody>

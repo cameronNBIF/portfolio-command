@@ -17,6 +17,7 @@ import {
   db,
   readFmvReview,
   readFmvReviewQueue,
+  readFundCommitments,
   readLpNav,
   readTransactions,
   readValuationMarks,
@@ -28,7 +29,12 @@ import { withPrincipal } from '../../_lib/handler';
 
 export const dynamic = 'force-dynamic';
 
-const TABLES = ['transaction', 'valuation_mark', 'fund_investment_nav', 'fund_distribution'];
+const TABLES = [
+  'transaction', 'valuation_mark', 'fund_investment_nav', 'fund_distribution',
+  // F5, ADR-037. The commitment stage, which was a column on the position until
+  // migration 0012 made it a dated event.
+  'fund_commitment',
+];
 const OPS = ['create', 'update', 'delete', 'restore'];
 
 /**
@@ -126,6 +132,11 @@ export async function GET(request: Request): Promise<Response> {
     }
     if (q.get('table') === 'fund_investment_nav') {
       return { rows: await readLpNav(db(), principal, {
+        fundInvestmentId: q.get('fundInvestmentId'), includeDeleted,
+      }) };
+    }
+    if (q.get('table') === 'fund_commitment') {
+      return { rows: await readFundCommitments(db(), principal, {
         fundInvestmentId: q.get('fundInvestmentId'), includeDeleted,
       }) };
     }

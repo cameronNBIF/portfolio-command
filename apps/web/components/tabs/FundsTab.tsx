@@ -8,6 +8,14 @@
  * excluded from the Dashboard's fund metrics. Multiples here are on CALLED
  * capital per standard LP convention; direct MOIC is on invested cost. The
  * hint at the foot of the table says so, and it must stay.
+ *
+ * THE THIRD SANCTIONED ADR-014 CONTENT EXCEPTION (F5, FR-33). The prototype's
+ * column headings read Committed / Called / Capital call; NBIF's words for the
+ * three LP stages are **Committed Capital, Capital Drawdown and Capital
+ * Distribution**, confirmed with Funke at Q-23. Layout, ordering, colour and
+ * behaviour are untouched -- this is the same one-to-one port with four words
+ * changed, and the alternative was a platform whose Finance screens and board
+ * screens name the same event differently. Recorded in ADR-014 and ADR-037.
  */
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { fiDpi, fiIrr, fiTvpi, fmt, lpMetrics } from '@portfolio-command/metrics';
@@ -41,7 +49,7 @@ export function FundsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
   const vintages = [...new Set(positions.map((f) => f.vintage))].sort((a, b) => a - b);
   const pacing = vintages.map((y) => ({
     vintage: String(y),
-    Called: positions.filter((f) => f.vintage === y).reduce((s, f) => s + f.called, 0),
+    Drawn: positions.filter((f) => f.vintage === y).reduce((s, f) => s + f.called, 0),
     Unfunded: positions.filter((f) => f.vintage === y).reduce((s, f) => s + f.committed - f.called, 0),
   }));
 
@@ -59,8 +67,8 @@ export function FundsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
       />
 
       <KpiRow>
-        <Kpi label="Committed" value={fmt.m(fm.committed)} sub={`${fm.n} funds`} />
-        <Kpi label="Called" value={fmt.m(fm.called)} sub={`Unfunded ${fmt.m(fm.unfunded)}`} />
+        <Kpi label="Committed Capital" value={fmt.m(fm.committed)} sub={`${fm.n} funds`} />
+        <Kpi label="Drawn" value={fmt.m(fm.called)} sub={`Unfunded ${fmt.m(fm.unfunded)}`} />
         <Kpi label="NAV" value={fmt.m(fm.nav)} sub={`Distributions ${fmt.m(fm.distributions)}`} />
         <Kpi label="TVPI" value={fmt.x(fm.tvpi)} sub={`DPI ${fmt.x(fm.dpi)} / RVPI ${fmt.x(fm.rvpi)}`} />
         <Kpi label="Net IRR" value={fmt.pct(fm.irr)} sub="Pooled, since inception" />
@@ -86,7 +94,7 @@ export function FundsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
                 <YAxis tick={AXIS} label={{ value: '$M committed', angle: -90, position: 'insideLeft', style: AXIS }} />
                 <Tooltip formatter={(v: number) => v.toFixed(1)} />
                 <Legend verticalAlign="top" height={28} />
-                <Bar dataKey="Called" stackId="a" fill="#2563eb" />
+                <Bar dataKey="Drawn" stackId="a" fill="#2563eb" />
                 <Bar dataKey="Unfunded" stackId="a" fill="#9db3d4" />
               </BarChart>
             </ResponsiveContainer>
@@ -117,8 +125,8 @@ export function FundsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
                 <th>Fund</th>
                 <th>Strategy</th>
                 <th>Vintage</th>
-                <th className="num">Committed</th>
-                <th className="num">Called</th>
+                <th className="num">Committed Capital</th>
+                <th className="num">Drawn</th>
                 <th className="num">Unfunded</th>
                 <th className="num">NAV</th>
                 <th className="num">Dist.</th>
@@ -127,7 +135,7 @@ export function FundsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
                 <th className="num">IRR</th>
                 <th className="num">To Direct</th>
                 <th>Co-Invest</th>
-                <th>Next Call (est.)</th>
+                <th>Next Drawdown (est.)</th>
               </tr>
             </thead>
             <tbody>
@@ -165,8 +173,8 @@ export function FundsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
       </Card>
 
       <div className="hint" style={{ marginTop: 8 }}>
-        Fund-position TVPI/DPI are on called capital (standard LP convention), unlike direct-portfolio MOIC on invested
-        cost. Pooled IRR from all call/distribution cashflows plus current NAV, as at {asOf}.
+        Fund-position TVPI/DPI are on drawn capital (standard LP convention), unlike direct-portfolio MOIC on invested
+        cost. Pooled IRR from all drawdown and distribution cashflows plus current NAV, as at {asOf}.
       </div>
     </>
   );

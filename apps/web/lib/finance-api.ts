@@ -17,6 +17,7 @@
 import type {
   ChangeLogEntry,
   FmvReview,
+  FundCommitmentRow,
   LpNavRow,
   ReviewQueueRow,
   TransactionPage,
@@ -27,7 +28,8 @@ export type FinancialTableName =
   | 'transaction'
   | 'valuation_mark'
   | 'fund_investment_nav'
-  | 'fund_distribution';
+  | 'fund_distribution'
+  | 'fund_commitment';
 
 /** Raised with the server's own message, so the form can show it verbatim. */
 export class FinanceApiError extends Error {}
@@ -54,6 +56,12 @@ export const fetchMarks = (params: Record<string, string>): Promise<{ rows: Valu
 
 export const fetchLpNav = (params: Record<string, string>): Promise<{ rows: LpNavRow[] }> =>
   call(`/api/v1/financial?${new URLSearchParams({ ...params, table: 'fund_investment_nav' })}`);
+
+/** F5, ADR-037. The commitment ledger: levels as at dates, newest first. */
+export const fetchCommitments = (
+  params: Record<string, string>,
+): Promise<{ rows: FundCommitmentRow[] }> =>
+  call(`/api/v1/financial?${new URLSearchParams({ ...params, table: 'fund_commitment' })}`);
 
 export const fetchHistory = (table: string, recordId: string): Promise<{ entries: ChangeLogEntry[] }> =>
   call(`/api/v1/financial/history?${new URLSearchParams({ table, recordId })}`);
@@ -112,6 +120,20 @@ export interface MutationResult {
     basisMarkId: string | null;
     retentionFactor: string;
   };
+  /**
+   * F5, ADR-037 clause 5. The write SUCCEEDED and left the position drawn
+   * beyond the commitment in force.
+   *
+   * Never an error, and the screen must not present it as one: the row is
+   * saved. It is a real state of real data — a recallable distribution redrawn,
+   * a side letter that has not been keyed yet — and the platform's job is to
+   * surface it rather than make it un-recordable.
+   */
+  overdrawn?: {
+    fundInvestmentId: string;
+    committed: string | null;
+    drawn: string;
+  };
 }
 
 export function mutate(body: {
@@ -136,14 +158,21 @@ export function money(dollars: string | null | undefined): string {
   });
 }
 
-/** Transaction types, with the labels Finance uses rather than the enum spelling. */
+/**
+ * Transaction types, with the labels Finance uses rather than the enum spelling.
+ *
+ * The LP three are NBIF's own words, confirmed with Funke (FR-33, Q-23), and
+ * they are also the STORED values — migration 0012 renamed the enum rather than
+ * papering a label over `capital_call`. From the GP's side a drawdown is a
+ * capital call; from ours it is a draw against a commitment we already made.
+ */
 export const TXN_TYPE_LABELS: Record<string, string> = {
   investment: 'Initial investment',
   follow_on: 'Follow-on',
   realization: 'Realization',
   write_off: 'Write-off',
-  capital_call: 'Capital call',
-  distribution: 'Distribution',
+  capital_drawdown: 'Capital Drawdown',
+  capital_distribution: 'Capital Distribution',
   fee: 'Fee',
 };
 
