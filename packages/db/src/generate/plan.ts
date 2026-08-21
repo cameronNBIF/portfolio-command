@@ -317,6 +317,8 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
   const rounds: PlannedRound[] = [];
   const transactions: PlannedTransaction[] = [];
   let cumulative = 0;
+  // How many bridges deep we are under the current rung. 0 = the rung itself.
+  let bridgeDepth = 0;
 
   // Final ownership scales with how much went in; walked backwards for history.
   const finalOwnership = isAcc
@@ -329,10 +331,49 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
     const date = dateOf(months[i]!, rng.int(3, 27));
     const year = yearOf(months[i]!);
 
+    /**
+     * F6. THE HELD RUNG IS A BRIDGE, AND IT NOW SAYS SO.
+     *
+     * The line below has held the rung 25% of the time since A6, with the
+     * comment "a bridge holds the rung" — and then emitted the PARENT'S LABEL
+     * unchanged, so one company raised "Seed" in 2017, 2019 and 2022. That is
+     * where 29 of the 32 same-label pairs in the demo data came from, and every
+     * one of them is a false positive for FR-08's duplicate check.
+     *
+     * Funke's description of the real thing is the fix: bridged funding "shows
+     * up as a qualifier, like an adjective — after a Series A, the company needs
+     * funding but doesn't want to go for a Series B, so it goes for a bridge
+     * which is still under the Series A." Real Finance-entered data
+     * disambiguates by NAME, which is exactly why the duplicate rule does not
+     * need a date window it would otherwise have to invent.
+     *
+     * A SECOND BRIDGE UNDER ONE ROUND IS NUMBERED, because two rows both
+     * reading "Series A bridge" would put the false positive straight back.
+     * Real ones get called "second bridge" or "bridge 2"; this picks one.
+     *
+     * THE LABEL IS ALL THAT CHANGES. Stage, instrument, amounts, dates and
+     * every control total are untouched — a bridge still does not advance the
+     * stage, which is what the rung holding has always meant. How a bridge
+     * should be MODELLED (a qualifier on the label, a round type, or a child of
+     * a parent round) is a question for Funke and is deliberately left open;
+     * nothing here forecloses any of the three.
+     */
+    const parent = ROUND_LADDER[Math.min(rung, ROUND_LADDER.length - 1)]!;
     const ladder = isAcc
       ? { label: 'Accelerator', stage: 'Pre-Seed' as const }
-      : ROUND_LADDER[Math.min(rung, ROUND_LADDER.length - 1)]!;
-    if (!isAcc && i < n - 1) rung += rng.chance(0.25) ? 0 : 1; // a bridge holds the rung
+      : bridgeDepth === 0
+        ? parent
+        : {
+            label: bridgeDepth === 1
+              ? `${parent.label} bridge`
+              : `${parent.label} bridge ${bridgeDepth}`,
+            stage: parent.stage,
+          };
+    if (!isAcc && i < n - 1) {
+      const holds = rng.chance(0.25);
+      bridgeDepth = holds ? bridgeDepth + 1 : 0;
+      if (!holds) rung += 1;
+    }
 
     // Unpriced early, priced later -- and an accelerator cheque is a SAFE.
     const instrument =
@@ -387,6 +428,69 @@ export function planCompany(facts: CompanyFacts, lpFundNames: readonly string[] 
           lpFund: useLp ? name : null,
         });
       }
+    }
+
+    /**
+     * F6, S-10. THE NB CO-INVESTOR AMOUNTS NOW RECONCILE TO `nb_other`.
+     *
+     * They never did. `nbOtherCents` was drawn as 8–45% of third-party capital
+     * and each co-investor's amount was drawn independently at 50–100% of an
+     * equal share, with `isNb` a 40% coin flip — two unrelated draws over the
+     * same quantity. The result was that 59 of the 81 eligible rounds
+     * disagreed, by 3–6x rather than by rounding, and FR-09's check would have
+     * fired on 73% of what it could see on the day it shipped.
+     *
+     * S-10 IS A REAL FINDING AND STAYS TRUE: these are two separate captures
+     * and they CAN legitimately disagree. What was wrong is that in the demo
+     * data they always did, which makes the check wallpaper instead of a
+     * signal.
+     *
+     * `nb_other` IS THE FIXED POINT AND THE AMOUNTS MOVE TO MEET IT — not the
+     * other way round. `nb_other` feeds the NB co-investment mandate KPI and
+     * `v_round_leverage`'s nb/outside split; re-deriving it from the
+     * co-investors would move a board figure to fix a data-quality artefact.
+     * Allocating the co-investor amounts moves nothing: no view, metric or
+     * export reads them except `v_lp_capital_to_direct`, which sums a different
+     * subset (by fund, not by NB flag).
+     *
+     * ONE ROUND IN TEN IS LEFT DISAGREEING, ON PURPOSE. A check that can never
+     * fire is not evidence that the data is clean, and F6 needs something real
+     * to find on the screen it builds.
+     */
+    if (nbOtherCents !== null && coinvestors.length > 0) {
+      /* A SEPARATE STREAM, SALTED, AND THAT IS NOT FUSSINESS.
+         `rng` is seeded per company precisely so a change to one company leaves
+         every other byte-identical (see rng.ts). Drawing the allocation from it
+         would shift every subsequent draw for THIS company — and it did: the
+         first version of this block moved the NB co-investment mandate KPI from
+         $31,623,000 to $33,503,000 without changing a single definition, purely
+         through stream drift. A figure that moves for a reason unrelated to the
+         change is a figure nobody can review. Salt 11 is this block's alone. */
+      const alloc = new Rng(`${facts.companyId}:${i}`, 11);
+      const nbIdx = coinvestors.map((_, j) => j).filter((j) => coinvestors[j]!.isNb);
+      // At least one NB co-investor, or there is nothing to allocate across and
+      // the round would report `nb_other` with no NB investor behind it.
+      if (nbIdx.length === 0) {
+        const j = alloc.int(0, coinvestors.length - 1);
+        coinvestors[j]!.isNb = true;
+        nbIdx.push(j);
+      }
+      const disagrees = alloc.chance(0.1);
+      const target = disagrees
+        ? Math.round((nbOtherCents * alloc.between(0.35, 1.8)) / STEP) * STEP
+        : nbOtherCents;
+
+      // Allocated to the STEP, with the last NB co-investor absorbing the
+      // remainder — the same shape the LP drawdown planner uses, and for the
+      // same reason: the odd figure lands on one row rather than smeared.
+      let allocated = 0;
+      for (let m = 0; m < nbIdx.length - 1; m++) {
+        const share = Math.round((target / nbIdx.length / STEP) * alloc.between(0.6, 1.4)) * STEP;
+        const amount = Math.max(STEP, Math.min(share, target - allocated - STEP * (nbIdx.length - 1 - m)));
+        coinvestors[nbIdx[m]!]!.amountCents = amount;
+        allocated += amount;
+      }
+      coinvestors[nbIdx[nbIdx.length - 1]!]!.amountCents = Math.max(STEP, target - allocated);
     }
 
     rounds.push({

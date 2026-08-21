@@ -383,6 +383,10 @@ export interface DealGate {
 
 export interface FinancialRowVersion {
   action: string;
+  /**
+   * ADR-038, FR-14. Why this change happened, as distinct from what it changed. `correction` = the stored figure was wrong. `new-information` = the figure was right and something arrived late, a grant six months after the round being the case that prompted this. `initial-load` = a bulk historical import (A13). NULL means unclassified, which every row written before migration 0013 genuinely is; required on updates going forward by the API, not by this constraint.
+   */
+  change_kind: string | null;
   change_reason: string | null;
   changed_by: string;
   financial_row_version_id: Generated<Int8>;
@@ -559,6 +563,12 @@ export interface InvestmentRound {
   deleted_at: Timestamp | null;
   deleted_by: string | null;
   deleted_reason: string | null;
+  /**
+   * FR-08, ADR-038 clause 4. Set when somebody was warned that this round shares a company and a normalised label with another and confirmed it anyway -- a second tranche, an extension, a bridge. Never a hard block: "Series A" and "Series A extension" and a second tranche of one raise are all real. The reason travels with it and is not the ADR-031 restatement reason, which explains a change to a published figure rather than the existence of this row.
+   */
+  duplicate_ack_at: Timestamp | null;
+  duplicate_ack_by: string | null;
+  duplicate_ack_reason: string | null;
   instrument_id: number;
   investment_round_id: Generated<Int8>;
   investment_vehicle_id: number | null;
@@ -941,6 +951,7 @@ export interface VDealStageHistory {
 
 export interface VFinancialChangeLog {
   action: string | null;
+  change_kind: string | null;
   change_reason: string | null;
   changed_at: Timestamp | null;
   changed_by_email: string | null;
@@ -1048,8 +1059,29 @@ export interface VMandateCompletenessByYear {
   with_round_total: Int8 | null;
 }
 
+export interface VReconciliation {
+  check_kind: string | null;
+  company_id: string | null;
+  company_name: string | null;
+  detail: string | null;
+  figure_a: Numeric | null;
+  figure_a_label: string | null;
+  figure_b: Numeric | null;
+  figure_b_label: string | null;
+  subject_date: Timestamp | null;
+  subject_id: string | null;
+  subject_label: string | null;
+  subject_table: string | null;
+}
+
+export interface VReconciliationSummary {
+  check_kind: string | null;
+  open_items: Int8 | null;
+}
+
 export interface VRestatementLog {
   action: string | null;
+  change_kind: string | null;
   change_reason: string | null;
   changed_at: Timestamp | null;
   changed_by_email: string | null;
@@ -1172,6 +1204,8 @@ export interface DB {
   v_lp_position_current: VLpPositionCurrent;
   v_mandate_completeness: VMandateCompleteness;
   v_mandate_completeness_by_year: VMandateCompletenessByYear;
+  v_reconciliation: VReconciliation;
+  v_reconciliation_summary: VReconciliationSummary;
   v_restatement_log: VRestatementLog;
   v_round_leverage: VRoundLeverage;
   v_synthetic_data_status: VSyntheticDataStatus;
