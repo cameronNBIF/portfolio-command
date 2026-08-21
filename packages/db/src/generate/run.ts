@@ -237,6 +237,12 @@ try {
   await clear(`delete from company_ownership where is_synthetic`, 'company_ownership');
   await clear(`delete from investment_round where is_synthetic`, 'investment_round');
   await clear(`delete from fund_investment_nav where is_synthetic`, 'fund_investment_nav');
+  /* F5. Cleared and rewritten rather than upserted, unlike the position above
+     it hangs off. Nothing references a commitment row, so there is no link for a
+     DELETE to break -- and clearing keeps the generator's regeneration honest: a
+     run that produced a different first drawdown date would otherwise leave the
+     old dated commitment beside the new one and quietly double the ledger. */
+  await clear(`delete from fund_commitment where is_synthetic`, 'fund_commitment');
   await clear(`delete from reserve_allocation where set_by = '${SYSTEM_USER}'`, 'reserve_allocation');
   await clear(`delete from company_exit where recorded_by = '${SYSTEM_USER}'`, 'company_exit');
   await clear(`delete from company_threshold where updated_by = '${SYSTEM_USER}'`, 'company_threshold');
@@ -589,15 +595,14 @@ try {
     // rather than allocating a new one, and anything referencing it stays valid.
     await client.query(
       `insert into fund_investment
-         (fund_investment_id, name, manager_name, strategy, vintage_year, committed, currency,
+         (fund_investment_id, name, manager_name, strategy, vintage_year, currency,
           co_invest_rights, women_senior_gp, next_call_est, agm_date, ir_contact, rationale, created_by)
-       values ($1,$2,$3,$4,$5,$6,'CAD',$7,null,$8,$9,$10,$11,$12)
+       values ($1,$2,$3,$4,$5,'CAD',$6,null,$7,$8,$9,$10,$11)
        on conflict (fund_investment_id) do update
          set name             = excluded.name,
              manager_name     = excluded.manager_name,
              strategy         = excluded.strategy,
              vintage_year     = excluded.vintage_year,
-             committed        = excluded.committed,
              co_invest_rights = excluded.co_invest_rights,
              next_call_est    = excluded.next_call_est,
              agm_date         = excluded.agm_date,
@@ -605,17 +610,47 @@ try {
              rationale        = excluded.rationale`,
       [
         lp.fundInvestmentId, lp.name, lp.managerName, lp.strategy, lp.vintageYear,
-        toDollars(lp.committedCents), lp.coInvestRights, lp.nextCallEst, lp.agmDate,
+        lp.coInvestRights, lp.nextCallEst, lp.agmDate,
         lp.irContact, lp.rationale, SYSTEM_USER,
       ],
     );
     bump('fund_investment');
 
+    /* F5, ADR-037. The commitment left the position and became a dated event.
+       The workbook gives a level and no date -- as `fund_investment.committed`
+       did -- so the date is the position's first drawdown, the earliest date
+       the commitment is evidenced, and 1 January of the vintage year for the
+       two positions that have not drawn yet. Same rule as migration 0012's
+       backfill, deliberately: a regenerated database and a migrated one should
+       not disagree about when a commitment started.
+
+       THE FIGURE IS REAL and the date is not. Both are marked is_synthetic,
+       which is the honest reading of the row as a whole -- ADR-020's flag is
+       about whether a row was generated, and this one was. */
+    const firstDraw = lp.calls[0]?.date ?? `${lp.vintageYear}-01-01`;
+    await client.query(
+      `insert into fund_commitment
+         (fund_investment_id, as_of_date, committed, change_reason, is_synthetic, entered_by)
+       values ($1,$2,$3,$4,true,$5)`,
+      [
+        lp.fundInvestmentId,
+        firstDraw,
+        toDollars(lp.committedCents),
+        lp.calls.length > 0
+          ? 'A6 generator: commitment level from NBIF LP Funds.xlsx, dated at the position’s ' +
+            'first generated drawdown.'
+          : 'A6 generator: commitment level from NBIF LP Funds.xlsx. Nothing drawn yet, so the ' +
+            'date is INFERRED as 1 January of the vintage year.',
+        SYSTEM_USER,
+      ],
+    );
+    bump('fund_commitment');
+
     for (const c of lp.calls) {
       await client.query(
         `insert into transaction
            (txn_date, txn_type, fund_investment_id, amount, currency, note, entered_by, is_synthetic)
-         values ($1,'capital_call',$2,$3,'CAD',$4,$5,true)`,
+         values ($1,'capital_drawdown',$2,$3,'CAD',$4,$5,true)`,
         [c.date, lp.fundInvestmentId, toDollars(c.amountCents), c.note, SYSTEM_USER],
       );
       bump('transaction');

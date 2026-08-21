@@ -456,6 +456,31 @@ export interface FundAlertPolicy {
   set_by: string;
 }
 
+export interface FundCommitment {
+  /**
+   * The date this commitment level took effect. Not the date it was entered -- that is row_created_at.
+   */
+  as_of_date: Timestamp;
+  /**
+   * What caused this level: a second close, a side letter, an amended LPA. Required by the API on every path except migration 0012's backfill, which has no cause to name.
+   */
+  change_reason: string | null;
+  /**
+   * DOLLARS (ADR-008), and the LEVEL in force from as_of_date, not the change. A raise from $500,000 to $750,000 is a row reading 750000.00.
+   */
+  committed: Numeric;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  deleted_reason: string | null;
+  entered_by: string;
+  fund_commitment_id: Generated<Int8>;
+  fund_investment_id: string;
+  is_synthetic: Generated<boolean>;
+  row_created_at: Generated<Timestamp>;
+  row_updated_at: Generated<Timestamp>;
+  source_document: string | null;
+}
+
 export interface FundDistribution {
   amount: Numeric;
   batch_id: string | null;
@@ -482,7 +507,6 @@ export interface FundInvestment {
   capital_to_direct: Numeric | null;
   co_invest_rights: Generated<boolean>;
   co_invests_done: number | null;
-  committed: Numeric;
   created_by: string;
   currency: Generated<string>;
   fund_investment_id: string;
@@ -780,7 +804,7 @@ export interface TermSheet {
 
 export interface Transaction {
   /**
-   * Always positive. Direction is implied by txn_type. Capital calls are outflows, distributions are inflows.
+   * Always positive. Direction is implied by txn_type. Capital drawdowns are outflows, capital distributions are inflows.
    */
   amount: Numeric;
   batch_id: string | null;
@@ -815,6 +839,9 @@ export interface Transaction {
   standalone_confirmed_by: string | null;
   transaction_id: Generated<Int8>;
   txn_date: Timestamp;
+  /**
+   * FR-33, ADR-037 clause 4. LP activity is `capital_drawdown` / `capital_distribution` / `fee` -- NBIF's words, confirmed with Funke at Q-23. From the GP's side a drawdown is a capital call; from ours it is a draw against a commitment we already made, and the platform speaks from our side. Direct activity is investment / follow_on / realization / write_off and has never used either LP string.
+   */
   txn_type: string;
   voided_at: Timestamp | null;
   voided_by_transaction_id: Int8 | null;
@@ -979,6 +1006,9 @@ export interface VLpCapitalToDirect {
 }
 
 export interface VLpPositionCurrent {
+  /**
+   * Capital DRAWN to date, in NBIF's terminology (FR-33). The column keeps its name because the export adapter and Finance's own queries read it by that name; what had to be renamed is the stored txn_type.
+   */
   called: Numeric | null;
   committed: Numeric | null;
   distributions: Numeric | null;
@@ -988,6 +1018,10 @@ export interface VLpPositionCurrent {
   name: string | null;
   nav: Numeric | null;
   nav_as_of: Timestamp | null;
+  /**
+   * ADR-037 clause 5. True when drawdowns to date exceed the commitment in force. Accepted and flagged, never refused: it is a real state of real data and the platform's job is to surface it. NULL means no commitment is on record, which is not the same as "not overdrawn".
+   */
+  overdrawn: boolean | null;
   strategy: string | null;
   tvpi: Numeric | null;
   unfunded: Numeric | null;
@@ -1044,6 +1078,7 @@ export interface VRoundLeverage {
 export interface VSyntheticDataStatus {
   contains_synthetic: boolean | null;
   synthetic_fund_distributions: Int8 | null;
+  synthetic_lp_commitments: Int8 | null;
   synthetic_lp_navs: Int8 | null;
   synthetic_marks: Int8 | null;
   synthetic_ownership: Int8 | null;
@@ -1100,6 +1135,7 @@ export interface DB {
   fund: Fund;
   fund_accounting_policy: FundAccountingPolicy;
   fund_alert_policy: FundAlertPolicy;
+  fund_commitment: FundCommitment;
   fund_distribution: FundDistribution;
   fund_investment: FundInvestment;
   fund_investment_nav: FundInvestmentNav;
