@@ -38,9 +38,9 @@ const COMPANY = 'PCF001';
 const FUND_POSITION = 'PCF-LP-001';
 const FINANCE: Principal = {
   userId: '',
-  entraObjectId: 'test-finance',
-  email: 'finance@example.test',
-  displayName: 'Test Finance',
+  entraObjectId: 'test-f0-finance',
+  email: 'f0@example.test',
+  displayName: 'Test Groundwork',
   role: 'finance',
 };
 
@@ -50,13 +50,21 @@ let noteId = 0;
 
 describe.skipIf(!hasDb)('F0 groundwork', () => {
   beforeEach(async () => {
+    /* ITS OWN ACTOR. Hygiene rather than a fix: this suite shared
+       `test-finance` with `financial-versioning.test.ts` and both purge
+       `financial_row_version` BY ACTOR in beforeEach, which is harmless only
+       because `fileParallelism: false` makes the files run one at a time. A
+       suite whose isolation depends on a setting in another file's config is
+       one bad day from being wrong. (The intermittent failure this was first
+       reached for turned out to be something else entirely -- see the
+       `financial_row_version` note in `import-contract.ts`.) */
     await sql`
       insert into pc.app_user (user_id, entra_object_id, display_name, email, role)
-      values (gen_random_uuid(), 'test-finance', 'Test Finance', 'finance@example.test', 'finance')
+      values (gen_random_uuid(), 'test-f0-finance', 'Test Groundwork', 'f0@example.test', 'finance')
       on conflict (entra_object_id) do update set role = 'finance'
     `.execute(db());
     const { rows } = await sql<{ id: string }>`
-      select user_id::text as id from pc.app_user where entra_object_id = 'test-finance'
+      select user_id::text as id from pc.app_user where entra_object_id = 'test-f0-finance'
     `.execute(db());
     FINANCE.userId = rows[0]!.id;
 
@@ -246,7 +254,7 @@ describe.skipIf(!hasDb)('F0 groundwork', () => {
     `.execute(db());
 
     expect(rows[0]?.prior).toBe(noteId);
-    expect(rows[0]?.by).toBe('Test Finance');
+    expect(rows[0]?.by).toBe(FINANCE.displayName);
     expect(rows[0]?.reason).toMatch(/bought equity/);
   });
 

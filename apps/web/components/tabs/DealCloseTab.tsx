@@ -40,6 +40,7 @@ import { Card, Kpi, KpiRow, Pill, ViewHeader } from '../ui';
 import { Field, FormGrid, Notice, ReasonField, RowFlags, useRowState, type Draft } from '../entry';
 import { money } from '../../lib/finance-api';
 import {
+  DuplicateRoundWarning,
   RoundsApiError,
   captureRound,
   fetchCompanyCheques,
@@ -86,6 +87,17 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  /**
+   * F6, FR-08, ADR-038 clause 4. The duplicate warning, held between the
+   * refused save and the retry that carries the answer.
+   *
+   * STATE RATHER THAN A `window.confirm`, because the acknowledgement is
+   * STORED ON THE ROW and a confirm dialog cannot collect a sentence. What
+   * makes this a warning rather than a block is that the second save goes
+   * through — and what makes it worth anything is that it says WHICH round it
+   * resembles, so the answer is informed rather than reflexive.
+   */
+  const [duplicate, setDuplicate] = useState<DuplicatePrompt | null>(null);
 
   const load = useCallback(
     () => fetchRounds({
@@ -166,6 +178,9 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
         op: editing.id ? 'update' : 'create',
         ...(editing.id ? { id: editing.id } : {}),
         reason: editing.reason || null,
+        // Sent only on the retry. On the first save it is null, which is what
+        // lets the server raise the warning at all.
+        duplicateAckReason: duplicate?.ack || null,
         values: {
           companyId: d['companyId'],
           roundDate: d['roundDate'],
@@ -207,6 +222,7 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
         },
       });
       setEditing(null);
+      setDuplicate(null);
       const co = result.coinvestors;
       const coSummary =
         co.created + co.updated + co.removed > 0
@@ -222,6 +238,18 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
       reload();
       reloadCoverage();
     } catch (e) {
+      if (e instanceof DuplicateRoundWarning) {
+        // Not an error state: the round is fine and the form is one answer away
+        // from saving it. Keeping `formError` clear is what stops it reading as
+        // a rejection.
+        setDuplicate({
+          message: e.message,
+          label: e.duplicateOf.label,
+          roundDate: e.duplicateOf.roundDate,
+          ack: '',
+        });
+        return;
+      }
       setFormError(e instanceof RoundsApiError ? e.message : 'Save failed.');
     }
   };
@@ -326,6 +354,8 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
           onSubmit={submit}
           onCancel={() => setEditing(null)}
           onLinked={(m) => { setNotice(m); reload(); }}
+          duplicate={duplicate}
+          setDuplicate={setDuplicate}
         />
       )}
 
@@ -453,9 +483,17 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
 // The capture form — ADR-012's "single deal-close form"
 // ---------------------------------------------------------------------------
 
+/** F6, FR-08. The warning, held between the refused save and the retry. */
+export interface DuplicatePrompt {
+  message: string;
+  label: string;
+  roundDate: string;
+  ack: string;
+}
+
 function CaptureForm({
   editing, setEditing, companies, fundInvestments, reference, formError, onSubmit, onCancel,
-  onLinked,
+  onLinked, duplicate, setDuplicate,
 }: {
   editing: Editing;
   setEditing: (e: Editing) => void;
@@ -466,6 +504,8 @@ function CaptureForm({
   onSubmit: () => void;
   onCancel: () => void;
   onLinked: (message: string) => void;
+  duplicate: DuplicatePrompt | null;
+  setDuplicate: (d: DuplicatePrompt | null) => void;
 }) {
   const d = editing.draft;
   const set = (k: string, v: string) => setEditing({ ...editing, draft: { ...d, [k]: v } });
@@ -514,6 +554,41 @@ function CaptureForm({
     <Card title={editing.id ? `Edit round #${editing.id}` : 'Capture a round'}>
       {formError && (
         <div className="alertrow" style={{ marginBottom: 10, color: 'var(--red)' }}>{formError}</div>
+      )}
+
+      {/* F6, FR-08. A warning, and it looks like one: amber rather than red,
+          with the round it resembles named and the save still available. The
+          only thing standing between here and a saved round is a sentence
+          saying which kind of second row this is. */}
+      {duplicate && (
+        <div
+          className="alertrow"
+          style={{ marginBottom: 10, borderLeft: '3px solid var(--amber, #b45309)', paddingLeft: 10 }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            This looks like a round already recorded
+          </div>
+          <div className="small" style={{ marginBottom: 8 }}>{duplicate.message}</div>
+          <Field
+            label="Which is it?"
+            hint="A second tranche, an extension, a bridge under the same round — or a mistake, in which case cancel."
+          >
+            <input
+              type="text"
+              value={duplicate.ack}
+              onChange={(e) => setDuplicate({ ...duplicate, ack: e.target.value })}
+              placeholder="Second tranche of the same raise, closed six months later"
+            />
+          </Field>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn sm" disabled={duplicate.ack.trim().length < 3} onClick={onSubmit}>
+              Save anyway
+            </button>
+            <button className="btn ghost sm" onClick={() => setDuplicate(null)}>
+              Let me change it
+            </button>
+          </div>
+        </div>
       )}
 
       <FormGrid>

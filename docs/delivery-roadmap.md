@@ -263,7 +263,7 @@ F5  LP three-stage ─────┘
                         └──► F6  Reconciliation surface  (must be last)
 ```
 
-**F0 first** because it commits the context the rest is built against and takes one snapshot that becomes impossible to take later. **F6 last** because it reports on the states F1 to F5 create; building it earlier gives a screen with nothing to say. **F1 before F2** because the FMV review surface wants the round and transaction context F1 makes coherent. **F3, F4 and F5 are mutually independent** and can be reordered freely — put whichever is most useful to demonstrate to Finance first. *All three have landed; F6 is the only phase left in Track F.*
+**F0 first** because it commits the context the rest is built against and takes one snapshot that becomes impossible to take later. **F6 last** because it reports on the states F1 to F5 create; building it earlier gives a screen with nothing to say. *(That held: F6 landed 21 August 2026 with 27 open items across five checks, four of which describe states F1 to F5 introduced. **Track F is complete.**)* **F1 before F2** because the FMV review surface wants the round and transaction context F1 makes coherent. **F3, F4 and F5 are mutually independent** and can be reordered freely — put whichever is most useful to demonstrate to Finance first. *All three have landed; F6 is the only phase left in Track F.*
 
 #### F0 · Groundwork
 
@@ -429,6 +429,18 @@ Migration 0012 renamed the stored values across 95 rows, created `fund_commitmen
 
 **Size: M**
 
+**Done, 21 August 2026** — see the F6 entry in `BUILD-LOG.md`. **Eight checks, not seven**: F5's overdrawn LP position joined, because ADR-037 clause 5 put `overdrawn` on the view precisely so this surface could read a column rather than re-derive a rule. A fourteenth tab, gated on `CAN_READ` rather than the Finance role — half the checks are the VC team's to fix, and hiding the deal leads' own queue behind `CAN_WRITE_FINANCIAL` was the failure this phase is named after. **Day one: 27 open items across 5 of 8 checks, 3 clear.** API suite 179 → 194.
+
+**Two of the seven were specified against assumptions that turned out to be wrong, and both were caught by measuring first.**
+
+*The duplicate rule.* A label-only check fired **32 times and was wrong all 32** — the closest same-label pair was 256 days apart. That looked like an argument for a date window. It was not: **29 of the 32 were the A6 generator emitting a bridge round under its parent's label**, a behaviour it has had since A6 with the comment *"a bridge holds the rung"* and no label to show for it. Funke's answer to Q-9 named the real thing — bridged funding *"shows up as a qualifier, like an adjective"* — the generator was corrected, the pairs went to zero, and the rule is normalised label alone with **no invented window**. It also raised **FR-37**, which F6 deliberately did not design.
+
+*"Round captured by VC, not confirmed by Finance."* Confirmed 21 August that **Finance enters these rounds**, so the handoff this check assumed does not happen and a `finance_confirmed_at` column would have been Finance signing off its own typing — firing on all 178 rounds until somebody clicked 178 times. Built instead as what FR-09 actually calls it, *awaiting accounting classification*: a round whose cheques carry no instrument or vehicle. **No new column, and true whoever typed the round in.**
+
+**A generator artefact corrected, as at F4 and F5.** `nb_other` and the co-investor amounts were independent draws over one quantity, so 59 of 81 eligible rounds disagreed by 3–6× and the S-10 check would have fired on 73% of what it could see. The amounts now allocate to `nb_other` — which is itself untouched, because it feeds the mandate KPI — leaving ~1 in 10 disagreeing on purpose. Drawn from a **separately salted RNG stream** so no downstream figure moved: `nb_capital` is $31,623,000 before and after, to the dollar.
+
+**And a defect this phase introduced and caught.** Migration 0013 restates `capture_financial_version` in full, and the first draft retyped it from ADR-031's own A8 text instead of copying it from migration 0003 — dropping four lines and reintroducing **the exact defect that amendment records fixing**: 95 synthetic rows across three tables claiming to have been edited by nobody. The rule is now written into ADR-031: copy the body from the migration that last defined it.
+
 ### Deliberately held back
 
 Not oversights. Each names the question that blocks it.
@@ -455,7 +467,7 @@ Raised as **Proposed** at F0; each moves to **Accepted** as its phase lands.
 | **ADR-035** ✅ | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag. **Accepted 20 Aug 2026.** Clause 2 was amended on landing: `fund_accounting_policy` carries no `fund_id`, because the flag is resolved from a company and ownership has no fund dimension | F3 |
 | **ADR-036** ✅ | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views. **Accepted 20 Aug 2026.** Clause 1 was amended on landing: which status means member and which means exited moved out of a hardcoded Set and into `affinity_status_map` | F4 |
 | **ADR-037** ✅ | LP commitments are dated events and `committed` becomes derived. **Accepted 21 Aug 2026.** Clause 4 gained the words Q-23 came back with, which are not the ones the ADR proposed; clause 5's flag gained a column to live in | F5 |
-| **ADR-038** | The version store distinguishes a correction from information arriving late | F6 |
+| **ADR-038** ✅ | The version store distinguishes a correction from information arriving late. **Accepted 21 Aug 2026.** Clause 4's duplicate rule was settled by measurement — no date window — and gained a 409 status so the form can act on the warning; clause 3 gained the place its rule is enforced | F6 |
 | **ADR-039** | Total invested is pushed to Affinity at cutover and becomes read-only there; the pre-cutover figures are frozen before the first write | F0 / A13 |
 
 Amendments land **in** the existing ADRs rather than only in the new ones, because a reader who finds ADR-009 first must not come away with a rule that is no longer whole: **ADR-007** (the same-date index and the retention entry path), **ADR-009** (roster status becomes a synced field, and the one-way rule gains its first stated exception), **ADR-012** (the transaction link is a reconciliation rather than a capture, and why `CAN_CAPTURE_ROUND` is the right gate for it) and **ADR-031** (change kind).

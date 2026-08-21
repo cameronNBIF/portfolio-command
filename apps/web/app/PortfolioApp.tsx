@@ -27,6 +27,7 @@ import { DashboardTab } from '../components/tabs/DashboardTab';
 import { DataTab } from '../components/tabs/DataTab';
 import { DealCloseTab } from '../components/tabs/DealCloseTab';
 import { ExitedTab } from '../components/tabs/ExitedTab';
+import { ReconciliationTab } from '../components/tabs/ReconciliationTab';
 import { FinanceTab } from '../components/tabs/FinanceTab';
 import { FundsTab } from '../components/tabs/FundsTab';
 import { PipelineTab } from '../components/tabs/PipelineTab';
@@ -106,6 +107,12 @@ function Tab({
     case 'exited':
       // F4. Membership follows Affinity; what is recorded here is the event.
       return <ExitedTab db={db} />;
+    case 'reconciliation':
+      // F6. Takes no `db`: every figure on it is a disagreement between two
+      // stored records, which the export contract has no shape for and should
+      // not gain one -- ADR-001 describes the portfolio, not the platform's own
+      // bookkeeping about it.
+      return <ReconciliationTab />;
     case 'alerts':
       return <AlertsTab db={db} asOf={asOf} />;
     case 'policies':

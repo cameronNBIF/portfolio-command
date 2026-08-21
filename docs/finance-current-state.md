@@ -215,7 +215,9 @@ The second half of it was answered more fully than it was posed: the date and th
 
 **S-9 · Affinity integration is one-way inbound.** ADR-009's rules are explicit: one-way, upsert never truncate, never delete. `company.affinity_total_investment` and `company.affinity_fmv` are stored **REFERENCE ONLY, never an input to a calculation** — and they are also the control totals the A6 generator reconciles against.
 
-**S-10 · Two mandate figures can legitimately disagree and only the capture form shows it.** `nb_other` and the sum of NB-flagged co-investor amounts are separate captures. The KPI uses `nb_other`. No dashboard surfaces the disagreement.
+**S-10 · Two mandate figures can legitimately disagree and only the capture form shows it.** ~~*As built.*~~ **Closed 21 August 2026 by F6** — `v_reconciliation` surfaces the disagreement on a screen people visit deliberately, naming both figures side by side, and the Reconciliation tab lists it with the seven other checks. The original finding is kept below. `nb_other` and the sum of NB-flagged co-investor amounts are separate captures. The KPI uses `nb_other`. No dashboard surfaces the disagreement.
+
+**The finding held; the demo data did not.** Building the check exposed that the A6 generator drew `nb_other` and each co-investor's amount as independent draws over the same quantity, so 59 of the 81 eligible rounds disagreed — by 3–6×, not by rounding — and the check would have fired on 73% of what it could see on the day it shipped. The generator now allocates the NB co-investor amounts to sum to `nb_other`, leaving roughly one round in ten disagreeing on purpose. `nb_other` itself is untouched: it feeds the mandate KPI, and re-deriving it from the co-investors would have moved a board figure to fix a data-quality artefact.
 
 ---
 

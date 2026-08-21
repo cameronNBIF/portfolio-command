@@ -139,6 +139,8 @@ export interface MutationResult {
 export function mutate(body: {
   table: FinancialTableName;
   op: 'create' | 'update' | 'delete' | 'restore';
+  /** F6, ADR-038, FR-14. Why this changed, as distinct from what changed. */
+  changeKind?: string | null;
   id?: string;
   values?: unknown;
   reason?: string | null;

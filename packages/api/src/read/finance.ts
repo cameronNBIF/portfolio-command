@@ -541,6 +541,15 @@ export interface ChangeLogEntry {
   changedByName: string;
   changedByEmail: string;
   reason: string | null;
+  /**
+   * ADR-038, FR-14. WHY this changed, as distinct from what changed.
+   *
+   * NULL IS NOT A GAP TO BE FILLED IN LATER. Every version row written before
+   * migration 0013 is genuinely unclassified, and so is any routine change
+   * nobody chose to classify. Rendering it as "Correction" by default would
+   * make the whole distinction worthless in the direction Pat objected to.
+   */
+  changeKind: 'correction' | 'new-information' | 'initial-load' | null;
   isRestatement: boolean;
   /**
    * The row image this entry carries. See the view's comment on which.
@@ -603,11 +612,13 @@ export async function readRowHistory(
   const { rows } = await sql<{
     id: string; table_name: string; record_id: string; changed_at: string;
     action: string; changed_by_name: string; changed_by_email: string;
-    change_reason: string | null; is_restatement: boolean; row_image: Record<string, unknown>;
+    change_reason: string | null; change_kind: string | null;
+    is_restatement: boolean; row_image: Record<string, unknown>;
   }>`
     select financial_row_version_id::text as id,
            table_name, record_id, changed_at::text as changed_at, action,
-           changed_by_name, changed_by_email, change_reason, is_restatement, row_image
+           changed_by_name, changed_by_email, change_reason, change_kind,
+           is_restatement, row_image
       from pc.v_financial_change_log
      where table_name = ${table} and record_id = ${recordId}
      order by changed_at asc, financial_row_version_id asc
@@ -637,6 +648,7 @@ export async function readRowHistory(
       changedByName: r.changed_by_name,
       changedByEmail: r.changed_by_email,
       reason: r.change_reason,
+      changeKind: r.change_kind as ChangeLogEntry['changeKind'],
       isRestatement: r.is_restatement,
       rowImage: r.row_image,
       changes,
@@ -674,11 +686,12 @@ export async function readRestatements(
   const { rows } = await sql<{
     id: string; table_name: string; record_id: string; changed_at: string;
     action: string; changed_by_name: string; changed_by_email: string;
-    change_reason: string | null; row_image: Record<string, unknown>;
+    change_reason: string | null; change_kind: string | null;
+    row_image: Record<string, unknown>;
   }>`
     select financial_row_version_id::text as id,
            table_name, record_id, changed_at::text as changed_at, action,
-           changed_by_name, changed_by_email, change_reason, row_image
+           changed_by_name, changed_by_email, change_reason, change_kind, row_image
       from pc.v_restatement_log
      limit ${Math.min(Math.max(limit, 1), 1000)}
   `.execute(db);
@@ -692,6 +705,7 @@ export async function readRestatements(
     changedByName: r.changed_by_name,
     changedByEmail: r.changed_by_email,
     reason: r.change_reason,
+    changeKind: r.change_kind as ChangeLogEntry['changeKind'],
     isRestatement: true,
     rowImage: r.row_image,
     changes: [],

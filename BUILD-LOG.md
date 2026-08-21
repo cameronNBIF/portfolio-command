@@ -28,6 +28,93 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-21 · F6 · The reconciliation surface, and two checks specified against assumptions that were wrong
+
+**Closes S-10, FR-08, FR-09 and FR-14. Lands ADR-038, amending ADR-031. Raises FR-37.** One migration, one view of eight checks, a fourteenth tab, fifteen new tests. **Track F is complete.**
+
+**Day one on the demo data: 27 open items across 5 of the 8 checks, 3 clear.** API suite 179 → 194; db, metrics and functions unchanged at 42 / 252 / 64. No board figure moved — `nb_capital` reads $31,623,000 before and after, to the dollar, and the control totals still reconcile to $47,216,678.00 and $42,030,272.00.
+
+### Measure first, then design — and it changed two of the seven checks
+
+**The duplicate rule (FR-08) needed no date window, and finding that out is most of what this phase cost.**
+
+ADR-038 clause 4 says "same-company, same-normalised-label". Run against the data before building it, that fired **32 times and was wrong all 32** — the closest same-label pair in the portfolio was **256 days apart**, every one a genuinely separate raise years later. The obvious repair was a date window, and it would have been a number nobody chose.
+
+**29 of the 32 were a generator artefact.** `plan.ts` has held the round ladder's rung 25% of the time since A6 — with the comment *"a bridge holds the rung"* — and then emitted the parent's label unchanged. One company raised "Seed" in 2017, 2019 and 2022.
+
+Funke's answer to Q-9 named the thing the generator had been modelling without labelling: bridged funding *"shows up as a qualifier, like an adjective — after a Series A, the company needs funding but doesn't want to go for a Series B, so it goes for a bridge which is still under the Series A."* **Real Finance-entered data disambiguates by name.** The generator now names its bridges, the false pairs went to **zero**, and the rule is normalised label alone exactly as ADR-038 specifies. A window would have compensated for a defect in the demo data while quietly ceasing to catch the case FR-08 actually names — two "Series A" rows entered a year apart because somebody forgot the first.
+
+**"Round captured by VC, not confirmed by Finance" assumed a handoff that does not happen.** Confirmed 21 August that **Finance enters these rounds, not the VC team**. A `finance_confirmed_at` column would therefore have been Finance signing off its own typing: a column meaning nothing, firing on all 178 rounds until somebody clicked 178 times. What FR-09 actually calls it is *awaiting accounting classification*, and that is derivable today — a round whose live cheques carry no instrument or no vehicle. **No new column, no invented workflow, and true whoever typed the round in.**
+
+### Built
+
+**Migration 0013 · `financial_row_version.change_kind`** — `correction` / `new-information` / `initial-load`, carried into `v_financial_change_log` and `v_restatement_log`. That second view is the one that needed it: it exists to answer "what moved after the board saw it" and could not say which of the two kinds of move it was, which is the whole of FR-14. Travels as a session GUC beside the reason, so a change made from psql is classified like any other and the trigger stays the only thing that writes history.
+
+**`new-information` is refused where there is nothing to restate**, enforced in `checkRestatement` rather than only offered conditionally in the UI — that is the one function that already knows whether a change restates, and it reads the kind from the GUC rather than a new argument, so five writers needed no new parameter and there is one authority on one answer.
+
+**NULL means unclassified and is never rendered as a default.** The 49 rows written before the migration genuinely are, and so is any routine change nobody classified. Rendering them as "Correction" would destroy the distinction in the exact direction Pat objected to.
+
+**The duplicate acknowledgement, stored on the round** — `duplicate_ack_at` / `_by` / `_reason`, three columns rather than a boolean so it can be chased and audited. `pc.normalise_round_label()` is a function rather than an inline expression, read by the index, the write path and the view alike, **so Q-9 tightens all three by changing one thing**.
+
+**A 409, not a 400**, carrying the colliding round. ADR-038 clause 4 did not specify a status and it needed one: a 400 saying "that looks like a duplicate" leaves the form with nothing to offer but the same button again. **A warning the interface cannot act on is a hard block wearing a softer message**, which is what the clause refuses. The Deal Close form shows it amber, names the round, and takes the one sentence that clears it.
+
+**`v_reconciliation` — one view, eight checks.** In SQL rather than in eight TypeScript queries, so Finance's own ad-hoc query and the screen cannot drift apart and nobody notices which is right. Seven from FR-09 and the roadmap; the eighth is F5's overdrawn LP position, which ADR-037 clause 5 put on a view precisely so this surface could read a column rather than re-derive a rule. FR-09's "FMV below NBV" is **not** built — there is no net book value in the schema to compare against, and Q-5 and Q-6 block it.
+
+**The Reconciliation tab, gated on `CAN_READ`.** Half these checks are the VC team's to fix; putting the list behind `CAN_WRITE_FINANCIAL` would hide the deal leads' own queue from them — the same reason F4's Exited view became a tab rather than a Finance surface. **No resolve button, deliberately**: a row leaves when the fact behind it is corrected on the screen that owns it, and a mark-as-resolved that changes no data is how a reconciliation list starts lying.
+
+**All eight checks are always shown, including the zeroes.** A surface listing only what is currently wrong cannot distinguish "this check found nothing" from "this check stopped running", and the second is what happens when a predicate quietly stops matching. A zero is evidence; an absence is not.
+
+### Changed
+
+**The A6 generator, twice, and neither moved a figure.**
+
+*Bridges are named.* The held rung produces "Series A bridge", numbered on a second one, because two rows reading "Series A bridge" would put the false positive straight back. Stage, instrument, amounts and dates are untouched — a bridge still does not advance the stage, which is what holding the rung has always meant. **How a bridge should be modelled is left open on purpose** (FR-37); this is a label, not a model.
+
+*NB co-investor amounts reconcile to `nb_other`.* They never did: `nb_other` was drawn as 8–45% of third-party capital and each co-investor's amount drawn independently with `is_nb_based` a 40% coin flip — two unrelated draws over the same quantity. **59 of the 81 eligible rounds disagreed, by 3–6× rather than by rounding**, so the S-10 check would have fired on 73% of what it could see on the day it shipped. S-10 remains true — these are two separate captures and they *can* legitimately disagree — but in the demo data they always did, which makes a signal into wallpaper. `nb_other` is the fixed point and the amounts move to meet it, never the reverse: it feeds the NB mandate KPI, and re-deriving it from the co-investors would move a board figure to fix a data-quality artefact. **One round in ten is left disagreeing on purpose**, because a check that can never fire is not evidence the data is clean.
+
+**Drawn from a separately salted RNG stream, and that is not fussiness.** The first version drew from the per-company stream and shifted every subsequent draw: the NB co-investment KPI moved from **$31,623,000 to $33,503,000** without a single definition changing. A figure that moves for a reason unrelated to the change is a figure nobody can review. Salt 11 is that block's alone, and the KPI is back to $31,623,000 exactly.
+
+**`ReasonField` becomes reason plus kind** (ADR-038 clause 3), on the transaction surface only. Offering it on every form would train people to pick one at random, which is what the clause warns against.
+
+**The nav was reordered, by Cameron, to group by what a person is doing** — the portfolio as it stands (Dashboard, Portfolio, Funds, Pipeline, Exited), working it (Modeling, Memo Builder, Reports, Alerts, Policies), putting data in and checking it (Deal Close, Finance, Reconciliation), then Data. **The ported eight keep their relative order and are no longer contiguous**, which is a real change and is recorded in ADR-014 rather than left to be noticed: that ADR freezes the port — layout, terminology, colour, drawer behaviour, and what each of the eight screens shows — not the order of a bar that has grown from eight items to fourteen. The eight screens themselves are untouched. Data moves last because it renders the ADR-001 export document rather than being anywhere anyone works.
+
+### A defect this phase introduced, and caught by measuring rather than by review
+
+Migration 0013 has to restate `capture_financial_version` in full — Postgres cannot amend one clause of a function body. **The first draft retyped it from ADR-031's own A8 amendment instead of copying it from migration 0003**, and dropped four lines: the exempt path's `new.row_updated_at := new.row_created_at`. That path returns before the assignment at the bottom which normally flattens the pair, so every synthetic row came back from `db:generate` with the two timestamps microseconds apart — and the Finance screen reads that as "somebody edited this" and draws a pill.
+
+**95 rows across three tables claimed to have been edited by nobody. It is the identical defect the A8 amendment records fixing**, reintroduced by the act of describing the fix instead of copying it. Found by counting `row_updated_at > row_created_at` after a regeneration, not by reading the diff.
+
+Corrected by lifting 0003's body character for character and adding only the two `change_kind` tokens. **The rule is now written into ADR-031: copy the body from the migration that last defined it.** The nine rows that still report as edited are real, hand-entered rows that genuinely were — one is noted "Money!".
+
+**Migration 0013 was corrected in place twice** rather than followed by an 0014, on the F5 precedent: forward-only protects deployed state and nothing is deployed. Both local databases were reverted with a scratchpad script and re-migrated each time. **That option expires the moment anything reaches Azure.**
+
+### A second defect, found because F6 made the suite flaky
+
+`financial-versioning.test.ts` began failing about one run in four, on the assertion that a row's history reads `create, update, delete, restore`. It was returning **six** entries where the test wrote four, the extra two being a `create` and a `delete` from a row that no longer exists.
+
+**`import:fixture` truncates the root tables with `restart identity cascade` and did not clear `financial_row_version`.** That table has no foreign key to any of them — it holds `record_id` as TEXT by design, so one table can serve eight parents (ADR-031) — so it does not cascade, and its rows survived pointing at ids that were immediately **reissued to different rows**. `audit_log` was already in the truncate list for exactly this reason and the version store was simply missed.
+
+**This is not a test-only defect.** After running `import:fixture` against a development database, the History panel on any financial row can show another row's history — the ADR-031 guarantee reading wrong on screen. Fixed by adding `financial_row_version` to `ROOT_TABLES`. Five consecutive clean runs of the API suite afterwards.
+
+**The first hypothesis was wrong and is worth recording as such.** Two suites shared the `test-finance` actor and both purge version rows by actor, which looked like the cause. It was not — `fileParallelism: false` has made those files run one at a time since A7. The separate actor was kept anyway, as hygiene rather than as the fix, and its comment says so: a suite whose isolation depends on a setting in another file's config is one bad day from being wrong.
+
+### Verified
+
+- `npm run lint`, `npm run typecheck` clean; **194 / 42 / 252 / 64** tests pass, and the API suite ran **five consecutive times clean** after the importer fix.
+- **The duplicate warning end to end over HTTP**: the first save returned **409** with *"Encore Interactive already has a round called \"Seed\" dated 2010-12-26… this is a warning rather than a refusal"* and the colliding round in the payload; the same request carrying an acknowledgement returned **200**. Both halves, because a test of the refusal alone is indistinguishable from a test of a hard block.
+- The Reconciliation tab rendering all eight checks with their counts, three reading Clear, every row naming two figures and the screen that fixes it.
+- `npm run db:generate` end to end after both generator changes: control totals unmoved, zero duplicate label pairs, 29 named bridges, 7 co-investor mismatches remaining by design.
+
+### Outstanding
+
+- **FR-37 — bridged funding needs a model, and F6 deliberately did not pick one.** A qualifier on the label, a round-level type, or a `parent_round_id` that says what Funke actually described: *"still under the Series A"*. Nothing built here forecloses any of the three. **Second Finance meeting**, and cheap now for the reason FR-33 was.
+- **Q-9 is answered in part.** The rule is settled; whether it should ever become fuzzy — "Series A" against "Series A-2" — is not. One function changes all three readers.
+- **11 rounds are awaiting accounting classification and 27 lack a round total.** Both are real backlog rather than defects, and both are now countable from one screen for the first time.
+- **The `unclassified-round` check will fire loudly at A13.** A bulk historical load with no instrument on old cheques is exactly its predicate. That is correct behaviour and worth knowing in advance rather than discovering during the load.
+- Carried: `npm audit` transitive dev-tooling findings; `ref_funnel_stage` to be seeded from Affinity field metadata; `fund_distribution` still empty with no UI.
+
+---
+
 ## 2026-08-21 · F5 · The LP three-stage model, and the email that changed all three words
 
 **Closes S-7, FR-32, FR-33 and FR-34, and the name half of S-6. Lands ADR-037, amending ADR-002, ADR-014 and ADR-031.** One migration, one new versioned table, a new entry surface, eighteen new tests.

@@ -7,6 +7,7 @@
 - **FR-29 is substantially rewritten.** v1 proposed a platform-side exit state controlling portfolio membership. That is wrong: membership follows Affinity's roster status, and the platform needs an **Exited view** rather than its own flag. This also surfaces a defect in the A6 generator.
 - **FR-36 is new**, arising from the Q-15 answer: Finance maintains ownership between rounds, ad hoc.
 - **FR-02, FR-32 and FR-35 are settled**; FR-19 and FR-21 gained concrete design direction.
+- **FR-37 is new in v3 (21 August 2026)**, raised by Funke's answer to Q-9: bridged funding needs a model, and F6 deliberately did not pick one.
 
 **Source:** Portfolio Command finance requirements meeting — Pat McMullon (Director of Finance), Funke Yusuf (Controller), Cameron Horwood.
 **Baseline:** `finance-current-state.md`, as built through A9.
@@ -91,6 +92,10 @@ Every requirement below is traced to what was said, checked against what the pla
 **Disposition:** Build as a **soft block**: detect a same-company, same-normalised-label round, refuse the default path, and require an explicit acknowledgement ("this is a second tranche / extension") that is stored with the row. The precedent is already in the codebase — a round total below our own cheque is *accepted and flagged, never refused*, precisely so the deal lead is not pushed into fudging a figure to get past a form.
 **Size:** M · **Schema:** Yes (an override flag and reason)
 
+**DONE — F6, 21 August 2026, migration 0013.** `duplicate_ack_at` / `_by` / `_reason` on the round, three columns rather than a boolean so the acknowledgement can be chased and audited. The write path raises a **409 carrying the round it collided with**, so the form can name it and ask the one question that clears it — a warning the interface cannot act on is a hard block wearing a softer message. Both halves are asserted in the test suite, because a test of the refusal alone would look identical to a test of a hard block.
+
+**The rule needed no date window, and that is the interesting part.** Measured first: 32 same-company same-label pairs existed and the closest two were **256 days apart**, so a label-only rule would have fired 32 times and been wrong every time. 29 of the 32 were the A6 generator emitting a **bridge** round under its parent's label. Funke's own description settles it — bridged funding *"shows up as a qualifier, like an adjective"* — so real Finance-entered data reads "Series A bridge" and never collides. The generator was corrected and the pairs went to zero. See **FR-37**, which this raised.
+
 ### FR-09 · Flag discrepancies where VC and Finance have entered conflicting information
 **Said by:** Funke Yusuf, Cameron Horwood. Next step 3.
 **Current state:** One such disagreement is already detected — `nb_other` versus the sum of NB co-investor amounts — and shown **only inside the capture form** (finding S-10). Nothing else is checked and nothing is surfaced on a screen a person visits deliberately.
@@ -109,6 +114,15 @@ Every requirement below is traced to what was said, checked against what the pla
 
 **Disposition:** Build as one view plus one screen. Sequence it *after* the schema changes it depends on.
 **Size:** M · **Schema:** No (a view over other changes)
+
+**DONE — F6, 21 August 2026.** `v_reconciliation`, one view, **eight** checks, and a Reconciliation tab gated on `CAN_READ` rather than the Finance role — half of these are the VC team's to fix, and putting the list behind `CAN_WRITE_FINANCIAL` would hide the deal leads' own queue from them. Every row names the subject, the company, the two figures that disagree and the screen that fixes it. **All eight are always shown including the zeroes**, because a surface listing only what is wrong cannot distinguish "this check found nothing" from "this check stopped running".
+
+**Two departures from the proposed set above, both deliberate:**
+
+- **"FMV below NBV" is not built.** There is no net book value in the schema to compare against — it is the largest item in this register and is blocked on Q-5 and Q-6. The check cannot be written, let alone got wrong. The roadmap replaced it with **exit-status mismatch**, which F4 created the conditions for.
+- **"Round captured by VC, not confirmed by Finance" is built as what it means, not as the handoff it assumed.** Confirmed 21 August 2026 that **Finance enters these rounds, not the VC team**, so a `finance_confirmed_at` column would have been Finance signing off its own typing — a column meaning nothing that fires on all 178 rounds until somebody clicks 178 times. What this row actually calls it is *"awaiting accounting classification"*, and that is derivable today: a round whose live cheques carry no instrument or no vehicle. No new column, no invented workflow, true whoever typed it in.
+
+**Day one on the demo data: 27 open items across 5 of the 8 checks, 3 clear.**
 
 ### FR-10 · Prevent money moving before required information is captured
 **Said by:** The group. *"To ensure that money is not moved without all required information being captured and reconciled."*
@@ -148,6 +162,12 @@ Every requirement below is traced to what was said, checked against what the pla
 **Gap:** Real, and subtler than it looks. The row's history is right; the *label* is wrong.
 **Disposition:** Distinguish **late arrival of new information** from **correction of a previously wrong figure** in the version store, so the change log reads honestly. This is a small, high-value change to the ADR-031 mechanism.
 **Size:** S · **Schema:** Yes (a change-kind on the version record)
+
+**DONE — F6, 21 August 2026, migration 0013.** `financial_row_version.change_kind` — `correction` / `new-information` / `initial-load` — carried into `v_restatement_log`, which is the view that most needed it: it exists to answer "what moved after the board saw it" and could not previously say which of the two kinds of move it was. Offered on the transaction form as a second field beside the reason.
+
+**`new-information` is refused where there is nothing to restate**, and enforced server-side rather than only offered conditionally in the UI: outside a published period the distinction is noise, and a value selectable anywhere is one people pick at random — which would hollow out this exact signal.
+
+**NULL means unclassified and is never rendered as a default.** The 49 version rows written before the migration genuinely are, and so is any routine change nobody classified. Showing them as "Correction" would destroy the distinction in the direction this requirement was raised about.
 
 ### FR-15 · Review the pedal report format and confirm required fields
 **Said by:** Cameron Horwood. Next step 12.
@@ -387,6 +407,24 @@ Renamed the **stored** value: `capital_call` → `capital_drawdown`, `distributi
 **Disposition:** Build. Roadmap phase **F3**, ahead of the threshold work in the same phase.
 **BUILT — F3, 20 August 2026.** `company_ownership` gained `change_reason` and `investment_round_id`, and a standalone entry path (`/api/v1/ownership`, `CAN_CAPTURE_ROUND`) that refuses a figure with no reason. The deal-close path stores the round instead of prose, because there the round is the reason. 177 of 179 existing rows were linked to their causing round from evidence alone; the 2 that were not are real rows whose rounds were later soft-deleted, and they are visible on the schedule rather than absent from it.
 **Size:** M · **Schema:** Minor (a reason, and an optional link to the causing round)
+
+### FR-37 · Bridged funding is a first-class thing, not an absence *(new in v3)*
+**Said by:** Funke Yusuf, 21 August 2026, answering Q-9. *"For the Portfolio investment side, you remember Pat mentioned something like 'no round but we invested'; that is called **Bridged Funding** and I will suggest including it as an option. It might show up as a qualifier; like an adjective. For example, after a Series A, the company needed funding but doesn't want to go for the next funding step (Series B), he can go for a bridge funding which is still under the Series A."*
+
+**Why this matters more than a label.** It names a case the platform currently has no shape for. ADR-033 gives a cheque exactly two honest states: it belongs to a round, or somebody has confirmed it belongs to none (`standalone_confirmed_at`). A bridge is neither — it is **under** a round, related to the Series A it follows, and calling it standalone throws that relationship away. Pat's "no round but we invested" was the same observation from the other side.
+
+**Current state:** Bridges are already in the demo data and already invisible. The A6 generator holds the round ladder's rung 25% of the time with the comment *"a bridge holds the rung"* — 29 rounds — and until F6 emitted them under the parent's label, so one company appeared to raise "Seed" three times. F6 corrected the generator to name them ("Series A bridge"), which is enough for the duplicate check to work and is **not** a model.
+
+**Three ways it could be modelled, and Funke's answer decides which:**
+
+| Option | What it means |
+|---|---|
+| A qualifier on the label | What F6's generator fix assumes. Cheapest, entirely conventional, and invisible to any query — nothing can count bridges or find a bridge's parent. |
+| A round-level flag or type | `is_bridge`, or a round type alongside the instrument. Countable and reportable; still does not say which round it is under. |
+| A parent round reference | `parent_round_id`. Says what Funke actually described — "still under the Series A" — and makes a Series A plus its bridges reportable as one raise, which is how leverage and ownership arguably want to see it. |
+
+**Disposition: do not guess. Ask.** F6 deliberately forecloses none of the three: the label carries a bridge today, no column asserts a model, and the duplicate rule keys on normalised label so "Series A" and "Series A bridge" are already distinct. **This belongs on the second Finance meeting agenda** and is cheap now for the reason FR-33 was: it touches how rounds are named and related, and doing it after A13 means doing it against fifteen years of history.
+**Size:** S if a qualifier, M if a relationship · **Schema:** Depends on the answer
 
 ---
 

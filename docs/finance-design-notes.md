@@ -274,8 +274,14 @@ Leverage today is `(round totals − our invested) / our invested` over rounds w
 
 ### Block 5 · Controls and workflow — *shapes FR-08, FR-09, FR-10, and refines what is already being built*
 
-**Q-9 · What counts as a duplicate round?**
+**Q-9 · What counts as a duplicate round?** ~~*(open)*~~ **ANSWERED IN PART, 21 August 2026 — and the answer arrived with a new requirement attached. See below.**
 Is a "Series A extension" a second Series A, or a distinct round? A second tranche of the same raise? We are building this as a **warning with an acknowledgement**, not a hard block — so a wrong guess is recoverable — but the definition of sameness determines how often it fires, and a rule that fires constantly gets clicked through without reading.
+
+**What was settled.** Funke confirmed that **Finance enters these rounds, not the VC team**, and that Finance is accountable for not creating a second Series A that should not exist. Combined with what F6 measured — 32 same-label pairs in the data, the closest 256 days apart, 29 of them a generator artefact — the rule is **normalised label alone, same company, no date window**. Case-folded, punctuation removed, nothing fuzzy. It fires zero times on today's data, correctly.
+
+**What it opened.** Funke's reason for the false pairs is a requirement in its own right: *"that is called Bridged Funding… it might show up as a qualifier, like an adjective."* A bridge is **under** a round, not a round of its own and not standalone — a state ADR-033's two options cannot express. **Raised as FR-37 and deliberately not designed**; it needs the second meeting, and F6 forecloses none of the three ways it could be modelled.
+
+**What is still open.** Whether the rule should ever become fuzzy — "Series A" against "Series A-2", say. It is one function, `pc.normalise_round_label()`, read by the index, the write path and the reconciliation view alike, so tightening it later changes all three at once and needs no rebuild.
 
 **Q-10 · "Money should not move without all required information."**
 Worth being precise about the intent here. The platform records events after the fact; it is not in the payment path, so it cannot stop a wire. What it *can* do is refuse to record an incomplete transaction — which has its own failure mode, where a real cheque goes unrecorded because the form would not take it. Was the intent a hard block, or a completeness monitor with escalation? We recommend the latter.

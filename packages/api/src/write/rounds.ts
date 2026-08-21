@@ -21,14 +21,16 @@ import { type Kysely, sql } from 'kysely';
 
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_CAPTURE_ROUND, type Principal, requireRole } from '../auth/principal.js';
-import { ValidationError } from './errors.js';
+import { DuplicateRoundError, ValidationError } from './errors.js';
 import {
+  changeKind,
   checkRestatement,
   date,
   optional,
   optionalMoney,
   setSessionContext,
   text,
+  type ChangeKind,
 } from './session.js';
 
 /**
@@ -108,7 +110,24 @@ export interface RoundCaptureInput {
   ownership?: OwnershipInput | null;
 }
 
-export type RoundMutation = { reason?: string | null } & (
+export type RoundMutation = {
+  reason?: string | null;
+  /** ADR-038, FR-14. Why this changed, as distinct from what changed. */
+  changeKind?: ChangeKind | null;
+  /**
+   * FR-08, ADR-038 clause 4. Acknowledges that this round shares a company and
+   * a normalised label with one already recorded, and is a real second row
+   * anyway — a second tranche, an extension, a bridge.
+   *
+   * REQUIRED ONLY WHEN THE WARNING FIRES, and refusing the plain save is the
+   * whole mechanism: a check that can be ignored without noticing is not a
+   * check. Never a hard block, on the codebase's own precedent — a round total
+   * below our own cheque is accepted and flagged, because pushing somebody into
+   * fudging a figure to get past a form is worse than the figure being wrong
+   * and visible.
+   */
+  duplicateAckReason?: string | null;
+} & (
   | { op: 'create'; values: RoundCaptureInput }
   | { op: 'update'; id: string; values: RoundCaptureInput }
   | { op: 'delete'; id: string }
@@ -265,9 +284,10 @@ export async function applyRoundMutation(
   requireRole(principal, CAN_CAPTURE_ROUND);
 
   const reason = mutation.reason?.trim() || null;
+  const kind = changeKind(mutation.changeKind);
 
   return db.transaction().execute(async (trx) => {
-    await setSessionContext(trx, principal, reason);
+    await setSessionContext(trx, principal, reason, kind);
 
     if (mutation.op === 'delete' || mutation.op === 'restore') {
       return softDelete(trx, principal, mutation.id, mutation.op, reason);
@@ -359,6 +379,48 @@ async function softDelete(
   };
 }
 
+/**
+ * FR-08. The round this one collides with, or null.
+ *
+ * NORMALISED LABEL ALONE, NO DATE WINDOW, and F6 measured before choosing.
+ * 32 same-company same-label pairs existed in the demo data with the closest
+ * two 256 days apart, which looked like an argument for a window -- until 29 of
+ * the 32 turned out to be the A6 generator emitting a BRIDGE round under its
+ * parent's label. Funke's description of the real thing is the fix: bridged
+ * funding "shows up as a qualifier, like an adjective", so real data reads
+ * "Series A bridge" and never collides. The generator was corrected and the
+ * pairs went to zero.
+ *
+ * A window would have been a number nobody chose, compensating for a defect in
+ * the demo data, and it would have quietly stopped catching the case FR-08
+ * actually names: two "Series A" rows entered a year apart because somebody
+ * forgot the first one.
+ *
+ * `pc.normalise_round_label` rather than a copy of it here, so the index, the
+ * reconciliation view and this query cannot disagree about what "the same
+ * label" means. Q-9 tightens all three at once by changing that function.
+ */
+async function findDuplicate(
+  trx: Kysely<DB>,
+  companyId: string,
+  label: string,
+  excludeId: string | null,
+): Promise<{ id: string; label: string; round_date: string; company_name: string } | null> {
+  const { rows } = await sql<{ id: string; label: string; round_date: string; company_name: string }>`
+    select r.investment_round_id::text as id, r.label, r.round_date::text as round_date,
+           c.name as company_name
+      from pc.investment_round r
+      join pc.company c on c.company_id = r.company_id
+     where r.company_id = ${companyId}
+       and r.deleted_at is null
+       and pc.normalise_round_label(r.label) = pc.normalise_round_label(${label})
+       and (${excludeId}::bigint is null or r.investment_round_id <> ${excludeId}::bigint)
+     order by r.round_date, r.investment_round_id
+     limit 1
+  `.execute(trx);
+  return rows[0] ?? null;
+}
+
 async function writeRound(
   trx: Kysely<DB>,
   principal: Principal,
@@ -381,6 +443,23 @@ async function writeRound(
 
   const nbifParticipated = participation(v.nbifParticipated);
 
+  /* FR-08, ADR-038 clause 4. Warn, do not block.
+     Run before the write so the refusal names the round it collided with,
+     rather than reporting a constraint the user has to work backwards from --
+     and after `checkRestatement`, so a save that is going to be refused for a
+     missing restatement reason says that first. */
+  const duplicateOf = await findDuplicate(trx, companyId, label, m.op === 'update' ? m.id : null);
+  const ackReason = m.duplicateAckReason?.trim() || null;
+  if (duplicateOf && !ackReason) {
+    throw new DuplicateRoundError(
+      `${duplicateOf.company_name} already has a round called "${duplicateOf.label}" dated ` +
+        `${duplicateOf.round_date}. That is often correct — a second tranche, an extension, a ` +
+        'bridge under the same round — so this is a warning rather than a refusal. Say which it ' +
+        'is and the save goes through.',
+      { investmentRoundId: duplicateOf.id, label: duplicateOf.label, roundDate: duplicateOf.round_date },
+    );
+  }
+
   const cols = {
     company_id: companyId,
     round_date: roundDate,
@@ -395,6 +474,14 @@ async function writeRound(
     lead_investor: optional(v.leadInvestor),
     note: optional(v.note),
     source_document: optional(v.sourceDocument),
+    /* Stored on the row, per ADR-038 clause 4, so the acknowledgement outlives
+       the session that gave it. Cleared when the collision goes away -- an
+       acknowledgement of a duplicate that no longer exists is a claim about
+       nothing, and it would keep the round looking deliberate after somebody
+       deleted the row it was deliberate about. */
+    duplicate_ack_at: duplicateOf && ackReason ? sql`clock_timestamp()` : null,
+    duplicate_ack_by: duplicateOf && ackReason ? principal.userId : null,
+    duplicate_ack_reason: duplicateOf && ackReason ? ackReason : null,
   };
 
   let roundId: string;

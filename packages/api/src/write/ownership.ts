@@ -35,7 +35,15 @@ import type { DB } from '@portfolio-command/db/generated';
 import { CAN_CAPTURE_ROUND, type Principal, requireRole } from '../auth/principal.js';
 import { recordAudit } from './audit.js';
 import { ValidationError } from './errors.js';
-import { checkRestatement, date, optional, setSessionContext, text } from './session.js';
+import {
+  changeKind,
+  checkRestatement,
+  date,
+  optional,
+  setSessionContext,
+  text,
+  type ChangeKind,
+} from './session.js';
 
 export interface OwnershipAdjustmentInput {
   companyId: string;
@@ -64,7 +72,11 @@ export interface OwnershipAdjustmentInput {
   investmentRoundId?: string | null;
 }
 
-export type OwnershipMutation = { reason?: string | null } & (
+export type OwnershipMutation = {
+  reason?: string | null;
+  /** ADR-038, FR-14. */
+  changeKind?: ChangeKind | null;
+} & (
   | { op: 'set'; values: OwnershipAdjustmentInput }
   | { op: 'delete'; id: string }
   | { op: 'restore'; id: string }
@@ -110,9 +122,10 @@ export async function applyOwnershipMutation(
   requireRole(principal, CAN_CAPTURE_ROUND);
 
   const reason = mutation.reason?.trim() || null;
+  const kind = changeKind(mutation.changeKind);
 
   return db.transaction().execute(async (trx) => {
-    await setSessionContext(trx, principal, reason);
+    await setSessionContext(trx, principal, reason, kind);
 
     if (mutation.op === 'delete' || mutation.op === 'restore') {
       return softDelete(trx, principal, mutation.id, mutation.op, reason);

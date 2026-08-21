@@ -32,7 +32,7 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_CAPTURE_ROUND, type Principal, requireRole } from '../auth/principal.js';
 import { ValidationError } from './errors.js';
-import { checkRestatement, setSessionContext } from './session.js';
+import { changeKind, checkRestatement, setSessionContext, type ChangeKind } from './session.js';
 
 export interface LinkTransactionsMutation {
   /**
@@ -52,6 +52,8 @@ export interface LinkTransactionsMutation {
    */
   investmentRoundId: string | null;
   reason?: string | null;
+  /** ADR-038, FR-14. Why this changed, as distinct from what changed. */
+  changeKind?: ChangeKind | null;
 }
 
 export interface LinkTransactionsResult {
@@ -109,9 +111,10 @@ export async function applyLinkTransactions(
   }
 
   const reason = mutation.reason?.trim() || null;
+  const kind = changeKind(mutation.changeKind);
 
   return db.transaction().execute(async (trx) => {
-    await setSessionContext(trx, principal, reason);
+    await setSessionContext(trx, principal, reason, kind);
 
     const txns = await loadTransactions(trx, ids);
     const round = roundId === null ? null : await loadRound(trx, roundId);

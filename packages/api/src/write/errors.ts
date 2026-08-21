@@ -15,3 +15,31 @@ export class ValidationError extends Error {
     this.name = 'ValidationError';
   }
 }
+
+/**
+ * FR-08, ADR-038 clause 4. The save was refused because it looks like a
+ * duplicate, and it will go through as soon as the caller says which kind of
+ * legitimate second row it is.
+ *
+ * A SEPARATE CLASS, AND A SEPARATE STATUS, because the client has to be able to
+ * tell this from an ordinary rejection. A 400 saying "that looks like a
+ * duplicate" leaves the form with nothing to offer but the same button again;
+ * a 409 carrying the colliding round lets it show WHICH round, and ask the one
+ * question that clears it. A warning the interface cannot act on is a hard
+ * block wearing a softer message, which is precisely what clause 4 refuses.
+ *
+ * Extends ValidationError so any handler that only knows about that still fails
+ * safe with a client error rather than a 500.
+ */
+export class DuplicateRoundError extends ValidationError {
+  readonly duplicateOf: { investmentRoundId: string; label: string; roundDate: string };
+
+  constructor(
+    message: string,
+    duplicateOf: { investmentRoundId: string; label: string; roundDate: string },
+  ) {
+    super(message);
+    this.name = 'DuplicateRoundError';
+    this.duplicateOf = duplicateOf;
+  }
+}
