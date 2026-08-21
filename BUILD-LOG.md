@@ -28,6 +28,63 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-21 · Maintenance · The two findings the request-boundary session left behind: React lint, and FinanceTab
+
+**No phase ref — refactor work, not roadmap.** Nothing changes shape, no field rule moves, no board figure moves. Two commits on `web-lint-and-finance-tab`, stacked on `request-boundary`. **Test counts unchanged at 240 / 42 / 252 / 64.**
+
+Both items were written into the previous entry's **Outstanding** list a few hours earlier. They are closed here rather than carried, because the second one gets more expensive with every entry screen A10 to A12 adds.
+
+### The React lint rules had never run, and the codebase was already clean
+
+`eslint.config.mjs` had said *"eslint-config-next joins at A2, when real React code lands in apps/web"* since A0. A2 landed. So did fourteen tabs, five drawers and ~7,000 lines of hooks, and nobody came back to wire it up — `eslint-config-next` sat in `apps/web`'s devDependencies, unreferenced, so `react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps` had never been applied to a single line.
+
+**Zero findings**, which is the outcome worth recording. Nothing grandfathered in, nothing suppressed, no baseline file. Every effect's dependency list already matched what it reads and no hook is called conditionally.
+
+**Proven rather than assumed**, because a lint config that silently matches no files looks exactly like a clean codebase. A throwaway component with a conditional `useState` and an effect missing a dependency was linted before the config landed; both rules fired, with the right messages, on the right lines.
+
+**Two plugins, not the whole bundle.** `eslint-plugin-react-hooks` and `@next/eslint-plugin-next` core-web-vitals. `eslint-plugin-react` and `eslint-plugin-jsx-a11y` are deliberately out: both would produce a large diff of mostly stylistic findings over a one-to-one port of a settled prototype (ADR-014) used by nine staff on desktop browsers. Adding them is a decision about house style, and this was about defects.
+
+`eslint-config-next` is removed rather than adapted — it is still an eslintrc-era bundle, so reaching it from flat config means `FlatCompat` plus the `@rushstack/eslint-patch` monkey-patch of `require.resolve`, which is a lot of machinery to get at two plugins that both ship flat configs of their own. The two are now declared at the **root**, where the config lives and resolves them from; they were previously reachable only as hoisted transitive dependencies, which is an accident of npm's layout rather than a dependency anyone declared. `next build` does not lint here and is unaffected — checked.
+
+### FinanceTab: 1,509 lines to 84, and one hook for thirty-two copies of one line
+
+Three of the five Finance surfaces were inline while the other two already had files of their own. That inconsistency existed only because Transactions was written first at A7 and everything after it was added where the last one ended. Each surface now has a file in `components/tabs/finance/`, with `RowActions` beside them; `FmvReviewSurface` and `SignificantInfluence` moved into the same directory, the second renamed to match the component it exports.
+
+The expression that mattered, written thirty-two times:
+
+```
+onChange={(e) => setEditing({ ...editing, draft: { ...editing.draft, x: e.target.value } })}
+```
+
+Two spreads, three references to `editing`, the field name buried at the end. Not hard to write; hard to read, and easy to get wrong in a way that typechecks — spread the draft into the wrong level and every other field is silently dropped on the next keystroke. `useDraft` in `entry.tsx` replaces all thirty-two with `{...form.field('x')}`.
+
+**`DealCloseTab` had already reached the same conclusion privately**, with a local `const set = (k, v) => …` inside one component. That is the strongest evidence the abstraction is right, and it is why the hook went into the file the entry surfaces already share rather than being invented fresh.
+
+**Changed**
+- `useDraft` also owns the form error, which is not scope creep: every place that opened a form called `setFormError(null)` immediately before it, without exception, because a stale rejection above a freshly opened form reads as a rejection of the form you are looking at. Two calls that must always happen together are better as one that cannot be half-done.
+- The hook uses functional state updates. Reading `editing` from the render closure is correct today only because no surface sets two fields in one event — a property of the callers rather than one the hook should depend on.
+- `exhaustive-deps` is configured as an **error**, not the warning it ships as, because `npm run lint` does not fail on warnings and CI runs `npm run lint`. Affordable only because the baseline is clean, so the first violation will be a new one. Dropping it back to `warn` is one line and the config says so.
+- `@next/next/no-html-link-for-pages` is off: Pages Router only, and on an App Router app it prints a warning about its own missing pages directory on every run — noise that trains people to ignore lint output.
+
+**Decided**
+- **`DealCloseTab` does not adopt `useDraft`.** Its editing state carries a co-investor *list* alongside the draft, and generalising the hook to hold arbitrary extra state would make it a worse fit for the five surfaces that do use it. Its local `set` helper stays.
+- **`submit` stays in each surface.** The hook knows nothing about a table or an endpoint: the mapping from draft keys to the API's shape belongs with the row, and the wording of a failure has to match the form the reader is looking at.
+
+**Verified** — in the browser against the dev database, because a typecheck cannot tell whether a form still works:
+- The currency transform still upper-cases as you type, and the FX field still appears when the currency stops being CAD.
+- Switching the type to a capital drawdown still swaps Company for Fund position and hides the instrument picker.
+- Picking a company still loads that company's rounds into the link panel, with the new-row hint.
+- Editing a row populates the whole draft; **the Save-round-link button is disabled until the selection diverges from the stored one and enables when it does — and the amount survives that change**, which is exactly the failure this refactor could have introduced.
+- Opening a commitment with the fund filter set still pre-fills the position.
+- Deal Close is unaffected. Every API request the Finance tab makes returns 200; the console is clean.
+- Lint, typecheck, `next build`, full suite and `verify:fixtures` all green.
+
+**Outstanding**
+- `apps/web` still has no test runner. The request parsers were the part worth moving out; what remains testable there is genuinely UI, and it needs a decision about whether this repo wants React component tests at all before anything is stood up. `useDraft` is now the one piece of app-layer logic that would be worth a test if it did.
+- The two PRs are stacked: `web-lint-and-finance-tab` is based on `request-boundary`. Merge #26 first, or GitHub will retarget #27 automatically when it lands.
+
+---
+
 ## 2026-08-21 · Maintenance · The request boundary: parsers move into the API package, get their first tests, and six HTTP clients become one
 
 **No phase ref — this is a refactor session, not roadmap work.** Nothing changes shape, no field rule moves and no board figure moves. Three commits on `request-boundary`. **API suite 194 → 240; db, metrics and functions unchanged at 42 / 252 / 64.**
@@ -83,8 +140,8 @@ Verified by mutation rather than trusted: changing `if (v === null) return null`
 - Against the running app on the dev database, not only by types: all six POST endpoints return 400 on malformed JSON; every envelope rejection keeps its own sentence; Finance, Reconciliation and Policies render from Postgres. **Invested still reads $47,216,678, the frozen F0 control total, to the cent.**
 
 **Outstanding** — the findings from the review that this session did not take, in the order they are worth taking:
-- **React lint rules have never run.** `eslint.config.mjs` says `eslint-config-next` *"joins at A2"*; it did not. The package is in `apps/web` devDependencies and unreferenced, so `react-hooks/rules-of-hooks` and `exhaustive-deps` have never been applied to ~7,000 lines of React — including `useRowState`, whose effect dependencies are hand-reasoned in a comment. Turning it on is cheap; the diff it produces may not be, which is why it is its own session.
-- **`FinanceTab.tsx` is 1,509 lines** holding five surfaces, with 32 copies of `setEditing({ ...editing, draft: { ...editing.draft, x: e.target.value } })`. A `useDraft` hook and one file per surface. Worth doing before A10–A12 add more entry screens on the same scaffolding, not after.
+- ~~**React lint rules have never run.**~~ **Closed the same day** — see the entry above. The diff turned out to be cheap in both directions: the rules produce zero findings on this codebase.
+- ~~**`FinanceTab.tsx` is 1,509 lines**~~ **Closed the same day** — see the entry above. 84 lines now, one file per surface, and `useDraft` in `entry.tsx`.
 - `apps/web` still has no test runner. The parsers were the part worth moving out; what remains testable there is genuinely UI, and needs a decision about whether this repo wants React component tests at all before anything is stood up.
 
 ---
