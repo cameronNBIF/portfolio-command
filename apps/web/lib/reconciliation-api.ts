@@ -10,13 +10,7 @@
  */
 import type { ReconciliationReport } from '@portfolio-command/api';
 
-export class ReconciliationApiError extends Error {}
+import { call } from './http';
 
-export async function fetchReconciliation(check = 'all'): Promise<ReconciliationReport> {
-  const res = await fetch(`/api/v1/reconciliation?${new URLSearchParams({ check })}`, {
-    headers: { 'content-type': 'application/json' },
-  });
-  const body = (await res.json().catch(() => null)) as (ReconciliationReport & { error?: string }) | null;
-  if (!res.ok) throw new ReconciliationApiError(body?.error ?? `Request failed (${res.status}).`);
-  return body as ReconciliationReport;
-}
+export const fetchReconciliation = (check = 'all'): Promise<ReconciliationReport> =>
+  call(`/api/v1/reconciliation?${new URLSearchParams({ check })}`);

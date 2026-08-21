@@ -33,7 +33,6 @@ import { useCallback, useState } from 'react';
 import type { OwnershipRow, SignificantInfluenceReport, SignificantInfluenceRow } from '@portfolio-command/api';
 
 import {
-  PoliciesApiError,
   ageInMonths,
   deleteOwnership,
   fetchOwnershipHistory,
@@ -43,6 +42,7 @@ import {
   todayISO,
 } from '../../lib/policies-api';
 import { money } from '../../lib/finance-api';
+import { apiMessage } from '../../lib/http';
 import { useApp } from '../AppShell';
 import { Field, FormGrid, Notice, ReasonField, RowFlags, useRowState } from '../entry';
 import { Card, ConventionNote, Kpi, KpiRow, Pill } from '../ui';
@@ -275,7 +275,7 @@ function OwnershipEntry({
           (result.restated ? ' This restates a period already issued to the board.' : ''),
       );
     } catch (err) {
-      setFailure(err instanceof PoliciesApiError ? err.message : 'Something went wrong.');
+      setFailure(apiMessage(err, 'Something went wrong.'));
       setBusy(false);
     }
   };
@@ -289,7 +289,7 @@ function OwnershipEntry({
       await deleteOwnership(id, why.trim());
       reload();
     } catch (err) {
-      setFailure(err instanceof PoliciesApiError ? err.message : 'Something went wrong.');
+      setFailure(apiMessage(err, 'Something went wrong.'));
     } finally {
       setBusy(false);
     }

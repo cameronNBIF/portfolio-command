@@ -19,13 +19,13 @@ import { useState } from 'react';
 import type { AlertPolicy, Company } from '@portfolio-command/contract';
 
 import {
-  AlertsApiError,
   clearRiskFlag,
   raiseRiskFlag,
   RISK_FLAG_CATEGORIES,
   setCompanyThresholds,
   type ThresholdInput,
 } from '../../lib/alerts-api';
+import { apiMessage } from '../../lib/http';
 import { Field, FormGrid, Notice } from '../entry';
 import { useApp } from '../AppShell';
 import { DrawerSection, Kv, KvGrid, Pill } from '../ui';
@@ -49,7 +49,7 @@ function useMutation() {
       // copy of the alert rules living in the browser.
       window.location.reload();
     } catch (err) {
-      setError(err instanceof AlertsApiError ? err.message : 'Something went wrong.');
+      setError(apiMessage(err, 'Something went wrong.'));
       setBusy(false);
     }
   };

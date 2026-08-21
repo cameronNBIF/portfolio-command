@@ -28,9 +28,10 @@ import { useCallback, useState } from 'react';
 import type { ExitedView, ExitRow } from '@portfolio-command/api';
 import type { PortfolioExport } from '@portfolio-command/contract';
 
-import { ExitsApiError, fetchExitedView, recordExit, removeExit } from '../../lib/exits-api';
+import { fetchExitedView, recordExit, removeExit } from '../../lib/exits-api';
 import { money } from '../../lib/finance-api';
 import { todayISO } from '../../lib/policies-api';
+import { apiMessage } from '../../lib/http';
 import { useApp } from '../AppShell';
 import { Field, FormGrid, Notice, useRowState } from '../entry';
 import { Card, ConventionNote, Kpi, KpiRow, Pill, ViewHeader } from '../ui';
@@ -237,7 +238,7 @@ function ExitEntry({
             : ''),
       );
     } catch (err) {
-      setFailure(err instanceof ExitsApiError ? err.message : 'Something went wrong.');
+      setFailure(apiMessage(err, 'Something went wrong.'));
       setBusy(false);
     }
   };

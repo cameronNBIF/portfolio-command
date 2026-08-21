@@ -33,7 +33,8 @@ import { useMemo, useState } from 'react';
 import type { PortfolioExport } from '@portfolio-command/contract';
 import { allAlerts, type HealthAlert } from '@portfolio-command/metrics';
 
-import { acknowledgeAlert, AlertsApiError, revokeAcknowledgement } from '../../lib/alerts-api';
+import { acknowledgeAlert, revokeAcknowledgement } from '../../lib/alerts-api';
+import { apiMessage } from '../../lib/http';
 import { Field, FormGrid, Notice } from '../entry';
 import { useApp } from '../AppShell';
 import { Card, ConventionNote, Dot, Pill, ViewHeader } from '../ui';
@@ -62,7 +63,7 @@ export function AlertsTab({ db, asOf }: { db: PortfolioExport; asOf: string }) {
       // divergent copy of the alert rules.
       window.location.reload();
     } catch (err) {
-      setError(err instanceof AlertsApiError ? err.message : 'Something went wrong.');
+      setError(apiMessage(err, 'Something went wrong.'));
       setBusy(false);
     }
   };

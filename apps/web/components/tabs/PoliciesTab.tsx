@@ -33,14 +33,14 @@ import { useState } from 'react';
 
 import type { PortfolioExport } from '@portfolio-command/contract';
 
-import { AlertsApiError, setAlertPolicy } from '../../lib/alerts-api';
+import { setAlertPolicy } from '../../lib/alerts-api';
 import {
-  PoliciesApiError,
   addRetentionOption,
   fetchFinancePolicies,
   setRetentionOptionActive,
   setSignificantInfluenceThreshold,
 } from '../../lib/policies-api';
+import { apiMessage } from '../../lib/http';
 import type { FinancePolicies } from '@portfolio-command/api';
 import { useApp } from '../AppShell';
 import { Field, FormGrid, Notice, useRowState } from '../entry';
@@ -79,7 +79,7 @@ export function PoliciesTab({ db }: { db: PortfolioExport }) {
       // cache and an optimistic local copy would be a second, divergent one.
       window.location.reload();
     } catch (err) {
-      setError(err instanceof AlertsApiError ? err.message : 'Something went wrong.');
+      setError(apiMessage(err, 'Something went wrong.'));
       setBusy(false);
     }
   };
@@ -279,7 +279,7 @@ function FinancePoliciesCard() {
       setEditing(false);
       reload();
     } catch (err) {
-      setNotice(err instanceof PoliciesApiError ? err.message : 'Something went wrong.');
+      setNotice(apiMessage(err, 'Something went wrong.'));
     } finally {
       setBusy(false);
     }

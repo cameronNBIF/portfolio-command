@@ -40,8 +40,6 @@ import { Card, Kpi, KpiRow, Pill, ViewHeader } from '../ui';
 import { Field, FormGrid, Notice, ReasonField, RowFlags, useRowState, type Draft } from '../entry';
 import { money } from '../../lib/finance-api';
 import {
-  DuplicateRoundWarning,
-  RoundsApiError,
   captureRound,
   fetchCompanyCheques,
   fetchCompleteness,
@@ -50,6 +48,7 @@ import {
   linkTransactions,
   pct,
 } from '../../lib/rounds-api';
+import { apiMessage, DuplicateRoundWarning } from '../../lib/http';
 
 /** One co-investor line in the form. Kept as strings, like every other input. */
 interface CoinvestorDraft {
@@ -250,7 +249,7 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
         });
         return;
       }
-      setFormError(e instanceof RoundsApiError ? e.message : 'Save failed.');
+      setFormError(apiMessage(e, 'Save failed.'));
     }
   };
 
@@ -266,7 +265,7 @@ export function DealCloseTab({ db }: { db: PortfolioExport }) {
       reload();
       reloadCoverage();
     } catch (e) {
-      setNotice(e instanceof RoundsApiError ? e.message : `${op} failed`);
+      setNotice(apiMessage(e, `${op} failed`));
     }
   };
 
@@ -909,7 +908,7 @@ function RoundCheques({
             : ''),
       );
     } catch (e) {
-      setError(e instanceof RoundsApiError ? e.message : 'Could not change the round link.');
+      setError(apiMessage(e, 'Could not change the round link.'));
     } finally {
       setBusy(null);
     }

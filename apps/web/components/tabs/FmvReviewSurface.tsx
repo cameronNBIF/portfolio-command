@@ -35,7 +35,6 @@ import type { PortfolioExport } from '@portfolio-command/contract';
 import { Card, Kpi, KpiRow, Pill } from '../ui';
 import { Field, FormGrid, Notice, ReasonField, useRowState } from '../entry';
 import {
-  FinanceApiError,
   TXN_TYPE_LABELS,
   currentValuationCycle,
   fetchMarks,
@@ -45,6 +44,7 @@ import {
   mutate,
   retentionSentence,
 } from '../../lib/finance-api';
+import { apiMessage } from '../../lib/http';
 
 export function FmvReviewSurface({ db }: { db: PortfolioExport }) {
   const [asOf, setAsOf] = useState(() => currentValuationCycle());
@@ -267,7 +267,7 @@ function ReviewWorkspace({
             : '.'),
       );
     } catch (e) {
-      setFormError(e instanceof FinanceApiError ? e.message : 'Could not save the review.');
+      setFormError(apiMessage(e, 'Could not save the review.'));
       setSaving(false);
     }
   };
