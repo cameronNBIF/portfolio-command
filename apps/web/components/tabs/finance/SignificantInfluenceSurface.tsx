@@ -40,12 +40,12 @@ import {
   pct,
   recordOwnership,
   todayISO,
-} from '../../lib/policies-api';
-import { money } from '../../lib/finance-api';
-import { apiMessage } from '../../lib/http';
-import { useApp } from '../AppShell';
-import { Field, FormGrid, Notice, ReasonField, RowFlags, useRowState } from '../entry';
-import { Card, ConventionNote, Kpi, KpiRow, Pill } from '../ui';
+} from '../../../lib/policies-api';
+import { money } from '../../../lib/finance-api';
+import { apiMessage } from '../../../lib/http';
+import { useApp } from '../../AppShell';
+import { Field, FormGrid, Notice, ReasonField, RowFlags, useRowState } from '../../entry';
+import { Card, ConventionNote, Kpi, KpiRow, Pill } from '../../ui';
 
 const CAN_RECORD = ['vc', 'finance', 'admin'];
 
