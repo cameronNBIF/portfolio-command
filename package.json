@@ -32,8 +32,10 @@
     "db:reset": "docker compose down -v && npm run db:up && npm run db:migrate && npm run db:seed && npm run affinity:sync && npm run visible:sync && npm run db:generate"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "^15.5.0",
     "@types/node": "^22.15.0",
     "eslint": "^9.30.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.35.0"

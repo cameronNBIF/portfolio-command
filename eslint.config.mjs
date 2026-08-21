@@ -1,7 +1,42 @@
+import nextPlugin from '@next/eslint-plugin-next';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
-// Minimal, fast (non-type-checked) lint across all workspaces.
-// eslint-config-next joins at A2, when real React code lands in apps/web.
+// Minimal, fast (non-type-checked) lint across all workspaces, plus the React
+// and Next rules over apps/web.
+//
+// THE REACT RULES ARRIVED LATE, and the delay is the reason they are worth a
+// paragraph. This file said "eslint-config-next joins at A2, when real React
+// code lands in apps/web" from A0 until now. A2 landed, and so did fourteen
+// tabs, five drawers and ~7,000 lines of hooks -- and nothing ever came back to
+// wire it up. `eslint-config-next` sat in apps/web's devDependencies,
+// unreferenced, so `react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps`
+// had never run over a single line of it.
+//
+// WHAT IS APPLIED, AND WHY NOT MORE. Two plugins:
+//
+//   react-hooks           The rules that catch a genuine defect rather than a
+//                         style preference. A hook called conditionally, or an
+//                         effect whose dependency list does not match what it
+//                         reads, is a bug that reproduces intermittently and is
+//                         very hard to find by looking.
+//   @next/next            core-web-vitals: the framework mistakes that only
+//                         Next can know about.
+//
+// `eslint-plugin-react` and `eslint-plugin-jsx-a11y` are deliberately NOT here.
+// Both are in eslint-config-next's bundle and both would produce a large diff of
+// mostly stylistic findings across a codebase that is a one-to-one port of a
+// settled prototype (ADR-014) used by nine staff on desktop browsers. Adding
+// them is a decision about house style, and this change is about defects.
+//
+// THE PLUGINS ARE DECLARED AT THE ROOT rather than in apps/web, because this
+// config lives at the root and resolves them from here. They were previously
+// reachable only as hoisted transitive dependencies of `eslint-config-next`,
+// which is an accident of npm's layout rather than a dependency anyone declared.
+// `eslint-config-next` itself is gone: it is still an eslintrc-era bundle, so
+// using it from flat config means `FlatCompat` plus the `@rushstack/eslint-patch`
+// monkey-patch of `require.resolve`, which is a lot of machinery to reach two
+// plugins that both ship flat configs of their own.
 export default tseslint.config(
   {
     ignores: [
@@ -18,4 +53,38 @@ export default tseslint.config(
     ],
   },
   ...tseslint.configs.recommended,
+
+  // React and Next, scoped to the only workspace that has any.
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    plugins: { '@next/next': nextPlugin },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
+      // Pages Router only. This app is App Router, so the rule has no pages
+      // directory to check and prints a warning about its own absence on every
+      // run -- noise that trains people to ignore lint output.
+      '@next/next/no-html-link-for-pages': 'off',
+    },
+  },
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    ...reactHooks.configs['recommended-latest'],
+    rules: {
+      ...reactHooks.configs['recommended-latest'].rules,
+      /**
+       * AN ERROR, NOT THE WARNING IT SHIPS AS, because `npm run lint` does not
+       * fail on warnings and CI runs `npm run lint`. A rule that cannot fail the
+       * build is a rule nobody reads the output of.
+       *
+       * Affordable precisely because the baseline is clean: turning these on
+       * over ~7,000 lines of hooks produced zero findings, so nothing is being
+       * grandfathered in and the first violation will be a new one. If a
+       * legitimate pattern ever trips it, the honest answer is a disable comment
+       * saying why -- and if that happens often enough to annoy, dropping this
+       * back to 'warn' is one line.
+       */
+      'react-hooks/exhaustive-deps': 'error',
+    },
+  },
 );
