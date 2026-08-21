@@ -454,6 +454,7 @@ rests on is not.**
   **The third was added at F5, 21 August 2026 (FR-33, ADR-037 clause 4, Q-23), and it is the one that needed an argument.** The prototype says Committed / Called / Capital call. Funke's point is that a capital call is the *GP's* word — a demand for funds — while the same event from our side is a drawdown against a commitment we already made, and F5 renames the stored value accordingly. Confining the rename to the Finance entry screens would have left the platform naming one event two ways depending on which tab you were on, which is the condition FR-33 exists to end rather than to relocate. Layout, ordering, colour, drawer behaviour and the tab structure are untouched: this is the same one-to-one port with the words corrected.
 
   Everything else holds to the one-to-one rule; any further change is a phase-2 conversation.
+- **The NAV ORDER is not part of the freeze, and was changed on 21 August 2026.** This ADR governs the port: layout, terminology, colour conventions, drawer behaviour, and what each of the eight screens shows. It is not a claim about the order of a nav bar that has since grown from eight items to fourteen. The ported eight keep their relative order — Dashboard, Portfolio, Funds, Pipeline, Modeling, Memo Builder, Reports, Data, each still after the one before it — but they are **no longer contiguous**: Exited is grouped with Portfolio and Funds because it answers a question about the portfolio, the entry tabs and Reconciliation are grouped together because Reconciliation reports on what they wrote, and Data moves last because it renders the ADR-001 export document rather than being somewhere anyone works. **The eight screens themselves are untouched**, which is what the parity criterion is actually about.
 - The board PDF is regenerated properly via Playwright rather than `@media print`, since it is now the sole board-facing artefact (ADR-005). This is the one place output will visibly improve.
 
 ---
@@ -1483,8 +1484,36 @@ mechanism was built right.**
   IS a transcript, read by people, and it should keep saying what was actually
   submitted at the time.
 
-**Amended 19 August 2026 by ADR-038 (Proposed, lands with F6). Additive; nothing
-in the mechanism changes.**
+**Amended at F6, 21 August 2026 — the version store says WHY, and one defect
+was reintroduced by describing a fix instead of copying it.**
+
+- **`financial_row_version.change_kind` lands** (migration 0013), and
+  `v_restatement_log` carries it. That view exists to answer "what moved after
+  the board saw it", and FR-14's point is that two different events land in it:
+  a figure that was wrong, and a figure that was right and incomplete. Without
+  the column that view cannot tell them apart, which is the state Pat objected
+  to.
+- **The kind travels as a session GUC**, `pc.change_kind`, exactly as the reason
+  does — so a change made from psql is classified or explicitly unclassified
+  like any other, and the trigger stays the only thing that writes history.
+- **NULL means unclassified and is never rendered as a default.** The 49 version
+  rows written before 0013 genuinely are, and so is any routine change nobody
+  chose to classify. Showing them as "Correction" would destroy the distinction
+  in the exact direction FR-14 was raised about.
+- **A CAUTION FOR THE NEXT MIGRATION THAT TOUCHES THIS TRIGGER.** 0013 has to
+  restate `capture_financial_version` in full, because Postgres cannot amend one
+  clause of a function body. The first draft retyped it from *this amendment's
+  own A8 text* and dropped four lines — the exempt path's
+  `new.row_updated_at := new.row_created_at`. That path returns before the
+  assignment at the bottom which normally flattens the pair, so every synthetic
+  row came back from `db:generate` looking edited: **95 rows across three tables
+  claimed to have been edited by nobody**, which is the identical defect the A8
+  amendment above records fixing. Caught by measurement, not by review. **Copy
+  the body from the migration that last defined it; do not retype it from a
+  description of what it does.**
+
+**Amended 19 August 2026 by ADR-038 (Accepted at F6, 21 August 2026). Additive;
+nothing in the mechanism changes.**
 
 - **A restatement and a late arrival are not the same event, and the version store
   will say which.** This ADR flags an edit inside a frozen period as a
@@ -1900,7 +1929,7 @@ Clause 3 held exactly as written. `LpCashflow` encodes direction as a **sign** a
 
 ## ADR-038 — The version store distinguishes a correction from information arriving late
 
-**Status:** Proposed (19 August 2026). Raised at F0, lands with F6. Amends ADR-031.
+**Status:** **Accepted 21 August 2026**, landed with F6 (migration 0013). Raised at F0 ahead of the code. Amends ADR-031. Two clauses were amended on landing and both amendments are at the end: clause 3 gained the place its rule is enforced, and **clause 4's duplicate rule was settled by measurement rather than by the date window it looked like it needed**.
 
 **Context.** ADR-031 makes every financial edit a versioned change with a reason, and an edit inside a frozen reporting period is flagged as a **restatement**. Pat's requirement is that a grant which becomes known six months after the round can be added to that round **without it being treated as a data correction error**.
 
@@ -1919,6 +1948,29 @@ Under ADR-031 as built, both look identical in the change log, and one of them r
 **Consequences.**
 - Q-9 — what counts as a duplicate — tightens the rule later without a rebuild. Built as a warning, it cannot be got wrong in a damaging way: too loose and it under-fires, too tight and it is clicked through.
 - The change log becomes readable by someone who was not there. A restatement of a wrong figure and a late-arriving grant stop looking like the same event, which is the whole of FR-14.
+
+
+**Amended on landing, 21 August 2026.** Two clauses, and the second is the one worth reading.
+
+### Clause 4 — the duplicate rule needed no date window, and the measurement is why
+
+This clause says "detect a same-company, same-normalised-label round". Measured against the data before building it, that rule fired **32 times and was wrong all 32**: the closest same-label pair in the portfolio was **256 days apart**, so every one was a genuinely separate raise years later. The obvious repair was a date window — same label *within N days* — and it would have been a number nobody chose.
+
+**29 of the 32 turned out to be a generator artefact.** `plan.ts` has held the round ladder's rung 25% of the time since A6, with the comment *"a bridge holds the rung"*, and then emitted the parent's label unchanged — so one company raised "Seed" in 2017, 2019 and 2022.
+
+Funke's description of the real thing is the fix, and it arrived while F6 was being specified: bridged funding *"shows up as a qualifier, like an adjective — after a Series A, the company needs funding but doesn't want to go for a Series B, so it goes for a bridge which is still under the Series A."* **Real Finance-entered data disambiguates by name.** The generator was corrected to name its bridges and the false pairs went to zero.
+
+**So the rule is normalised label alone, exactly as this clause specifies, with no window.** A window would have compensated for a defect in the demo data, and it would have quietly stopped catching the case FR-08 actually names: two "Series A" rows entered a year apart because somebody forgot the first one. Finance owns this entry path and is accountable for it; the warning catches the slip.
+
+**Normalisation is deliberately not fuzzy** — case-folded, punctuation removed, nothing else — and it lives in `pc.normalise_round_label()` so the index, the write path and the reconciliation view cannot disagree about what "the same label" means. **Q-9 tightens all three by changing one function.**
+
+### Clause 3 — enforced where the answer is already known
+
+The clause says `new-information` is selectable only inside a frozen period. That is a UI rule as written, and a UI rule is one a caller that is not the UI can ignore. It is enforced in `checkRestatement`, which is the one function that already computes whether a change restates — and it reads the kind from the **session GUC** rather than from a new argument, because `setSessionContext` has to put it there anyway for the capture trigger. Threading it separately would have created a second authority on one answer.
+
+### What clause 4 gained that it did not specify: a status of its own
+
+"Refuse the plain save" needs the client to be able to tell this refusal from any other. A 400 saying "that looks like a duplicate" leaves the form with nothing to offer but the same button again. So the write path raises `DuplicateRoundError` and the route maps it to **409 carrying the colliding round**, which is what lets the form name it and ask the one question that clears it. **A warning the interface cannot act on is a hard block wearing a softer message**, which is what this clause refuses.
 
 ---
 
