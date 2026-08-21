@@ -16,12 +16,114 @@
  * the prototype has no data entry at all, every figure in it being a literal in
  * a JavaScript object.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 
 import { Pill } from './ui';
 
 /** A form's working values. Everything is a string because every input is. */
 export type Draft = Record<string, string>;
+
+/**
+ * One editable row's working state: which row, what is in the fields, and why
+ * it is being changed.
+ *
+ * EXTRACTED BECAUSE THE SAME NINE LINES WERE WRITTEN FIVE TIMES, and the
+ * expression that reads one field back into the draft was written thirty-two:
+ *
+ *   onChange={(e) => setEditing({ ...editing, draft: { ...editing.draft, x: e.target.value } })}
+ *
+ * Two spreads, three references to `editing`, and the field name buried at the
+ * end. It is not hard to write, it is hard to READ -- and it is easy to get
+ * subtly wrong in a way that typechecks: spread the draft into the wrong level
+ * and every other field is silently dropped on the next keystroke.
+ *
+ * `DealCloseTab` had already reached the same conclusion privately, with a local
+ * `const set = (k, v) => ...` inside one component. This is that idea, in the
+ * file the entry surfaces already share.
+ *
+ * IT KEEPS THE FORM ERROR TOO, and that is not scope creep. Every place that
+ * opened a form called `setFormError(null)` immediately before it, without
+ * exception, because a stale rejection sitting above a freshly opened form reads
+ * as a rejection of the form you are looking at. Two calls that must always
+ * happen together are better as one that cannot be half-done.
+ *
+ * WHAT IT DOES NOT DO is know about a table, an endpoint or a field name.
+ * `submit` stays in the surface that owns the row, because that is where the
+ * mapping from draft keys to the API's shape belongs and where the wording of a
+ * failure has to match the form the reader is looking at.
+ *
+ * `DealCloseTab` does not use this: its editing state carries a co-investor
+ * LIST alongside the draft, and generalising the hook to hold arbitrary extra
+ * state would make it a worse fit for the five surfaces that do.
+ */
+export interface DraftForm {
+  /** Null when no form is open. `id` is null on a create. */
+  editing: { id: string | null; draft: Draft; reason: string; kind: string } | null;
+  /** The rejection shown above the form. Cleared whenever a form is opened. */
+  error: string | null;
+  setError: (message: string | null) => void;
+  /** Open a blank form. `seed` pre-fills fields the surrounding filter implies. */
+  create: (seed?: Draft) => void;
+  /** Open the form over an existing row. */
+  edit: (id: string, draft: Draft) => void;
+  close: () => void;
+  /** Set one field. */
+  set: (field: string, value: string) => void;
+  /** Set several fields at once, for a save that writes back what the server did. */
+  patch: (fields: Draft) => void;
+  setReason: (value: string) => void;
+  /** ADR-038, FR-14: why it changed, as distinct from what changed. */
+  setKind: (value: string) => void;
+  /**
+   * `value` and `onChange` for one field, ready to spread onto an input, a
+   * select or a textarea.
+   *
+   * `transform` is for the one field that needs it — currency, upper-cased as
+   * it is typed. Passing it here keeps the transform beside the field rather
+   * than inside a hand-written handler that also has to remember the spreads.
+   */
+  field: (name: string, transform?: (raw: string) => string) => {
+    value: string;
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  };
+}
+
+export function useDraft(empty: Draft): DraftForm {
+  const [editing, setEditing] = useState<DraftForm['editing']>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Functional updates throughout: a handler that reads `editing` from the
+  // render closure is correct today only because no surface sets two fields in
+  // one event. That is a property of the callers rather than of this hook, and
+  // it should not be one this hook depends on.
+  const set = (field: string, value: string) =>
+    setEditing((e) => (e ? { ...e, draft: { ...e.draft, [field]: value } } : e));
+
+  return {
+    editing,
+    error,
+    setError,
+    create: (seed?: Draft) => {
+      setError(null);
+      setEditing({ id: null, draft: { ...empty, ...(seed ?? {}) }, reason: '', kind: '' });
+    },
+    edit: (id: string, draft: Draft) => {
+      setError(null);
+      setEditing({ id, draft, reason: '', kind: '' });
+    },
+    close: () => setEditing(null),
+    set,
+    patch: (fields: Draft) =>
+      setEditing((e) => (e ? { ...e, draft: { ...e.draft, ...fields } } : e)),
+    setReason: (value: string) => setEditing((e) => (e ? { ...e, reason: value } : e)),
+    setKind: (value: string) => setEditing((e) => (e ? { ...e, kind: value } : e)),
+    field: (name: string, transform?: (raw: string) => string) => ({
+      value: editing?.draft[name] ?? '',
+      onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+        set(name, transform ? transform(e.target.value) : e.target.value),
+    }),
+  };
+}
 
 export function Field({
   label, children, hint,

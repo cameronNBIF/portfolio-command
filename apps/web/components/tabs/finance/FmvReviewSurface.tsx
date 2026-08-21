@@ -32,8 +32,8 @@ import { useCallback, useMemo, useState } from 'react';
 import type { FmvReview, ReviewQueueRow, ValuationMarkRow } from '@portfolio-command/api';
 import type { PortfolioExport } from '@portfolio-command/contract';
 
-import { Card, Kpi, KpiRow, Pill } from '../ui';
-import { Field, FormGrid, Notice, ReasonField, useRowState } from '../entry';
+import { Card, Kpi, KpiRow, Pill } from '../../ui';
+import { Field, FormGrid, Notice, ReasonField, useRowState } from '../../entry';
 import {
   TXN_TYPE_LABELS,
   currentValuationCycle,
@@ -43,8 +43,8 @@ import {
   money,
   mutate,
   retentionSentence,
-} from '../../lib/finance-api';
-import { apiMessage } from '../../lib/http';
+} from '../../../lib/finance-api';
+import { apiMessage } from '../../../lib/http';
 
 export function FmvReviewSurface({ db }: { db: PortfolioExport }) {
   const [asOf, setAsOf] = useState(() => currentValuationCycle());
