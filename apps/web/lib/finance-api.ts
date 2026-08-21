@@ -24,29 +24,14 @@ import type {
   ValuationMarkRow,
 } from '@portfolio-command/api';
 
+import { call } from './http';
+
 export type FinancialTableName =
   | 'transaction'
   | 'valuation_mark'
   | 'fund_investment_nav'
   | 'fund_distribution'
   | 'fund_commitment';
-
-/** Raised with the server's own message, so the form can show it verbatim. */
-export class FinanceApiError extends Error {}
-
-async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (!res.ok) {
-    // The API's 400s carry a sentence written for the person reading it; a
-    // generic "request failed" would throw that away at the last step.
-    throw new FinanceApiError(body?.error ?? `Request failed (${res.status}).`);
-  }
-  return body as T;
-}
 
 export const fetchTransactions = (params: Record<string, string>): Promise<TransactionPage> =>
   call(`/api/v1/financial?${new URLSearchParams(params)}`);

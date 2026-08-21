@@ -20,51 +20,16 @@
 import {
   applyOwnershipMutation,
   db,
+  isIsoDate,
+  parseOwnershipMutation,
   readOwnershipHistory,
   readSignificantInfluence,
   ValidationError,
-  type OwnershipAdjustmentInput,
-  type OwnershipMutation,
 } from '@portfolio-command/api';
 
-import { withPrincipal } from '../../_lib/handler';
+import { jsonBody, withPrincipal } from '../../_lib/handler';
 
 export const dynamic = 'force-dynamic';
-
-const OPS = ['set', 'delete', 'restore'];
-
-/**
- * Narrows the body to an `OwnershipMutation`.
- *
- * Shallow on purpose, as on every other v1 endpoint: this checks the envelope
- * and leaves every field rule to `applyOwnershipMutation`, which owns them and
- * raises the same error type. Two validators over the same fields is how the
- * two drift apart, and the copy that drifts is the one the user reads.
- */
-function parseMutation(body: unknown): OwnershipMutation {
-  if (typeof body !== 'object' || body === null) throw new ValidationError('Body must be an object.');
-  const b = body as Record<string, unknown>;
-
-  const op = b['op'];
-  if (typeof op !== 'string' || !OPS.includes(op)) {
-    throw new ValidationError(`"op" must be one of ${OPS.join(', ')}.`);
-  }
-  const reason = typeof b['reason'] === 'string' ? b['reason'] : null;
-
-  if (op === 'set') {
-    const values = b['values'];
-    if (typeof values !== 'object' || values === null) {
-      throw new ValidationError('"values" must be an object holding the complete position.');
-    }
-    return { op: 'set', values: values as OwnershipAdjustmentInput, reason };
-  }
-
-  const id = b['id'];
-  if (typeof id !== 'string' || !/^\d+$/.test(id)) {
-    throw new ValidationError(`"id" is required and must be an ownership position id to ${op}.`);
-  }
-  return { op: op as 'delete' | 'restore', id, reason };
-}
 
 export async function GET(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
@@ -77,7 +42,7 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const asOf = q.get('asOf');
-    if (!asOf || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+    if (!isIsoDate(asOf)) {
       /* No default to today, and the message says why rather than silently
          picking one: the schedule reproduces a classification that may already
          have been reported, so the date is the caller's to state (ADR-021). */
@@ -92,7 +57,7 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
-    const mutation = parseMutation(await request.json());
+    const mutation = parseOwnershipMutation(await jsonBody(request));
     const result = await applyOwnershipMutation(db(), principal, mutation);
     return { ok: true, ...result };
   });

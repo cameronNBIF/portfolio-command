@@ -13,18 +13,7 @@
  */
 import type { ExitedView } from '@portfolio-command/api';
 
-/** Raised with the server's own message, so the form can show it verbatim. */
-export class ExitsApiError extends Error {}
-
-async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (!res.ok) throw new ExitsApiError(body?.error ?? `Request failed (${res.status}).`);
-  return body as T;
-}
+import { call } from './http';
 
 export const fetchExitedView = (asOf: string): Promise<ExitedView> =>
   call(`/api/v1/exits?${new URLSearchParams({ asOf })}`);

@@ -35,6 +35,7 @@ import type { DB } from '@portfolio-command/db/generated';
 import { CAN_CAPTURE_ROUND, type Principal, requireRole } from '../auth/principal.js';
 import { recordAudit } from './audit.js';
 import { ValidationError } from './errors.js';
+import { asObject, oneOf, optionalText, requiredObject, rowId } from './parse.js';
 import {
   changeKind,
   checkRestatement,
@@ -105,6 +106,33 @@ function percent(value: unknown, field: string): string {
     throw new ValidationError(`"${field}" is ${value}%, which is more than the whole company.`);
   }
   return value;
+}
+
+// --- the request envelope ---------------------------------------------------
+
+const OPS = ['set', 'delete', 'restore'] as const;
+
+/**
+ * Narrows an unknown request body to an `OwnershipMutation`.
+ *
+ * Shallow on purpose, as on every other v1 shape: this checks the envelope and
+ * leaves every field rule to `applyOwnershipMutation`, which owns them and
+ * raises the same error type. Two validators over the same fields is how the two
+ * drift apart, and the copy that drifts is the one the user reads.
+ */
+export function parseOwnershipMutation(body: unknown): OwnershipMutation {
+  const b = asObject(body);
+
+  const op = oneOf(b['op'], OPS, 'op');
+  const reason = optionalText(b, 'reason');
+
+  if (op === 'set') {
+    // Widened deliberately: the envelope confirms an object, and every field
+    // rule is `applyOwnershipMutation`'s.
+    const values: unknown = requiredObject(b, 'values', 'the complete position');
+    return { op: 'set', values: values as OwnershipAdjustmentInput, reason };
+  }
+  return { op, id: rowId(b['id'], 'ownership position'), reason };
 }
 
 /**

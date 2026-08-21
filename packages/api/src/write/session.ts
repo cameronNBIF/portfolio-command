@@ -18,6 +18,7 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import type { Principal } from '../auth/principal.js';
 import { ValidationError } from './errors.js';
+import { isIsoDate } from './parse.js';
 
 /**
  * MONEY IS A STRING END TO END (ADR-008), IN DOLLARS, NOT `$M`.
@@ -29,7 +30,6 @@ import { ValidationError } from './errors.js';
  * reads the same rows and converts on the way out as it always has.
  */
 const MONEY = /^\d{1,15}(\.\d{1,2})?$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function money(value: unknown, field: string, allowZero = false): string {
   if (typeof value !== 'string' || !MONEY.test(value)) {
@@ -44,7 +44,10 @@ export function money(value: unknown, field: string, allowZero = false): string 
 }
 
 export function date(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !DATE.test(value) || Number.isNaN(Date.parse(value))) {
+  // The format lives in `parse.ts` with the rest of the request primitives, so
+  // the field rule here and the envelope check there cannot disagree about what
+  // a date looks like.
+  if (!isIsoDate(value)) {
     throw new ValidationError(`"${field}" must be a real date as YYYY-MM-DD. Got ${JSON.stringify(value)}.`);
   }
   return value;

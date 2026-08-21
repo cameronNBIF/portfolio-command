@@ -47,7 +47,6 @@ import {
 import {
   DIRECT_TXN_TYPES,
   ROUND_TXN_TYPES,
-  FinanceApiError,
   TXN_TYPE_LABELS,
   fetchCommitments,
   fetchLpNav,
@@ -63,7 +62,8 @@ import { FmvReviewSurface } from './FmvReviewSurface';
 import { SignificantInfluenceSurface } from './SignificantInfluence';
 // ADR-030's vehicle list, served by the A8 reference route. F1 adds the round
 // list the picker offers and the narrow mutation that writes the link.
-import { RoundsApiError, fetchReference, fetchRounds, linkTransactions } from '../../lib/rounds-api';
+import { fetchReference, fetchRounds, linkTransactions } from '../../lib/rounds-api';
+import { apiMessage } from '../../lib/http';
 
 type Surface = 'transactions' | 'marks' | 'review' | 'lp' | 'influence';
 
@@ -142,7 +142,7 @@ function RowActions({
       await mutate({ table, op: 'delete', id, reason });
       onChanged('Deleted');
     } catch (e) {
-      onChanged(e instanceof FinanceApiError ? e.message : 'Delete failed');
+      onChanged(apiMessage(e, 'Delete failed'));
     }
   };
 
@@ -151,7 +151,7 @@ function RowActions({
       await mutate({ table, op: 'restore', id, reason: 'Restored from the Finance tab' });
       onChanged('Restored');
     } catch (e) {
-      onChanged(e instanceof FinanceApiError ? e.message : 'Restore failed');
+      onChanged(apiMessage(e, 'Restore failed'));
     }
   };
 
@@ -311,7 +311,7 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
       );
       reload();
     } catch (e) {
-      setFormError(e instanceof FinanceApiError ? e.message : 'Save failed.');
+      setFormError(apiMessage(e, 'Save failed.'));
     }
   };
 
@@ -695,7 +695,7 @@ function RoundLink({
             : ''),
       );
     } catch (e) {
-      setError(e instanceof RoundsApiError ? e.message : 'Could not change the round link.');
+      setError(apiMessage(e, 'Could not change the round link.'));
     } finally {
       setSaving(false);
     }
@@ -822,7 +822,7 @@ function MarksSurface({ db }: { db: PortfolioExport }) {
       setNotice(result.restated ? 'Saved, and recorded as a restatement.' : 'Saved.');
       reload();
     } catch (e) {
-      setFormError(e instanceof FinanceApiError ? e.message : 'Save failed.');
+      setFormError(apiMessage(e, 'Save failed.'));
     }
   };
 
@@ -1137,7 +1137,7 @@ function CommitmentsSection({
       );
       reload();
     } catch (e) {
-      setFormError(e instanceof FinanceApiError ? e.message : 'Save failed.');
+      setFormError(apiMessage(e, 'Save failed.'));
     }
   };
 
@@ -1361,7 +1361,7 @@ function LpNavSection({
       setNotice(result.restated ? 'Saved, and recorded as a restatement.' : 'Saved.');
       reload();
     } catch (e) {
-      setFormError(e instanceof FinanceApiError ? e.message : 'Save failed.');
+      setFormError(apiMessage(e, 'Save failed.'));
     }
   };
 

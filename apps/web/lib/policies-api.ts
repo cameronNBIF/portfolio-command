@@ -24,18 +24,7 @@ import type {
   SignificantInfluenceReport,
 } from '@portfolio-command/api';
 
-/** Raised with the server's own message, so a form can show it verbatim. */
-export class PoliciesApiError extends Error {}
-
-async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (!res.ok) throw new PoliciesApiError(body?.error ?? `Request failed (${res.status}).`);
-  return body as T;
-}
+import { call } from './http';
 
 export const fetchFinancePolicies = (): Promise<FinancePolicies> => call('/api/v1/policies');
 

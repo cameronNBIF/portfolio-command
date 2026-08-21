@@ -20,48 +20,7 @@ import type {
   RoundPage,
 } from '@portfolio-command/api';
 
-/** Raised with the server's own message, so the form can show it verbatim. */
-export class RoundsApiError extends Error {}
-
-/**
- * F6, FR-08. The save was refused because the round looks like a duplicate, and
- * it will go through as soon as the form says which kind of legitimate second
- * row it is.
- *
- * A SEPARATE CLASS because the form has to be able to tell this from an
- * ordinary rejection. ADR-038 clause 4 is that this is a warning, never a hard
- * block — and a warning the interface cannot act on is a hard block wearing a
- * softer message. Carrying the colliding round is what lets the form name it.
- */
-export class DuplicateRoundWarning extends RoundsApiError {
-  readonly duplicateOf: { investmentRoundId: string; label: string; roundDate: string };
-
-  constructor(
-    message: string,
-    duplicateOf: { investmentRoundId: string; label: string; roundDate: string },
-  ) {
-    super(message);
-    this.duplicateOf = duplicateOf;
-  }
-}
-
-async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  });
-  const body = (await res.json().catch(() => null)) as {
-    error?: string;
-    duplicateOf?: { investmentRoundId: string; label: string; roundDate: string };
-  } | null;
-  if (!res.ok) {
-    if (res.status === 409 && body?.duplicateOf) {
-      throw new DuplicateRoundWarning(body.error ?? 'That looks like a duplicate.', body.duplicateOf);
-    }
-    throw new RoundsApiError(body?.error ?? `Request failed (${res.status}).`);
-  }
-  return body as T;
-}
+import { call } from './http';
 
 export const fetchRounds = (params: Record<string, string>): Promise<RoundPage> =>
   call(`/api/v1/rounds?${new URLSearchParams(params)}`);

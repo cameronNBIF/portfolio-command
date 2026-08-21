@@ -20,57 +20,20 @@
 import {
   applyExitMutation,
   db,
+  isIsoDate,
+  parseExitMutation,
   readExitedView,
   ValidationError,
-  type ExitEventInput,
-  type ExitMutation,
 } from '@portfolio-command/api';
 
-import { withPrincipal } from '../../_lib/handler';
+import { jsonBody, withPrincipal } from '../../_lib/handler';
 
 export const dynamic = 'force-dynamic';
-
-const OPS = ['record', 'remove'];
-
-/**
- * Narrows the body to an `ExitMutation`.
- *
- * Shallow, as on every other v1 endpoint: the envelope here, every field rule
- * in `write/exits.ts` — including the exit-type vocabulary, which is read from
- * the database constraint rather than restated in TypeScript.
- */
-function parseMutation(body: unknown): ExitMutation {
-  if (typeof body !== 'object' || body === null) throw new ValidationError('Body must be an object.');
-  const b = body as Record<string, unknown>;
-
-  const op = b['op'];
-  if (typeof op !== 'string' || !OPS.includes(op)) {
-    throw new ValidationError(`"op" must be one of: ${OPS.join(', ')}.`);
-  }
-
-  if (op === 'remove') {
-    const companyId = b['companyId'];
-    const reason = b['reason'];
-    if (typeof companyId !== 'string' || companyId === '') {
-      throw new ValidationError('"companyId" is required to remove an exit event.');
-    }
-    if (typeof reason !== 'string') {
-      throw new ValidationError('"reason" is required: an exit that disappears unexplained is one nobody can account for.');
-    }
-    return { op: 'remove', companyId, reason };
-  }
-
-  const values = b['values'];
-  if (typeof values !== 'object' || values === null) {
-    throw new ValidationError('"values" must be an object holding the exit event.');
-  }
-  return { op: 'record', values: values as ExitEventInput };
-}
 
 export async function GET(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
     const asOf = new URL(request.url).searchParams.get('asOf');
-    if (!asOf || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+    if (!isIsoDate(asOf)) {
       throw new ValidationError('Give "asOf" as YYYY-MM-DD — the date the view is drawn at.');
     }
     return readExitedView(db(), principal, asOf);
@@ -79,7 +42,7 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
-    const mutation = parseMutation(await request.json());
+    const mutation = parseExitMutation(await jsonBody(request));
     const result = await applyExitMutation(db(), principal, mutation);
     return { ok: true, ...result };
   });

@@ -25,75 +25,13 @@
 import {
   applyFinancePolicyEdit,
   db,
+  parseFinancePolicyEdit,
   readFinancePolicies,
-  ValidationError,
-  type FinancePolicyEdit,
 } from '@portfolio-command/api';
 
-import { withPrincipal } from '../../_lib/handler';
+import { jsonBody, withPrincipal } from '../../_lib/handler';
 
 export const dynamic = 'force-dynamic';
-
-const KINDS = ['accounting-policy', 'retention-option-add', 'retention-option-active'];
-
-/**
- * Narrows the body to a `FinancePolicyEdit`.
- *
- * Shallow, as everywhere else on v1: the envelope here, the field rules in
- * `write/finance-policy.ts`.
- *
- * ONE THING THIS MUST NOT DO IS COALESCE A NULL. `significantInfluencePct: null`
- * is "no threshold in force", which makes the derived flag NULL for every
- * company; `0` would flag every company we hold a figure for. A `?? 0` here
- * would turn the first into the second, silently, on the one screen where the
- * difference is the requirement.
- */
-function parseEdit(body: unknown): FinancePolicyEdit {
-  if (typeof body !== 'object' || body === null) throw new ValidationError('Body must be an object.');
-  const b = body as Record<string, unknown>;
-
-  const kind = b['kind'];
-  if (typeof kind !== 'string' || !KINDS.includes(kind)) {
-    throw new ValidationError(`"kind" must be one of: ${KINDS.join(', ')}.`);
-  }
-
-  if (kind === 'accounting-policy') {
-    const pct = b['significantInfluencePct'];
-    if (pct !== null && typeof pct !== 'number') {
-      throw new ValidationError(
-        '"significantInfluencePct" must be a number — 10 means 10% — or null for no threshold in force.',
-      );
-    }
-    return {
-      kind,
-      significantInfluencePct: pct,
-      note: typeof b['note'] === 'string' ? b['note'] : null,
-    };
-  }
-
-  const factor = b['factor'];
-  if (typeof factor !== 'string' || factor === '') {
-    throw new ValidationError('"factor" is required — the retained share as a decimal, such as "0.60".');
-  }
-
-  if (kind === 'retention-option-add') {
-    const label = b['label'];
-    if (typeof label !== 'string') throw new ValidationError('"label" is required.');
-    const sortOrder = b['sortOrder'];
-    return {
-      kind,
-      factor,
-      label,
-      sortOrder: typeof sortOrder === 'number' ? sortOrder : null,
-    };
-  }
-
-  const isActive = b['isActive'];
-  if (typeof isActive !== 'boolean') {
-    throw new ValidationError('"isActive" must be true to offer this option or false to retire it.');
-  }
-  return { kind: 'retention-option-active', factor, isActive };
-}
 
 export async function GET(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => readFinancePolicies(db(), principal));
@@ -101,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
-    const edit = parseEdit(await request.json());
+    const edit = parseFinancePolicyEdit(await jsonBody(request));
     const result = await applyFinancePolicyEdit(db(), principal, edit);
     return { ok: true, ...result };
   });

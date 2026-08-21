@@ -17,23 +17,14 @@
  * ONE THING THIS FILE MUST NOT DO IS COALESCE A NULL. The three threshold
  * states — absent, `null`, `0` — mean leave alone, inherit the fund policy, and
  * disable. A `?? 0` or a `|| null` anywhere on this path would collapse two of
- * them and take away either the inheritance or the opt-out.
+ * them and take away either the inheritance or the opt-out. The rule is
+ * asserted in `packages/api/test/request-parsing.test.ts`, over the parser this
+ * file posts to.
  */
+import { call } from './http';
 
-/** Raised with the server's own message, so a form can show it verbatim. */
-export class AlertsApiError extends Error {}
-
-async function post(body: unknown): Promise<void> {
-  const res = await fetch('/api/v1/judgement', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const parsed = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (!res.ok) {
-    throw new AlertsApiError(parsed?.error ?? `Request failed (${res.status}).`);
-  }
-}
+const post = (body: unknown): Promise<void> =>
+  call('/api/v1/judgement', { method: 'POST', body: JSON.stringify(body) });
 
 export interface ThresholdInput {
   minRunwayMo?: number | null;
