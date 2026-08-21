@@ -200,7 +200,7 @@ That is enough blast radius to warrant a **read-only discovery step before any c
 
 ## Open questions
 
-**Resolved so far:** Q-1 (retention semantics), Q-15, Q-16, Q-17, Q-18. Everything below is live, grouped as a meeting agenda rather than a ranked list — the grouping matters because the questions in each block are only answerable together, and asking them out of order tends to produce answers that contradict each other.
+**Resolved so far:** Q-1 (retention semantics), Q-15, Q-16, Q-17, Q-18, **Q-23**. Everything below is live, grouped as a meeting agenda rather than a ranked list — the grouping matters because the questions in each block are only answerable together, and asking them out of order tends to produce answers that contradict each other.
 
 Each block says **what it blocks**, so if the meeting runs short you can see what is being paid for by stopping.
 
@@ -283,7 +283,7 @@ Worth being precise about the intent here. The platform records events after the
 **Q-22 · Should every active company get a mark each review cycle?** *(new)*
 Now that "retain 100%" is a positive entry rather than an absence, the review can be a **checklist that gets cleared** — every active company reviewed, most of them held. Is that how the exercise actually runs, or do you only touch the companies where something changed? This decides whether the review workspace shows a progress figure and chases the gaps, or just accepts entries.
 
-**Q-23 · Exact LP terminology.** *(new — answerable by email before the meeting)*
+**Q-23 · Exact LP terminology.** ~~*(new — answerable by email before the meeting)*~~ **ANSWERED 21 August 2026 — see the table below. F5 is unblocked and has landed.**
 Funke proposed **commitment / commitment drawdown / distribution**. We want to rename the stored value, not just the label, and doing that now costs almost nothing while doing it after the history load is expensive. Are those the exact words? Specifically: "commitment drawdown", or just "drawdown"?
 
 ---
@@ -297,6 +297,19 @@ Funke proposed **commitment / commitment drawdown / distribution**. We want to r
 | **Q-16** | The Concrete Ventures figures? | Transcription error. Disregard. The three-stage model is correct. |
 | **Q-17** | Affinity write-back? | Push **after** A13 — refined 20 Aug 2026, see below; the field becomes **read-only** in Affinity; the platform stops reading it. |
 | **Q-18** | Keep NAV? | **Yes**, approved by Daniel — it informs LP TVPI, RVPI and IRR. |
+| **Q-23** | Exact LP terminology? | **Committed Capital · Capital Drawdown · Capital Distribution.** Confirmed with Funke. Not the words the register recorded — see below. |
+
+**Q-23, answered 21 August 2026, and worth reading rather than ticking.** The register minuted Funke's proposal as *commitment / commitment drawdown / distribution*. The confirmed terminology differs on **all three**:
+
+| Register | Confirmed |
+|---|---|
+| commitment | **Committed Capital** |
+| commitment drawdown | **Capital Drawdown** |
+| distribution | **Capital Distribution** |
+
+The third is the one with a consequence beyond the label. Finding **S-6** records that `fund_distribution` — the fund's own realizations to its shareholder — collides with LP `distribution`, money coming back to *us* from a GP: two opposite directions of travel under one word. `capital_distribution` separates them, and that separation came out of the email rather than out of the design.
+
+**This is why the question was asked ahead of the phase rather than during it.** Three for three, against a minute that was faithful to what was said in the room. The stored values are `capital_drawdown` and `capital_distribution` (`fee` unchanged), renamed across 95 rows in an afternoon; after A13 the same change is a data migration over fifteen years of history. F5 landed 21 August 2026 — migration 0012, ADR-037 accepted.
 
 **Q-17, refined 20 August 2026.** The original answer read *"push at A13"*, and F0 built the roadmap and ADR-039 around that as a phase name. It is not one.
 
