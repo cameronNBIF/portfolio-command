@@ -28,6 +28,67 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-21 · Maintenance · The request boundary: parsers move into the API package, get their first tests, and six HTTP clients become one
+
+**No phase ref — this is a refactor session, not roadmap work.** Nothing changes shape, no field rule moves and no board figure moves. Three commits on `request-boundary`. **API suite 194 → 240; db, metrics and functions unchanged at 42 / 252 / 64.**
+
+The session started as a review of the whole tree for readability, modularity, testability and consistency. Most of it came back clean: zero `any` outside one justified `@ts-expect-error` in the golden-master harness, the metrics and contract packages well-factored, the auth model properly separated. Four things did not, and two of them share a theme — the seam between the browser and the API layer — which is what this session took. The other two are recorded under **Outstanding** rather than fixed.
+
+### The parsers were in the wrong package, and it cost them their tests
+
+`parseMutation` (three of them), `parseEdit` (two), `parseLink` and `parseThresholds` were written in `apps/web/app/api/v1/*/route.ts`. **`apps/web` has no test runner**, and root `npm test` walks four workspaces with `--if-present`, so it skipped silently. The layer that turns untrusted JSON into a financial write was asserted nowhere, in a repository that otherwise runs 550 tests — and the rules it carries are the subtle ones, every one documented in a careful comment and guarded by nothing:
+
+- the three threshold states (absent leaves alone, `null` inherits the fund policy, `0` disables);
+- null-versus-absent on `investmentRoundId`, where null is the explicit *standalone* choice;
+- "this must not coalesce a null" on `significantInfluencePct`, where `0` would flag every company we hold a figure for.
+
+**Narrowing an unknown body to a typed mutation is not HTTP work.** It takes `unknown`, returns a domain type and raises `ValidationError`. It is the input half of the contract `applyFinancialMutation` enforces the field half of, and the two were a package apart — which is the exact drift every one of those parsers has a comment warning about. Each parser now sits beside its `apply*` function, with shared primitives in `packages/api/src/write/parse.ts` on the `session.ts` pattern: cross-cutting pieces there, anything endpoint-specific with the endpoint, because those are the sentences the person filling in the form reads.
+
+CLAUDE.md's *"packages/api knows nothing about HTTP"* is strengthened rather than bent — nothing that moved touches a Request, a header or a status code. `judgement/route.ts` goes from 170 lines to 38.
+
+**A second `ValidationError` class is gone.** `judgement/route.ts` had declared its own, which worked only because `handler.ts` matches by `name` rather than by instance.
+
+### The one behaviour change: malformed JSON returned 500 on three endpoints
+
+`exits`, `ownership` and `policies` called `request.json()` bare, so a broken payload raised a `SyntaxError`, fell past `statusFor` and came back as an internal error. `financial`, `judgement` and `rounds` had the `.catch(() => null)` and returned a client error, correctly. Same broken request, two answers, depending on where it arrived.
+
+One `jsonBody()` in `handler.ts` now feeds every POST, and every parser already rejects `null` with *"Body must be an object."* **Confirmed against the running app: all six return 400.** Raised with Cameron before doing it, since it is technically a behaviour change — the call was that an inconsistency of this kind is a defect rather than a decision.
+
+### Forty-six tests over the seven parsers, and they bite
+
+Not the happy path: that a well-formed body produces the mutation it looks like is already covered by the database-backed suites, which send bodies through and read rows back. What is covered is the set of rules **whose failure is silent, produces a plausible-looking write, and would be found by someone reading a board figure rather than by a test**. Plus one assertion about the wiring rather than the rules — that every rejection carries `name === 'ValidationError'`, because if that drifts, every rejection on every endpoint silently becomes a 500 and nothing else would notice.
+
+Verified by mutation rather than trusted: changing `if (v === null) return null` to `return undefined` in `parseThresholds` fails the suite. The file needs no database, so it runs in the fast CI job beside the golden masters.
+
+### Six copies of one HTTP client in the browser
+
+`finance-api`, `rounds-api`, `policies-api`, `exits-api`, `alerts-api` and `reconciliation-api` each declared their own `call<T>` with identical bodies and their own `Error` subclass differing only in name. Nineteen call sites then ran the same expression — `err instanceof SomeApiError ? err.message : '<fallback>'` — distinguished only by which of the six classes it named.
+
+**The change that made this worth doing now is already scheduled.** `AUTH_MODE=entra` is built and works server-side, and not one of the six attached an `Authorization` header. The day MSAL sign-in lands, the bearer token is one edit to `call` rather than six edits and a hunt for the one that was missed. `lib/http.ts` says so at the top, where whoever does it will be looking.
+
+`apiMessage(err, fallback)` replaces the nineteen expressions, and **the guard is the point rather than the brevity**: an unexpected failure carries text never written for a user and can name internals, so the fallback has to win, and having it once means it cannot be forgotten on the twentieth. Every existing fallback sentence is preserved verbatim; the parameter stays required, because "Something went wrong" is worse than whatever the surface can say about what it was trying to do.
+
+`DuplicateRoundWarning` survives as the one genuine specialisation and is why `ApiError` carries a status and a payload at all (ADR-038 clause 4). Recognising the 409 in the shared client means a second surface that captures a round gets the behaviour without re-deriving it — and it cannot fire spuriously, because `DuplicateRoundError` is raised in `write/rounds.ts` and nowhere else.
+
+**Changed**
+- Three smaller consequences, named rather than left to be found. An array body is now rejected as *"Body must be an object."* rather than falling through to a confusing field message — `typeof [] === 'object'` was letting it past. The rounds endpoint's bad-`op` message names `link-transactions` in a sentence rather than as a fifth entry in the list, because it takes a different payload behind a different gate and a flat list invited a caller to send it with `values`. And `session.ts`'s `date()` reads its format from `parse.ts`, so the one ISO-date regex has one definition.
+- `values` is typed `unknown` at every parse site, deliberately: the envelope has confirmed an object and nothing more, and naming the input type there would be this layer claiming a check it has not made.
+
+**Decided**
+- **Parsers live beside their writer, not in one `parse.ts`.** Cameron's call. The alternative — all six in one file — reads well as "what does the API accept", but it splits the envelope rule from the field rule it has to stay in step with, and the codebase's existing instinct is the opposite: `session.ts` holds cross-cutting primitives and says explicitly that nothing about a particular table belongs in it.
+- **No ADR raised.** Nothing here decides anything with lasting consequence that is not already decided — ADR-001, ADR-005, ADR-018 and ADR-031 all hold unchanged, and where the code now sits is an application of CLAUDE.md's existing separation rather than a new rule.
+
+**Verified**
+- Lint, typecheck and `next build` clean. Full suite green.
+- Against the running app on the dev database, not only by types: all six POST endpoints return 400 on malformed JSON; every envelope rejection keeps its own sentence; Finance, Reconciliation and Policies render from Postgres. **Invested still reads $47,216,678, the frozen F0 control total, to the cent.**
+
+**Outstanding** — the findings from the review that this session did not take, in the order they are worth taking:
+- **React lint rules have never run.** `eslint.config.mjs` says `eslint-config-next` *"joins at A2"*; it did not. The package is in `apps/web` devDependencies and unreferenced, so `react-hooks/rules-of-hooks` and `exhaustive-deps` have never been applied to ~7,000 lines of React — including `useRowState`, whose effect dependencies are hand-reasoned in a comment. Turning it on is cheap; the diff it produces may not be, which is why it is its own session.
+- **`FinanceTab.tsx` is 1,509 lines** holding five surfaces, with 32 copies of `setEditing({ ...editing, draft: { ...editing.draft, x: e.target.value } })`. A `useDraft` hook and one file per surface. Worth doing before A10–A12 add more entry screens on the same scaffolding, not after.
+- `apps/web` still has no test runner. The parsers were the part worth moving out; what remains testable there is genuinely UI, and needs a decision about whether this repo wants React component tests at all before anything is stood up.
+
+---
+
 ## 2026-08-21 · F6 · The reconciliation surface, and two checks specified against assumptions that were wrong
 
 **Closes S-10, FR-08, FR-09 and FR-14. Lands ADR-038, amending ADR-031. Raises FR-37.** One migration, one view of eight checks, a fourteenth tab, fifteen new tests. **Track F is complete.**
