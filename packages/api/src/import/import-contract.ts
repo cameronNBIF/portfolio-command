@@ -619,17 +619,16 @@ export async function importContract(
   for (const f of doc.fundInvestments) {
     await client.query(
       `insert into fund_investment (fund_investment_id, name, manager_name, strategy, vintage_year,
-                                    committed, co_invest_rights, women_senior_gp, co_invests_done,
+                                    co_invest_rights, women_senior_gp, co_invests_done,
                                     referrals, capital_to_direct, next_call_est, agm_date,
                                     ir_contact, rationale, created_by)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [
         f.id,
         f.name,
         f.manager,
         f.strategy,
         f.vintage,
-        toDollars(f.committed),
         f.coInvestRights,
         f.womenSeniorGP,
         f.coInvestsDone,
@@ -644,6 +643,40 @@ export async function importContract(
     );
     bump('fund_investment');
 
+    /* F5, ADR-037. `committed` left the position table and became a dated
+       event, so the importer writes one. The contract carries a scalar and no
+       date, exactly as `fund_investment.committed` did — so the date is
+       inferred the same way migration 0012's backfill inferred it: the earliest
+       drawdown in the document, which is the earliest date the commitment can
+       be evidenced, falling back to 1 January of the vintage year.
+
+       SAID IN `change_reason` RATHER THAN LEFT TO BE WORKED OUT. This is the
+       one field on the row that can explain that the date is the importer's
+       reading of a contract with no date in it, and A13 will want to know which
+       commitment dates were read off a document and which were derived. */
+    const firstDraw = f.cashflows
+      .filter((cf) => cf.amount < 0)
+      .map((cf) => cf.date)
+      .sort()[0];
+    const commitmentDate = firstDraw ?? `${f.vintage}-01-01`;
+    await client.query(
+      `insert into fund_commitment (fund_investment_id, as_of_date, committed, change_reason,
+                                    is_synthetic, entered_by)
+       values ($1,$2,$3,$4,true,$5)`,
+      [
+        f.id,
+        commitmentDate,
+        toDollars(f.committed),
+        firstDraw
+          ? 'ADR-001 fixture import: commitment carried from the contract, dated at the ' +
+            'position’s first drawdown — the earliest date it is evidenced.'
+          : 'ADR-001 fixture import: commitment carried from the contract. No drawdown exists, ' +
+            'so the date is INFERRED as 1 January of the vintage year.',
+        SYSTEM_USER_ID,
+      ],
+    );
+    bump('fund_commitment');
+
     await client.query(
       `insert into fund_investment_nav (fund_investment_id, as_of_date, nav, is_synthetic, entered_by)
        values ($1,$2,$3,true,$4)`,
@@ -653,8 +686,8 @@ export async function importContract(
     let called = 0;
     let distributed = 0;
     for (const cf of f.cashflows) {
-      const isCall = cf.amount < 0;
-      if (isCall) called += -cf.amount;
+      const isDrawdown = cf.amount < 0;
+      if (isDrawdown) called += -cf.amount;
       else distributed += cf.amount;
       await client.query(
         `insert into transaction (txn_date, txn_type, fund_investment_id, amount, is_synthetic,
@@ -662,7 +695,7 @@ export async function importContract(
          values ($1,$2,$3,$4,true,$5,$6)`,
         [
           cf.date,
-          isCall ? 'capital_call' : 'distribution',
+          isDrawdown ? 'capital_drawdown' : 'capital_distribution',
           f.id,
           toDollars(Math.abs(cf.amount)),
           SYSTEM_USER_ID,
@@ -677,7 +710,7 @@ export async function importContract(
         kind: 'derived-mismatch',
         subject: f.id,
         field: 'called',
-        detail: `Document asserts $${f.called}M; capital calls sum to $${called}M. The cashflows are used.`,
+        detail: `Document asserts $${f.called}M; capital drawdowns sum to $${called}M. The cashflows are used.`,
       });
     }
     if (!near(distributed, f.distributions)) {

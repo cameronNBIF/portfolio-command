@@ -38,6 +38,8 @@ On import, fields that the new model derives are treated as **advisory**. If an 
 - Reads become joins rather than column lookups. At roughly 70 companies this is irrelevant; the views in `schema.sql` are the read path.
 - Every derived value needs a definition owned by the metrics package, not by whichever view happens to compute it.
 - The transaction registry becomes load-bearing. Its absence today is the single largest gap in the programme (ADR-011).
+- **The first of the "should be derived, MVP stores it separately" fields actually went at F5, 21 August 2026.** `fund_investment.committed` was not on the list above — a commitment is not a sum of anything, so ADR-002 had no quarrel with it as a column. What retired it is ADR-037: a commitment is *adjustable*, so it is a dated event, and once the events exist the scalar is a derivation of them. `fund_committed_asof()` reads it and the column is dropped. `fundInvestment.called` and `.distributions` remain listed and remain correct: both are still sums, and both are still computed rather than stored.
+- **The four fields sanctioned to stay stored are unchanged** — `reservesDeployed`, `runwayMo`, `fteAtEntry` and `company.instrument` (ADR-027). Measurement showed each is an independent fact with no derivation, and F5 does not disturb that finding.
 
 ---
 
@@ -447,7 +449,11 @@ rests on is not.**
 - No user retraining, and Daniel can review the rebuild against a running copy of his own tool.
 - "Looks identical" is a testable acceptance criterion for phase 1, which keeps redesign discussions out of the migration.
 - The prototype's `esc()` discipline is replaced by React's default escaping. Any `dangerouslySetInnerHTML` requires justification.
-- **Two content exceptions, both forced by data rather than taste, both now settled.** The revenue label changes to quarterly revenue to match what Visible supplies (D-2), and the diversity tile distinguishes "not reported" from zero and shows coverage (D-5). Everything else holds to the one-to-one rule; any further change is a phase-2 conversation.
+- **Three content exceptions, each forced by data or by NBIF's own vocabulary rather than by taste, all now settled.** The revenue label changes to quarterly revenue to match what Visible supplies (D-2); the diversity tile distinguishes "not reported" from zero and shows coverage (D-5); and **the three LP stages are named Committed Capital, Capital Drawdown and Capital Distribution** wherever they appear, including on the ported Funds tab, the Reports tab and the LP drawer.
+
+  **The third was added at F5, 21 August 2026 (FR-33, ADR-037 clause 4, Q-23), and it is the one that needed an argument.** The prototype says Committed / Called / Capital call. Funke's point is that a capital call is the *GP's* word — a demand for funds — while the same event from our side is a drawdown against a commitment we already made, and F5 renames the stored value accordingly. Confining the rename to the Finance entry screens would have left the platform naming one event two ways depending on which tab you were on, which is the condition FR-33 exists to end rather than to relocate. Layout, ordering, colour, drawer behaviour and the tab structure are untouched: this is the same one-to-one port with the words corrected.
+
+  Everything else holds to the one-to-one rule; any further change is a phase-2 conversation.
 - The board PDF is regenerated properly via Playwright rather than `@media print`, since it is now the sole board-facing artefact (ADR-005). This is the one place output will visibly improve.
 
 ---
@@ -1445,6 +1451,38 @@ is reversed.
   `v_lp_capital_to_direct`, `v_mandate_completeness`, `company_current_asof` and
   the ADR-001 export adapter's round query now all honour it.
 
+**Amended at F5, 21 August 2026 — an eighth table, and the case that shows the
+mechanism was built right.**
+
+- **`fund_commitment` joins the versioned set** (migration 0012). It meets the
+  same test: a commitment is the denominator of unfunded capital on a
+  board-facing screen. Attaching it cost **one `CREATE TRIGGER` and no new
+  code**, which is what 0002 said a seventh table would cost and is the first
+  time that claim has been tested against a table 0002 had never heard of. The
+  five-column effective-date coalesce already covered `as_of_date`, so even the
+  restatement test needed nothing.
+- **The migration writes its backfill BEFORE attaching the trigger**, which is
+  the order 0002 used for its own backfills and the only order available: a
+  migration has no actor to name. `pc.actor_id` is set per request by the API's
+  write path, by the person doing the writing, and setting it to the system user
+  here would have made the version store say somebody entered sixteen
+  commitments that night. Nobody did — the figures had been in the database
+  since A6, in a column.
+- **A rename of a stored value is not an edit of a financial fact.** The LP
+  terminology change (ADR-037 clause 4) updates `txn_type` on 95 rows with
+  `zz_version_transaction` scoped off, on the 0006 and 0008 precedent. The event
+  is the same event, on the same date, for the same dollars, against the same
+  position, in the same direction; what changed is how the platform spells it.
+- **But the version store's images are rewritten with it, and that half is not
+  optional.** `transaction_asof(t)` reconstructs rows through
+  `jsonb_populate_record`, so an image still spelling `capital_call` would
+  reconstruct a row whose type is no longer in the vocabulary — and a reproduced
+  board pack would drop every LP cashflow from any query filtering on the new
+  name, silently. The images are a machine-read reconstruction source, not a
+  transcript. `audit_log` is deliberately left alone for the opposite reason: it
+  IS a transcript, read by people, and it should keep saying what was actually
+  submitted at the time.
+
 **Amended 19 August 2026 by ADR-038 (Proposed, lands with F6). Additive; nothing
 in the mechanism changes.**
 
@@ -1808,7 +1846,7 @@ Separately, Pat asked for a configurable significant-influence threshold with au
 
 ## ADR-037 — LP commitments are dated events; `committed` becomes derived
 
-**Status:** Proposed (19 August 2026). Raised at F0, lands with F5.
+**Status:** **Accepted 21 August 2026**, landed with F5 (migration 0012). Raised at F0 ahead of the code. Two clauses were amended on landing and both amendments are at the end: clause 4 gained the exact words Q-23 came back with, which are **not** the ones proposed here, and clause 5's flag needed a place to live.
 
 **Context.** The LP model has three stages — commitment, drawdown, distribution — and two of them work. A drawdown is a `transaction` typed `capital_call`; a distribution is a `transaction` typed `distribution`. **The commitment is a scalar on the position**: `fund_investment.committed`, not dated, no source document, no way to record an increase as a fact.
 
@@ -1828,8 +1866,35 @@ Q-16 confirmed the three-stage model and disposed of the figures that had muddie
 
 **Consequences.**
 - Unfunded becomes `committed_asof − called to date`, derived at every point in time rather than only now. A commitment raised mid-life leaves the prior level readable at its own date.
-- **This phase is gated on one email, not on the meeting.** Q-23 asks Funke for the exact words — "commitment drawdown", or just "drawdown". Do not guess: the whole value of renaming now is that it happens once.
+- ~~**This phase is gated on one email, not on the meeting.** Q-23 asks Funke for the exact words — "commitment drawdown", or just "drawdown". Do not guess: the whole value of renaming now is that it happens once.~~ **Answered 21 August 2026, and the answer was neither option.** See the amendment below.
 - NAV entry is unchanged and stays (Q-18, approved by Daniel). It informs LP TVPI, RVPI and IRR, and removing it would remove three metrics from a live screen rather than remove a field.
+
+
+**Amended on landing, 21 August 2026.** Two clauses, and the first is the reason the phase was gated on an email.
+
+### Clause 4 — the words are Funke's, and they are not the ones this ADR proposed
+
+FR-33 recorded Funke's suggestion as **commitment / commitment drawdown / distribution**, and Q-23 went back to confirm it. The confirmed terminology is **Committed Capital, Capital Drawdown and Capital Distribution**. Three differences, each of which would have been wrong to guess:
+
+- "Committed Capital", not "commitment" — a noun phrase that stands on its own in a column heading.
+- "Capital Drawdown", not "commitment drawdown".
+- "**Capital** Distribution", not bare "distribution" — which carries a bonus this ADR did not anticipate. Finding **S-6** records that `fund_distribution`, the fund's own realizations to its shareholder, collides with LP `distribution`, money coming back to *us* from a GP. Two opposite directions of travel under one word, separated now at the point where somebody reads a query.
+
+The stored values are `capital_drawdown` and `capital_distribution`. `fee` is unchanged: a management fee is a fee.
+
+**This is the whole argument for sending the email before the phase rather than during it.** Every one of the three differs from what the register recorded, and the register was a faithful minute of what was said in the room.
+
+### Clause 5 — a flag needs somewhere to be, or it is only a message
+
+The clause said a drawdown beyond the commitment in force is accepted and flagged. It did not say where the flag lives, and "the write path returns a warning" is not sufficient on its own: the warning reaches whoever happened to be typing, once, and nothing afterwards can find the position again.
+
+So it is in two places. `v_lp_position_current.overdrawn` is the queryable state — **three-valued**, because NULL means no commitment is on record and that is not the same as "no, this is fine" (the discipline ADR-035 clause 4 set for significant influence). And `FinancialWriteResult.overdrawn` is the sentence the person who typed it sees, naming the position, both figures and the gap, because "overdrawn" alone sends them back to the ledger to work out by how much. F6's reconciliation surface reads the column rather than re-deriving the rule.
+
+### What did not need amending
+
+Clause 2's "run for one cycle with both in place and compared" had no cycle to run: nothing is deployed and the cashflows are synthetic. **The comparison discharges it instead, and discharges it harder than a cycle would** — migration 0012 raises and aborts if the backfilled ledger does not sum to the cent to what the column held, inside its own transaction, across every position rather than a sample, with the column still in place if it fails. The workbook's $8,725,000 is checked separately and as a *warning*, because a database built from the ADR-001 fixture holds the prototype's LP positions rather than NBIF's and is entitled to a different total.
+
+Clause 3 held exactly as written. `LpCashflow` encodes direction as a **sign** and never names the event, so the rename stopped at one comparison in the export adapter. 252 golden masters and the 22 round-trip assertions passed unchanged.
 
 ---
 

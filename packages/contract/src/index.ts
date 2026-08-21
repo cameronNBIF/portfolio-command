@@ -405,7 +405,14 @@ export interface PipelineDeal {
   termSheet?: TermSheet | null;
 }
 
-/** Negative is a capital call, positive a distribution. */
+/**
+ * Negative is a capital drawdown, positive a capital distribution (FR-33).
+ *
+ * SIGN, NOT TYPE, and that is what kept F5's rename off the contract entirely.
+ * The prototype encoded direction in the sign and never named the event, so
+ * renaming the stored `txn_type` moved nothing here -- ADR-001 stays frozen
+ * and the export adapter absorbs the whole change in one comparison.
+ */
 export interface LpCashflow {
   date: string;
   amount: number;

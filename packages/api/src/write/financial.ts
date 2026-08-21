@@ -55,7 +55,14 @@ export type FinancialTable =
   | 'transaction'
   | 'valuation_mark'
   | 'fund_investment_nav'
-  | 'fund_distribution';
+  | 'fund_distribution'
+  // F5, ADR-037. The commitment stage of the LP three-stage model. It belongs
+  // in this module rather than in one of its own -- the contrast is
+  // `ownership.ts`, which is separate BECAUSE it sits behind a different gate.
+  // A commitment is Finance's fact under CAN_WRITE_FINANCIAL like the other
+  // four, so putting it here is what buys it edit, delete, restore and the
+  // History panel without a line of new code for any of them.
+  | 'fund_commitment';
 
 /**
  * Per-table facts the generic operations need: the key to address a row by, the
@@ -67,12 +74,21 @@ const TABLES = {
   transaction: { key: 'transaction_id', date: 'txn_date', label: 'transaction' },
   valuation_mark: { key: 'valuation_mark_id', date: 'effective_date', label: 'valuation mark' },
   fund_investment_nav: { key: 'fund_investment_nav_id', date: 'as_of_date', label: 'LP NAV statement' },
-  fund_distribution: { key: 'fund_distribution_id', date: 'distribution_date', label: 'LP distribution' },
+  fund_distribution: { key: 'fund_distribution_id', date: 'distribution_date', label: 'fund distribution' },
+  fund_commitment: { key: 'fund_commitment_id', date: 'as_of_date', label: 'capital commitment' },
 } as const satisfies Record<FinancialTable, { key: string; date: string; label: string }>;
 
+/**
+ * FR-33, ADR-037 clause 4, Q-23. The LP three are NBIF's words, and they are
+ * the STORED values rather than labels over older ones -- confirmed with Funke
+ * before the rename, because the whole value of doing it now is doing it once.
+ *
+ * From the GP's side a drawdown is a capital call. From ours it is a draw
+ * against a commitment we already made, and the platform speaks from our side.
+ */
 const TXN_TYPES = [
   'investment', 'follow_on', 'realization', 'write_off',
-  'capital_call', 'distribution', 'fee',
+  'capital_drawdown', 'capital_distribution', 'fee',
 ] as const;
 const DIRECT_TYPES = ['investment', 'follow_on', 'realization', 'write_off'] as const;
 
@@ -161,6 +177,33 @@ export interface LpNavInput {
   sourceDocument?: string | null;
 }
 
+/**
+ * F5, ADR-037. A commitment level, as at a date.
+ *
+ * THE LEVEL, NOT THE CHANGE. A raise from $500,000 to $750,000 is submitted as
+ * `750000.00`. This is the same shape ADR-034 chose for the valuation ledger
+ * and for the same reason -- an absolute can be read, a delta has to be
+ * replayed -- and it is the one thing about this form worth saying out loud on
+ * the screen, because "adjustment" invites the other reading.
+ */
+export interface FundCommitmentInput {
+  fundInvestmentId: string;
+  /** The date this level took effect. Not the date it is being keyed in. */
+  asOfDate: string;
+  /** DOLLARS. Zero is legitimate: a commitment can be released to nil. */
+  committed: string;
+  /**
+   * ADR-035 clause 1, borrowed. REQUIRED on this path and null only on
+   * migration 0012's backfill, which had no cause to name beyond itself.
+   *
+   * A second close, a side letter, an amended LPA. This figure is the
+   * denominator of unfunded capital on a board-facing screen, and a number that
+   * cannot say where it came from is one nobody can defend six months later.
+   */
+  changeReason: string;
+  sourceDocument?: string | null;
+}
+
 export interface FundDistributionInput {
   fundId: number;
   distributionDate: string;
@@ -185,6 +228,8 @@ export type FinancialMutation = { reason?: string | null } & (
   | { table: 'fund_investment_nav'; op: 'update'; id: string; values: LpNavInput }
   | { table: 'fund_distribution'; op: 'create'; values: FundDistributionInput }
   | { table: 'fund_distribution'; op: 'update'; id: string; values: FundDistributionInput }
+  | { table: 'fund_commitment'; op: 'create'; values: FundCommitmentInput }
+  | { table: 'fund_commitment'; op: 'update'; id: string; values: FundCommitmentInput }
   | { table: FinancialTable; op: 'delete'; id: string }
   | { table: FinancialTable; op: 'restore'; id: string }
 );
@@ -206,6 +251,26 @@ export interface FinancialWriteResult {
     basisMarkId: string | null;
     retentionFactor: string;
   };
+  /**
+   * ADR-037 clause 5. Set when the write leaves an LP position drawn beyond the
+   * commitment in force.
+   *
+   * A WARNING ON A SUCCESSFUL WRITE, never a refusal, and the distinction is
+   * the whole clause. It is a real state of real data -- a recallable
+   * distribution redrawn, a late amendment, a GP notice keyed before the side
+   * letter arrives -- and the same principle the codebase already applies to a
+   * round total below our own cheque: pushing somebody into fudging a figure to
+   * get past a form is worse than the figure being wrong and visible.
+   *
+   * Absent means either not overdrawn or not an LP row. It never means refused.
+   */
+  overdrawn?: {
+    fundInvestmentId: string;
+    /** DOLLARS, or null when no commitment is on record for this position. */
+    committed: string | null;
+    /** DOLLARS drawn to date, after this write. */
+    drawn: string;
+  };
 }
 
 // --- validation -------------------------------------------------------------
@@ -218,8 +283,8 @@ export interface FinancialWriteResult {
  * The five `transaction` check constraints, restated in TypeScript.
  *
  * Postgres enforces these regardless; catching them here is about the message.
- * "txn_direct_types" tells a developer what happened. "A capital call belongs to
- * a fund position, not a company" tells Finance what to fix.
+ * "txn_direct_types" tells a developer what happened. "A capital drawdown
+ * belongs to a fund position, not a company" tells Finance what to fix.
  */
 function validateTransaction(v: TransactionInput): void {
   if (!(TXN_TYPES as readonly string[]).includes(v.txnType)) {
@@ -321,8 +386,123 @@ export async function applyFinancialMutation(
         return writeLpNav(trx, principal, mutation, reason);
       case 'fund_distribution':
         return writeFundDistribution(trx, principal, mutation, reason);
+      case 'fund_commitment':
+        return writeFundCommitment(trx, principal, mutation, reason);
     }
   });
+}
+
+/**
+ * ADR-037 clause 5. Is this position drawn beyond the commitment in force?
+ *
+ * Asked AFTER the write and inside the same transaction, so it reports the
+ * state the caller has just created rather than the one they were about to.
+ * `current_date` on both halves, matching `v_lp_position_current` exactly --
+ * a warning that disagreed with the screen it sends somebody to would be
+ * worse than no warning.
+ *
+ * No commitment on record is reported rather than swallowed: drawing against a
+ * position nobody has recorded a commitment for is a gap worth seeing, and it
+ * is precisely the state the backfill guaranteed does not exist today.
+ */
+async function checkOverdraw(
+  trx: Kysely<DB>,
+  fundInvestmentId: string,
+): Promise<FinancialWriteResult['overdrawn']> {
+  const { rows } = await sql<{ committed: string | null; drawn: string }>`
+    select pc.fund_committed_asof(${fundInvestmentId}, current_date)::text as committed,
+           coalesce((select sum(t.amount_cad) from pc.v_transaction_live t
+                      where t.fund_investment_id = ${fundInvestmentId}
+                        and t.txn_type = 'capital_drawdown'), 0)::text     as drawn
+  `.execute(trx);
+
+  const row = rows[0];
+  if (!row) return undefined;
+  if (row.committed !== null && Number(row.drawn) <= Number(row.committed)) return undefined;
+  return { fundInvestmentId, committed: row.committed, drawn: row.drawn };
+}
+
+/**
+ * A commitment level, as at a date (F5, ADR-037 clause 1).
+ *
+ * UPSERTED ON (position, date), which the schema makes unique. Two entries at
+ * one date are one restated fact, not two commitments -- the same reading F3
+ * took of an ownership position, and `deleted_at` is cleared for the same
+ * reason recorded there: the index does not exclude soft-deleted rows, so
+ * without it an entry at a deleted row's date would write into a row invisible
+ * to every read.
+ *
+ * `op: 'update'` addresses a row by id and can therefore MOVE its date, which
+ * is why both dates go to `checkRestatement` -- correcting a commitment from 31
+ * March to 30 April touches two periods, and only one of them is submitted.
+ */
+async function writeFundCommitment(
+  trx: Kysely<DB>,
+  principal: Principal,
+  m: Extract<FinancialMutation, { table: 'fund_commitment'; op: 'create' | 'update' }>,
+  reason: string | null,
+): Promise<FinancialWriteResult> {
+  const v = m.values;
+  const fundInvestmentId = text(v.fundInvestmentId, 'fundInvestmentId');
+  const asOfDate = date(v.asOfDate, 'asOfDate');
+  // Zero allowed: a commitment released to nil is a decision somebody took, and
+  // it is not the same fact as no row at all.
+  const committed = money(v.committed, 'committed', true);
+
+  const changeReason = v.changeReason?.trim() ?? '';
+  if (changeReason.length < 3) {
+    throw new ValidationError(
+      'A commitment must say what set it — the subscription, a second close, a side letter, an ' +
+        'amended LPA. This figure is the denominator of unfunded capital on a board-facing screen, ' +
+        'and a number with no explanation is one nobody can defend later.',
+    );
+  }
+
+  const { rows: position } = await sql<{ id: string }>`
+    select fund_investment_id as id from pc.fund_investment
+     where fund_investment_id = ${fundInvestmentId}
+  `.execute(trx);
+  if (position.length === 0) throw new ValidationError(`No fund position ${fundInvestmentId}.`);
+
+  const dates: (string | null)[] = [asOfDate];
+  if (m.op === 'update') dates.push(await existingDate(trx, 'fund_commitment', m.id));
+  const restated = await checkRestatement(trx, dates, reason, 'capital commitment');
+
+  let id: string;
+  if (m.op === 'create') {
+    const { rows } = await sql<{ id: string }>`
+      insert into pc.fund_commitment
+        (fund_investment_id, as_of_date, committed, change_reason, source_document, entered_by)
+      values (${fundInvestmentId}, ${asOfDate}::date, ${committed}::numeric,
+              ${changeReason}, ${optional(v.sourceDocument)}, ${principal.userId}::uuid)
+      on conflict (fund_investment_id, as_of_date) do update
+         set committed       = excluded.committed,
+             change_reason   = excluded.change_reason,
+             source_document = excluded.source_document,
+             entered_by      = excluded.entered_by,
+             deleted_at      = null,
+             deleted_by      = null,
+             deleted_reason  = null
+      returning fund_commitment_id::text as id
+    `.execute(trx);
+    id = rows[0]!.id;
+  } else {
+    const { rows } = await sql<{ id: string }>`
+      update pc.fund_commitment
+         set fund_investment_id = ${fundInvestmentId},
+             as_of_date         = ${asOfDate}::date,
+             committed          = ${committed}::numeric,
+             change_reason      = ${changeReason},
+             source_document    = ${optional(v.sourceDocument)}
+       where fund_commitment_id = ${m.id}::bigint
+      returning fund_commitment_id::text as id
+    `.execute(trx);
+    if (rows.length === 0) throw new ValidationError(`No capital commitment with id ${m.id}.`);
+    id = rows[0]!.id;
+  }
+
+  const overdrawn = await checkOverdraw(trx, fundInvestmentId);
+  return { id, restated, ...(overdrawn ? { overdrawn } : {}) };
 }
 
 /**
@@ -400,6 +580,7 @@ async function writeTransaction(
     note: optional(v.note),
   };
 
+  let id: string;
   if (m.op === 'create') {
     const row = await trx
       .insertInto('transaction')
@@ -408,17 +589,27 @@ async function writeTransaction(
       .values({ ...cols, entered_by: principal.userId } as never)
       .returning('transaction_id')
       .executeTakeFirstOrThrow();
-    return { id: String(row.transaction_id), restated };
+    id = String(row.transaction_id);
+  } else {
+    const row = await trx
+      .updateTable('transaction')
+      .set(cols as never)
+      .where('transaction_id', '=', BigInt(m.id) as never)
+      .returning('transaction_id')
+      .executeTakeFirst();
+    if (!row) throw new ValidationError(`No transaction with id ${m.id}.`);
+    id = String(row.transaction_id);
   }
 
-  const row = await trx
-    .updateTable('transaction')
-    .set(cols as never)
-    .where('transaction_id', '=', BigInt(m.id) as never)
-    .returning('transaction_id')
-    .executeTakeFirst();
-  if (!row) throw new ValidationError(`No transaction with id ${m.id}.`);
-  return { id: String(row.transaction_id), restated };
+  /* ADR-037 clause 5. Checked on every LP row rather than only on a drawdown,
+     because an edit that retypes a fee AS a drawdown is exactly the write that
+     can tip a position over and it does not arrive typed as one. Reported, not
+     refused: the clause is explicit that this is a real state of real data. */
+  if (v.fundInvestmentId) {
+    const overdrawn = await checkOverdraw(trx, v.fundInvestmentId);
+    if (overdrawn) return { id, restated, overdrawn };
+  }
+  return { id, restated };
 }
 
 /**
@@ -732,7 +923,7 @@ async function writeFundDistribution(
 
   const dates: (string | null)[] = [distributionDate];
   if (m.op === 'update') dates.push(await existingDate(trx, 'fund_distribution', m.id));
-  const restated = await checkRestatement(trx, dates, reason, 'LP distribution');
+  const restated = await checkRestatement(trx, dates, reason, 'fund distribution');
 
   const cols = {
     fund_id: v.fundId,
@@ -758,6 +949,6 @@ async function writeFundDistribution(
     .where('fund_distribution_id', '=', BigInt(m.id) as never)
     .returning('fund_distribution_id')
     .executeTakeFirst();
-  if (!row) throw new ValidationError(`No LP distribution with id ${m.id}.`);
+  if (!row) throw new ValidationError(`No fund distribution with id ${m.id}.`);
   return { id: String(row.fund_distribution_id), restated };
 }

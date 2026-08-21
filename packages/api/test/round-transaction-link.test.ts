@@ -366,7 +366,7 @@ describe.skipIf(!hasDb)('ADR-033 · the cheque-to-round link and explicit partic
       op: 'create',
       values: {
         txnDate: '2024-05-01',
-        txnType: 'capital_call',
+        txnType: 'capital_drawdown',
         fundInvestmentId: lp[0]!.id,
         amount: '250000.00',
       },

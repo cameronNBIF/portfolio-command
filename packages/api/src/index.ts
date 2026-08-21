@@ -83,6 +83,9 @@ export {
   readTransactions,
   readValuationMarks,
   readLpNav,
+  // F5, ADR-037, closing S-7. The commitment ledger: the third stage of the LP
+  // model, and the one that was a scalar on the position until this phase.
+  readFundCommitments,
   readRowHistory,
   readRestatements,
   type TransactionRow,
@@ -90,6 +93,7 @@ export {
   type TransactionPage,
   type ValuationMarkRow,
   type LpNavRow,
+  type FundCommitmentRow,
   type ChangeLogEntry,
 } from './read/finance.js';
 
@@ -110,6 +114,7 @@ export {
   type MarkAdjustmentType,
   type LpNavInput,
   type FundDistributionInput,
+  type FundCommitmentInput,
 } from './write/financial.js';
 
 // ADR-012, A8. The deal-close capture: one mutation, three tables, written by

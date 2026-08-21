@@ -346,6 +346,10 @@ The commitment being described as **adjustable** is the operative word, and it s
 **Disposition:** Build. Store the commitment level *as at* a date rather than as a delta — same reasoning as the FMV ledger — and derive `fund_investment.committed` from it, which pays down an outstanding ADR-002 debt. Reconcile the backfill against the workbook's $8,725,000 control total before dropping the column.
 **Size:** M · **Schema:** Yes
 
+**DONE — F5, 21 August 2026, migration 0012.** `fund_commitment` is dated and holds the level in force, not the change; `fund_committed_asof()` reads it; `fund_investment.committed` is dropped. The backfill dates each commitment at the position's **first drawdown** — the earliest date it is evidenced — because `fund_investment` has never carried an inception or subscription date, and the two positions with nothing drawn yet (Island Capital Partners, Nadarra Ventures) fall back to 1 January of the vintage year and **say so in `change_reason`**, so the rows built on an inference are greppable rather than indistinguishable from the fourteen built on evidence. Reconciled to $8,725,000 to the cent, inside the migration's own transaction, with the column still in place if it had not. The ADR-001 contract did not move.
+
+**One thing beyond what this requirement asked for:** a commitment carries a required `change_reason` — the subscription, a second close, a side letter, an amended LPA. FR-32 did not ask for it; F3 established the rule for ownership adjustments (ADR-035 clause 1) and a commitment is the same shape of fact, feeding a board-facing unfunded figure.
+
 ### FR-33 · NBIF-specific terminology, not "capital call" for everything
 **Said by:** Funke Yusuf. Topic 18. *"From the LP fund manager's perspective a capital call is a demand for funds, while from NBIF's perspective the same event is a drawdown against a prior commitment."* Proposed: commitment / commitment drawdown / distribution.
 **Current state:** The enum value is `capital_call`; the UI label is "Capital call".
@@ -353,11 +357,19 @@ The commitment being described as **adjustable** is the operative word, and it s
 **Disposition:** Rename properly, now. Confirm the exact wording with Pat and Funke first — next step 10 asks for this explicitly.
 **Size:** M · **Schema:** Yes
 
+**DONE — F5, 21 August 2026, migration 0012.** Confirmed with Funke (Q-23) **before** the phase started, and the confirmed words are **Committed Capital, Capital Drawdown, Capital Distribution** — not the "commitment / commitment drawdown / distribution" recorded above. All three differ from the minute, which is the whole argument for asking rather than guessing.
+
+Renamed the **stored** value: `capital_call` → `capital_drawdown`, `distribution` → `capital_distribution`, `fee` unchanged. Two CHECK constraints, `v_lp_position_current`, `TXN_TYPES`, `TXN_TYPE_LABELS`, the export adapter's sign mapping, the fixture importer, the A6 generator, the version store's row images and every test naming the string. **95 rows, an afternoon.** After A13 it would have been fifteen years of history.
+
+**The labels changed everywhere they appear, not only on the Finance screens** — the ported Funds tab, Reports tab and LP drawer too. That needed a **third sanctioned ADR-014 content exception**, taken deliberately: confining the rename to the entry screens would have left the platform naming one event two ways depending on which tab you were on, which is the condition this requirement exists to end rather than to relocate.
+
 ### FR-34 · Running balances per LP position
 **Said by:** Pat McMullon. *"Track the running balance of committed, drawn, and returned capital for each LP fund investment."*
 **Current state:** **Already built.** The Funds tab shows committed, called, unfunded, NAV, distributions, TVPI, DPI, IRR and capital-to-direct per position.
 **Gap:** Terminology (FR-33) and the commitment-as-event change (FR-32) will flow through it. The figures themselves exist.
 **Size:** S · **Schema:** No
+
+**DONE — F5, 21 August 2026,** and it was exactly the flow-through this predicted: no new figure, the same three balances, read from a derivation instead of a column and labelled Committed Capital / Drawn / Unfunded. **$8.7M committed, $4.2M drawn, $4.5M unfunded across 16 positions, unchanged to the cent.** The one addition is `v_lp_position_current.overdrawn`, three-valued, for the case where drawdowns exceed the commitment in force (ADR-037 clause 5).
 
 ### FR-35 · Decide whether to keep NAV tracking
 **Said by:** The group, uncertain of its accounting utility. Key highlight 14, next step 11 — **to be confirmed with Daniel on 18 August 2026.**

@@ -28,6 +28,75 @@ Phase refs come from `docs/delivery-roadmap.md` — A0, A1, A2 and so on, suffix
 
 ---
 
+## 2026-08-21 · F5 · The LP three-stage model, and the email that changed all three words
+
+**Closes S-7, FR-32, FR-33 and FR-34, and the name half of S-6. Lands ADR-037, amending ADR-002, ADR-014 and ADR-031.** One migration, one new versioned table, a new entry surface, eighteen new tests.
+
+**NO NUMBER MOVED, and this time the migration enforces that rather than asserting it.** Section 4 of 0012 raises and aborts if the backfilled commitment ledger does not sum to the cent to what `fund_investment.committed` held, inside its own transaction, across every position — so the column cannot be dropped by a migration that got the backfill wrong. 252 golden masters, 22 round-trip assertions, the Funds tab's **$8.7M committed / $4.2M drawn / $4.5M unfunded** and the workbook's **$8,725,000** all unchanged. API suite 161 → 179, db suite 41 → 42.
+
+### The email was the phase
+
+ADR-037's consequences said F5 was gated on one email and not on the meeting. It was, and **all three words came back different from what the register recorded**:
+
+| Register (FR-33, minuted from the room) | Confirmed with Funke (Q-23) |
+|---|---|
+| commitment | **Committed Capital** |
+| commitment drawdown | **Capital Drawdown** |
+| distribution | **Capital Distribution** |
+
+The third carries a consequence beyond the label. **S-6 records that `fund_distribution` — the fund's own realizations to its shareholder — collides with LP `distribution`, money coming back to *us* from a GP.** Two opposite directions of travel under one word. `capital_distribution` separates them, and that came out of the email rather than out of the design.
+
+Three for three, against a minute that was faithful to what was said in the room. That is the argument for asking ahead of a phase rather than during it, and it is worth keeping for the next time a rename looks obvious.
+
+### Built
+
+**Migration 0012 · the terminology, as a stored value.** `capital_call` → `capital_drawdown`, `distribution` → `capital_distribution`, `fee` unchanged. Two CHECK constraints dropped and rebuilt, 95 rows updated with `zz_version_transaction` scoped off on the 0006 and 0008 precedent — the event is the same event, on the same date, for the same dollars, against the same position, in the same direction, and 95 cashflows should not claim on screen to have been edited by somebody.
+
+**The version store's row images are rewritten with it, and that half is not optional.** `transaction_asof(t)` reconstructs through `jsonb_populate_record`; an image still spelling `capital_call` would reconstruct a row whose type is no longer in the vocabulary, and a reproduced board pack would drop every LP cashflow from any query filtering on the new name — silently, which is the ADR-031 guarantee failing in the one mode it cannot afford. Zero such rows exist today; written for the database that has them, because after A13 one will. **`audit_log` is deliberately left alone**: it is a transcript read by people and should keep saying what was actually submitted.
+
+**`fund_commitment` — the commitment AS AT a date, an absolute rather than a delta.** Same reasoning F2 wrote down for the valuation ledger: an absolute is one indexed lookup, a delta chain has to be replayed from inception on every read and one corrected early row silently shifts everything after it. A raise from $500,000 to $750,000 is a row reading **$750,000**. `fund_committed_asof()` returns the level in force, **NULL when none** — "nothing committed yet" is not "committed nil", and the export coalesces at its own boundary where the contract requires a number.
+
+**The eighth versioned table, at a cost of one `CREATE TRIGGER` and no new code.** That is what migration 0002 said a seventh would cost, and this is the first time the claim has been tested against a table 0002 had never heard of. The five-column effective-date coalesce already covered `as_of_date`, so even restatement detection needed nothing. `fund_commitment_asof(t)` comes from the same template verbatim.
+
+**The backfill dates each commitment at the position's first drawdown** — the earliest date it can be *evidenced*, because `fund_investment` has never carried an inception, subscription or document date. The two positions with nothing drawn yet fall back to 1 January of the vintage year and **say so in `change_reason`**, so the rows built on an inference are greppable rather than indistinguishable from the fourteen built on evidence. Written before the trigger is attached, on 0002's own precedent: a migration has no actor to name, and naming the system user would make the version store say somebody entered sixteen commitments that night. Nobody did.
+
+**Then the column goes.** `fund_investment.committed` is dropped — **the first of ADR-002's "should be derived, MVP stores it separately" fields to actually go.** It was never on ADR-002's list, because a commitment is not a sum of anything; what retired it is ADR-037's word *adjustable*. Dropped rather than deprecated because forward-only becomes binding the moment something reaches Azure and nothing has, and a column left behind "temporarily" is a column two readers disagree over at A13.
+
+**A required `change_reason`, which FR-32 did not ask for.** The subscription, a second close, a side letter, an amended LPA. F3 established the rule for ownership adjustments (ADR-035 clause 1) and a commitment is the same shape of fact — a figure feeding a board-facing unfunded number that cannot say where it came from.
+
+**The commitment surface, on the Finance tab's LP Activity screen**, above the NAV statements because a drawdown is a draw against a commitment already made and the ledger should read in the order the money moves. One position filter over both halves. The screen says on its face that each row is the level in force from its date and **not the change**, because every other reading of "adjustment" produces a ledger somebody has to add up. A **Current** pill marks the row `fund_committed_asof` would return today — a superseded level and a future-dated one look identical in a date column, and only one of the three is the figure on the Funds tab.
+
+### Changed
+
+**The rename reached the ported tabs, and that needed a third sanctioned ADR-014 content exception.** The Funds tab, the Reports tab and the LP drawer say Committed Capital / Drawn / Capital Drawdown / Capital Distribution. Confining the rename to the Finance screens would have left the platform naming one event two ways depending on which tab you were on — which is the condition FR-33 exists to end rather than to relocate. Layout, ordering, colour, drawer behaviour and the tab structure are untouched. **The Committed/Called pair in the Reports fund KPI row is NOT this** and was left alone: that is the fund's own closed-end capital, a different concept with a legitimate claim to the same two words.
+
+**`v_lp_position_current` gained `overdrawn`, and its `called` column kept its name.** ADR-037 clause 5 said a drawdown beyond the commitment is accepted and flagged; it did not say where the flag lives, and a warning returned to whoever happened to be typing is not a state anything can find again. The column is the queryable half, and F6's reconciliation surface reads it rather than re-deriving the rule. **Three-valued**: NULL means no commitment is on record, which is not "no, this is fine" — the discipline ADR-035 clause 4 set for significant influence. The result column stayed `called` deliberately: the export adapter and Finance's ad-hoc queries read it by that name, and what FR-33 needed renamed was the stored `txn_type`.
+
+**A repair carried in passing**: the view's NAV lateral now excludes soft-deleted rows. The 0001 view predates ADR-031 by a migration, so a NAV statement deleted on purpose through the Finance screen would still have been the one it reported. Every other read already excluded them, including the one the export actually uses; this view had been left behind. Zero deleted NAV rows exist, so no figure moved.
+
+### Found by running the generator, and this time it was ours
+
+`npm run db:generate` failed on `fund_commitment_fund_investment_id_as_of_date_idx`. **The backfill first marked its rows `is_synthetic = false`**, on the reasoning that the commitment *figures* are real — they come from NBIF LP Funds.xlsx and are the control totals A6 reconciles to. They are. But **the row is not the figure**: on a generated database the column the backfill read was itself written by `db:generate`, so a non-synthetic row survives the generator's clear step and collides with the one it writes next.
+
+**Regenerability has now broken between phases three times — F1, F4 and F5 — always the same way: something new does not say whether the generator owns it.** The flag is **inherited** now rather than asserted, in one clause with three correct answers: the database says whether it holds generated data at all, the position says whether anything about *its* history is real. Generated database with no real LP row on the position → synthetic, and `db:generate` clears it. A13 production load → `contains_synthetic` is false and so is this. Fixture database → synthetic, and the purge takes it with the position.
+
+**Migration 0012 was corrected in place rather than followed by an 0013.** Forward-only protects deployed state and nothing is deployed — the same call A1 made when it amended 0001. Both local databases were reverted with a scratchpad script and re-migrated. **That option expires the moment anything reaches Azure.**
+
+### Verified
+
+- **The full loop through the running app**, not only the tests: entered a commitment for Propel of $400,000 dated 2026-01-01, against $488,819 already drawn. The row **saved**, the notice read *"Propel is now drawn beyond its commitment — $488,819 against $400,000, over by $88,819. Recorded as entered."*, the ledger showed both levels with **Current** on the new one, and the Funds tab moved from $8.7M to $8.6M — a derived commitment reaching a board-facing figure. Removed afterwards; the dataset is back at $8,725,000.
+- `npm run db:generate` end to end after the fix: 16 positions, commitments reconciling to the workbook, **zero overdrawn**, 95 drawdowns.
+- The migration's own assertion is written to fire, not to decorate: the ledger-versus-column comparison raises, and the workbook comparison is a *warning* because a database built from the ADR-001 fixture holds the prototype's LP positions rather than NBIF's and is entitled to a different total.
+
+### Outstanding
+
+- **F6 is the only phase left in Track F.** It has an eighth check available to it now that `overdrawn` is a column rather than a rule.
+- **`v_lp_position_current.committed` reads `current_date`** and is convenience-only, like `v_company_current`. The API never reads a commitment from it — the export calls `fund_committed_asof()` with the explicit as-at date (ADR-021). Anyone pointing Power BI at the view gets a figure the platform itself does not use, which the view's comment now says.
+- **The commitment dates are inferences, and A13 will want to correct them.** Sixteen positions carry a date derived from a first drawdown or a vintage year; every one says so in `change_reason`. Real subscription agreements have real dates on them.
+- Carried: `npm audit` transitive dev-tooling findings; `ref_funnel_stage` to be seeded from Affinity field metadata; `fund_distribution` still empty with no UI, its ADR-002 exception still deferred to A13.
+
+---
+
 ## 2026-08-20 · F4 · Exits, the roster that decides them, and a number that was wrong on the dashboard
 
 **Closes S-4, FR-28, FR-29 and FR-30. Lands ADR-036, amending ADR-009.** A read-only probe, migration 0011, two API modules, an eleventh tab, ten new tests. The one phase that began with a question rather than a schema change.

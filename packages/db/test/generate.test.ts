@@ -289,7 +289,7 @@ describe('planLpPositions', () => {
     { name: 'Accelerators', committed: 175_000, called: 175_000, remaining: 0 },
   ];
 
-  test('capital calls sum to the real called figure, exactly', () => {
+  test('capital drawdowns sum to the real drawn figure, exactly', () => {
     for (const p of planLpPositions(funds)) {
       const called = p.calls.reduce((a, c) => a + c.amountCents, 0);
       expect(called).toBe(p.calledCents);
@@ -337,7 +337,22 @@ describe('planLpPositions', () => {
     expect(planLpPositions(funds).every((p) => p.womenSeniorGp === null)).toBe(true);
   });
 
-  test('NAV never precedes the first capital call', () => {
+  /**
+   * F5 made this load-bearing rather than incidental. `run.ts` dates each
+   * position's commitment at `calls[0].date`, on the reading that a commitment
+   * is evidenced no later than its first drawdown — which is only the FIRST
+   * drawdown if this holds. Unordered calls would date a commitment after money
+   * had already been drawn against it, and `fund_committed_asof` would return
+   * null for the earlier drawdowns.
+   */
+  test('drawdowns are planned in date order, which the commitment date depends on', () => {
+    for (const p of planLpPositions(funds)) {
+      const dates = p.calls.map((c) => c.date);
+      expect(dates).toEqual([...dates].sort());
+    }
+  });
+
+  test('NAV never precedes the first capital drawdown', () => {
     for (const p of planLpPositions(funds)) {
       if (!p.navs.length) continue;
       const firstCall = p.calls.map((c) => c.date).sort()[0]!;

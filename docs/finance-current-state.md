@@ -205,9 +205,11 @@ These are findings from reading the current build, not requests from the meeting
 
 **S-5 · Transactions carry no instrument.** `instrument_id` is on the *round*, and `company.instrument_id` is a separate independent fact. A cheque itself has no debt/equity classification, so a company holding both equity and a loan cannot be split at transaction level.
 
-**S-6 · `fund_distribution` has a write path and no UI**, is empty, and is a stated exception to ADR-002 whose resolution is deferred to A13. Its name collides with LP distributions, which are `transaction` rows.
+**S-6 · `fund_distribution` has a write path and no UI**, is empty, and is a stated exception to ADR-002 whose resolution is deferred to A13. ~~Its name collides with LP distributions, which are `transaction` rows.~~ **The name collision closed 21 August 2026 by F5**, as a side effect rather than as its object: FR-33's confirmed terminology makes the LP row a `capital_distribution`, so the two opposite directions of travel no longer share a word. The rest of S-6 stands — the table is still empty, still has no UI, and its ADR-002 exception is still deferred to A13.
 
-**S-7 · LP `committed` is a scalar, not an event.** There is no commitment date, no commitment document, and no way to record an increase to a commitment as a dated fact.
+**S-7 · LP `committed` is a scalar, not an event.** ~~*As built.*~~ **Closed 21 August 2026 by F5** — `fund_commitment` holds the commitment **as at** a date, `fund_committed_asof()` reads the level in force, and `fund_investment.committed` was dropped in the same migration after the backfilled ledger reconciled to the column to the cent and to the workbook's $8,725,000. The original finding is kept below. There is no commitment date, no commitment document, and no way to record an increase to a commitment as a dated fact.
+
+The second half of it was answered more fully than it was posed: the date and the document are columns now, and so is the *reason* — a commitment that cannot say what set it is a number nobody can defend, which is the rule F3 established for ownership (ADR-035 clause 1) applied to the same shape of fact.
 
 **S-8 · `company_gov_funding` is disconnected from leverage.** Grants are captured per company with no round attribution and enter no calculation.
 

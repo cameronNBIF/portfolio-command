@@ -263,7 +263,7 @@ F5  LP three-stage ─────┘
                         └──► F6  Reconciliation surface  (must be last)
 ```
 
-**F0 first** because it commits the context the rest is built against and takes one snapshot that becomes impossible to take later. **F6 last** because it reports on the states F1 to F5 create; building it earlier gives a screen with nothing to say. **F1 before F2** because the FMV review surface wants the round and transaction context F1 makes coherent. **F3, F4 and F5 are mutually independent** and can be reordered freely — put whichever is most useful to demonstrate to Finance first.
+**F0 first** because it commits the context the rest is built against and takes one snapshot that becomes impossible to take later. **F6 last** because it reports on the states F1 to F5 create; building it earlier gives a screen with nothing to say. **F1 before F2** because the FMV review surface wants the round and transaction context F1 makes coherent. **F3, F4 and F5 are mutually independent** and can be reordered freely — put whichever is most useful to demonstrate to Finance first. *All three have landed; F6 is the only phase left in Track F.*
 
 #### F0 · Groundwork
 
@@ -407,6 +407,14 @@ Then: `company_state.roster_status`, on the dated state table rather than on `co
 
 **Size: M**
 
+**Done, 21 August 2026** — see the F5 entry in `BUILD-LOG.md`. **The email was worth sending: all three words came back different.** Funke confirmed **Committed Capital · Capital Drawdown · Capital Distribution**, against the register's *commitment / commitment drawdown / distribution*. `capital_distribution` closes S-6's name collision with `fund_distribution` as a side effect nobody designed for.
+
+Migration 0012 renamed the stored values across 95 rows, created `fund_commitment`, backfilled one row per position, **reconciled to $8,725,000 to the cent inside its own transaction**, and dropped `fund_investment.committed` — the first of ADR-002's "should be derived, MVP stores it separately" fields to actually go. **No number moved**: 252 golden masters, 22 round-trip assertions and the Funds tab's $8.7M committed / $4.2M drawn / $4.5M unfunded all unchanged. The API suite goes from 161 to 179 and the db suite from 41 to 42.
+
+**Two things the spec did not settle.** The rename reached the *ported* Funds tab, Reports tab and LP drawer as well as the Finance screens, which needed a **third sanctioned ADR-014 content exception** — the alternative was one event named two ways depending on which tab you were on, which is what FR-33 exists to end. And clause 5's overdraw flag needed somewhere to live: a warning returned to whoever happened to be typing is not a state anything can find again, so `v_lp_position_current.overdrawn` is the queryable half, and it is three-valued because "no commitment on record" is not "no, this is fine".
+
+**And one defect found by running the generator, which was F5's own.** The backfill first marked its rows `is_synthetic = false` on the reasoning that the commitment *figures* are real. They are — but on a generated database the column they were carried from was itself written by `db:generate`, so the row survived the clear step and collided with the one the generator wrote next. Regenerability has now broken between phases three times (F1, F4, F5), always the same way: something new does not say whether the generator owns it. The flag is **inherited** now rather than asserted.
+
 #### F6 · The reconciliation surface
 
 *Last, because it reports on everything above.*
@@ -446,7 +454,7 @@ Raised as **Proposed** at F0; each moves to **Accepted** as its phase lands.
 | **ADR-034** ✅ | A valuation mark records the adjustment that produced it and stores the resulting absolute; the retention factor is the input and the absolute is the fact. **Accepted 20 Aug 2026.** Clause 3 gained the rule for a review applied to cost | F2 |
 | **ADR-035** ✅ | Ownership is maintained between rounds by Finance, ad hoc; significant influence is a dated policy with a derived flag. **Accepted 20 Aug 2026.** Clause 2 was amended on landing: `fund_accounting_policy` carries no `fund_id`, because the flag is resolved from a company and ownership has no fund dimension | F3 |
 | **ADR-036** ✅ | Portfolio membership follows Affinity's roster status; the exit event is a separate financial fact that does not move a company between views. **Accepted 20 Aug 2026.** Clause 1 was amended on landing: which status means member and which means exited moved out of a hardcoded Set and into `affinity_status_map` | F4 |
-| **ADR-037** | LP commitments are dated events and `committed` becomes derived | F5 |
+| **ADR-037** ✅ | LP commitments are dated events and `committed` becomes derived. **Accepted 21 Aug 2026.** Clause 4 gained the words Q-23 came back with, which are not the ones the ADR proposed; clause 5's flag gained a column to live in | F5 |
 | **ADR-038** | The version store distinguishes a correction from information arriving late | F6 |
 | **ADR-039** | Total invested is pushed to Affinity at cutover and becomes read-only there; the pre-cutover figures are frozen before the first write | F0 / A13 |
 
@@ -456,7 +464,7 @@ Amendments land **in** the existing ADRs rather than only in the new ones, becau
 
 Take `docs/finance-design-notes.md`, the *Open questions* section. It is grouped into five blocks, each stating what it blocks, so if the meeting runs short the cost of stopping is visible. **Block 2 — net book value — is the one worth protecting:** it is the largest item in the register and the one that takes an Excel file off Pat's desk.
 
-**One email, ahead of it and independent of it:** Q-23 to Funke, confirming the exact LP wording. F5 is gated on the answer and nothing else in Track F is.
+~~**One email, ahead of it and independent of it:** Q-23 to Funke, confirming the exact LP wording. F5 is gated on the answer and nothing else in Track F is.~~ **Sent and answered, 21 August 2026 — Committed Capital · Capital Drawdown · Capital Distribution, all three different from what the register recorded.** F5 has landed on the back of it, and nothing else in Track F was waiting on it.
 
 ---
 

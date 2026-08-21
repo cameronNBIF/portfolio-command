@@ -8,7 +8,7 @@
  *   $4,572,840 across sixteen positions.
  *
  * WHAT IS SYNTHETIC:
- *   the timing and size of the individual capital calls (they sum EXACTLY to
+ *   the timing and size of the individual capital drawdowns (they sum EXACTLY to
  *   the real called figure), the vintage year, the NAV, and the descriptive
  *   fields.
  *
@@ -164,12 +164,12 @@ export function planLpPositions(input: LpFactsInput[]): LpPlan[] {
 }
 
 /**
- * Capital calls that sum EXACTLY to the real called figure.
+ * Capital drawdowns that sum EXACTLY to the real drawn figure (FR-33).
  *
- * A first call takes a larger slice than the ones that follow, which is how a
- * fund actually draws; the last call absorbs the remainder, so the odd figures
- * in the workbook -- Propel's $488,819, Sandpiper's $98,118 -- land as a real
- * final drawdown rather than as rounding smeared across the series.
+ * A first drawdown takes a larger slice than the ones that follow, which is how
+ * a fund actually draws; the last absorbs the remainder, so the odd figures in
+ * the workbook -- Propel's $488,819, Sandpiper's $98,118 -- land as a real final
+ * drawdown rather than as rounding smeared across the series.
  */
 function planCalls(
   calledCents: number,
@@ -191,7 +191,7 @@ function planCalls(
   const amounts: number[] = [];
   let allocated = 0;
   for (let k = 0; k < n - 1; k++) {
-    // Quoted to the dollar, as a capital call notice is.
+    // Quoted to the dollar, as a drawdown notice is.
     const a = Math.max(DOLLAR, Math.round((calledCents * raw[k]!) / sum / DOLLAR) * DOLLAR);
     if (allocated + a >= calledCents) break;
     amounts.push(a);
@@ -212,7 +212,7 @@ function planCalls(
     return {
       date: `${y}-${String(m).padStart(2, '0')}-${String(rng.int(3, 26)).padStart(2, '0')}`,
       amountCents,
-      note: k === 0 ? 'Initial drawdown' : `Capital call ${k + 1}`,
+      note: k === 0 ? 'Initial drawdown' : `Capital drawdown ${k + 1}`,
     };
   });
 }
@@ -225,7 +225,7 @@ function planCalls(
  * the number is, and generating the two the same day would make that column
  * look decorative.
  *
- * A position with no capital called gets NO NAV row at all -- there is no
+ * A position with nothing drawn gets NO NAV row at all -- there is no
  * capital account yet. That leaves TVPI undefined rather than zero, which is
  * the honest reading and the one `v_lp_position_current` already returns NULL
  * for.

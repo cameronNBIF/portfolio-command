@@ -60,6 +60,11 @@ describe.skipIf(!hasDb)('F0 groundwork', () => {
     `.execute(db());
     FINANCE.userId = rows[0]!.id;
 
+    /* Set before the fixture rows rather than after them: the F5 commitment
+       below is a versioned financial row, and the ADR-031 trigger raises rather
+       than defaulting when nobody is named. */
+    await sql`select set_config('pc.actor_id', ${FINANCE.userId}, false)`.execute(db());
+
     await sql`
       insert into pc.company (company_id, name, created_by)
       values (${COMPANY}, 'Groundwork Test Co', ${FINANCE.userId}::uuid)
@@ -67,13 +72,23 @@ describe.skipIf(!hasDb)('F0 groundwork', () => {
     `.execute(db());
     await sql`
       insert into pc.fund_investment
-        (fund_investment_id, name, manager_name, committed, created_by)
-      values (${FUND_POSITION}, 'Groundwork Test LP', 'Groundwork GP', 1000000.00,
-              ${FINANCE.userId}::uuid)
+        (fund_investment_id, name, manager_name, created_by)
+      values (${FUND_POSITION}, 'Groundwork Test LP', 'Groundwork GP', ${FINANCE.userId}::uuid)
       on conflict (fund_investment_id) do nothing
     `.execute(db());
+    /* F5. The commitment left the position and became a dated event
+       (ADR-037), so this fixture writes one. Kept because the F0 tests below
+       write LP drawdowns against this position and a drawdown against a
+       position with no commitment on record is a state the write path now
+       reports on -- it should not be the state every F0 test runs in. */
+    await sql`
+      insert into pc.fund_commitment
+        (fund_investment_id, as_of_date, committed, change_reason, entered_by)
+      values (${FUND_POSITION}, '2020-01-01', 1000000.00,
+              'Test fixture: subscription', ${FINANCE.userId}::uuid)
+      on conflict (fund_investment_id, as_of_date) do nothing
+    `.execute(db());
 
-    await sql`select set_config('pc.actor_id', ${FINANCE.userId}, false)`.execute(db());
     await sql`delete from pc.transaction where company_id = ${COMPANY} or fund_investment_id = ${FUND_POSITION}`
       .execute(db());
     await sql`delete from pc.financial_row_version where changed_by = ${FINANCE.userId}::uuid`.execute(db());
@@ -177,7 +192,7 @@ describe.skipIf(!hasDb)('F0 groundwork', () => {
         table: 'transaction',
         op: 'create',
         values: {
-          txnDate: '2024-03-01', txnType: 'capital_call',
+          txnDate: '2024-03-01', txnType: 'capital_drawdown',
           fundInvestmentId: FUND_POSITION, amount: '100000.00', instrumentId: equityId,
         },
       }),
@@ -194,7 +209,7 @@ describe.skipIf(!hasDb)('F0 groundwork', () => {
       sql`
         insert into pc.transaction
           (txn_date, txn_type, fund_investment_id, amount, entered_by, instrument_id)
-        values ('2024-03-01', 'capital_call', ${FUND_POSITION}, 100000.00,
+        values ('2024-03-01', 'capital_drawdown', ${FUND_POSITION}, 100000.00,
                 ${FINANCE.userId}::uuid, ${equityId})
       `.execute(db()),
     ).rejects.toThrow(/txn_instrument_direct_only/i);
