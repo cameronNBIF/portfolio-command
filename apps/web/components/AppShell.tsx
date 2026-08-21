@@ -15,44 +15,63 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 export type TabId =
   | 'dashboard' | 'portfolio' | 'funds' | 'pipeline'
   | 'modeling' | 'memo' | 'reports' | 'data' | 'finance' | 'dealclose' | 'alerts' | 'policies'
-  | 'exited';
+  | 'exited' | 'reconciliation';
 
 /**
- * Label and order exactly as the prototype's `#mainnav` (:163-172), plus the two
- * entry tabs.
+ * The nav, in the order Cameron set on 21 August 2026.
  *
- * THE ENTRY TABS ARE ADDITIONS TO THE PROTOTYPE'S EIGHT, and they do not breach
- * ADR-014. That ADR freezes the *port*: the eight tabs below it are unchanged in
- * layout, terminology and behaviour. The prototype has no data entry anywhere —
- * every figure in it is a literal in a JavaScript object — so A7's and A8's entry
- * interfaces cannot be a port of anything and have to be new surface. Keeping
- * them off the eight is what protects the parity criterion.
+ * THE PORTED EIGHT KEEP THEIR RELATIVE ORDER AND ARE NO LONGER CONTIGUOUS, and
+ * that is the change worth being explicit about. The prototype's `#mainnav`
+ * (:163-172) runs Dashboard, Portfolio, Funds, Pipeline, Modeling, Memo
+ * Builder, Reports, Data, and every one of those still follows the one before
+ * it. What is new is that the additions are interleaved rather than appended:
+ * Exited sits with Portfolio and Funds because it answers a question about the
+ * portfolio, and Data moves to the end because it is the developer's view of
+ * the export contract rather than a place anyone works.
  *
- * THE TWO ARE SEPARATE BECAUSE THEIR AUTHORS ARE. Finance records what we paid;
- * Deal Close records the round we paid into. ADR-005 splits those by source of
- * record and ADR-012 assigns the second to the deal lead, so one tab over both
- * would mean one role gate over both, and the wider of the two would win.
+ * ADR-014 IS NOT BREACHED, and the reason is worth stating rather than
+ * assuming. That ADR freezes the PORT: layout, terminology, colour conventions,
+ * drawer behaviour and the eight tabs' own content. It is about what each
+ * screen shows and how it behaves, not about which order a nav bar that has
+ * grown from eight items to fourteen puts them in. Grouping by what a person
+ * is doing — looking at the portfolio, modelling, reporting, entering data,
+ * checking the platform's own records — is what keeps fourteen items usable.
+ * The eight screens themselves are untouched.
+ *
+ * THE ENTRY TABS ARE ADDITIONS TO THE PROTOTYPE'S EIGHT. The prototype has no
+ * data entry anywhere — every figure in it is a literal in a JavaScript object
+ * — so A7's and A8's entry interfaces cannot be a port of anything and have to
+ * be new surface. Keeping them off the eight is what protects the parity
+ * criterion; where they sit in the bar is a separate question.
+ *
+ * DEAL CLOSE AND FINANCE ARE SEPARATE BECAUSE THEIR AUTHORS ARE. Finance
+ * records what we paid; Deal Close records the round we paid into. ADR-005
+ * splits those by source of record and ADR-012 assigns the second to the deal
+ * lead, so one tab over both would mean one role gate over both, and the wider
+ * of the two would win.
  *
  * `roles` gates visibility. Absent means everyone.
  */
 export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
+  // --- the portfolio, as it stands -------------------------------------------
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'funds', label: 'Funds' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'modeling', label: 'Modeling' },
-  { id: 'memo', label: 'Memo Builder' },
-  { id: 'reports', label: 'Reports' },
-  { id: 'data', label: 'Data' },
   // F4, FR-29. Complements the Portfolio tab rather than changing it: that tab
   // keeps the prototype's own active / include exited / exited only control
   // (ADR-014), and this is the exit as an EVENT, which the prototype has no
-  // concept of. Appended with the other additions rather than slotted in beside
-  // Portfolio, which would reorder the ported eight in the nav.
+  // concept of. Sits beside Portfolio and Funds because that is the question it
+  // answers -- who is in the portfolio and who has left.
   //
   // No role gate. Who left the portfolio and when is a board figure; the entry
   // form inside is gated to finance and admin, and the API re-checks it.
   { id: 'exited', label: 'Exited' },
+
+  // --- working the portfolio -------------------------------------------------
+  { id: 'modeling', label: 'Modeling' },
+  { id: 'memo', label: 'Memo Builder' },
+  { id: 'reports', label: 'Reports' },
   // A9. Matches CAN_EDIT_JUDGEMENT: the people who own the judgement records
   // this tab configures are the ones who see it. Leadership reads the board
   // feed on the Dashboard, which is unchanged and needs no gate.
@@ -63,12 +82,29 @@ export const TABS: { id: TabId; label: string; roles?: readonly string[] }[] = [
   // pointless, and one visible to everybody would offer leadership two cards
   // they cannot use.
   { id: 'policies', label: 'Policies', roles: ['vc', 'finance', 'admin'] },
+
+  // --- putting data in, and checking what went in ----------------------------
   // Matches CAN_CAPTURE_ROUND (ADR-012). Sits before Finance because a round is
   // captured at close, which is upstream of the cheque being booked.
   { id: 'dealclose', label: 'Deal Close', roles: ['vc', 'finance', 'admin'] },
   // Matches CAN_WRITE_FINANCIAL. A tab that appears for the VC team and then
   // refuses every action would be worse than one that is not offered.
   { id: 'finance', label: 'Finance', roles: ['finance', 'admin'] },
+  // F6, FR-09. No role gate, and that is the decision rather than an omission.
+  // Half of these checks are the VC team's to fix -- an unlinked cheque, a round
+  // with no cheque against it -- and half are Finance's. Putting the list behind
+  // CAN_WRITE_FINANCIAL would hide the deal leads' own queue from them, which is
+  // the same reason Exited became a tab rather than a Finance surface. Every fix
+  // still happens behind its own gate, on the screen that owns the record.
+  //
+  // Immediately after the two entry tabs, because it reports on what they wrote.
+  { id: 'reconciliation', label: 'Reconciliation' },
+
+  // --- the raw contract ------------------------------------------------------
+  // Last, and it is the one ported tab that moved. It renders the ADR-001
+  // export document itself -- a developer's and an auditor's view of the
+  // platform, not a place anyone in the VC or finance team works.
+  { id: 'data', label: 'Data' },
 ];
 
 /** What the drawer is currently showing. Null means closed. */

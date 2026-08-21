@@ -62,13 +62,16 @@ function parseMutation(body: unknown): FinancialMutation {
   }
 
   const reason = typeof b['reason'] === 'string' ? b['reason'] : null;
+  // F6, FR-14. Envelope, like `reason`: the shape is checked here and the rule
+  // — that `new-information` needs something to restate — is the write path's.
+  const changeKind = typeof b['changeKind'] === 'string' ? b['changeKind'] : null;
 
   if (op === 'delete' || op === 'restore') {
     const id = b['id'];
     if (typeof id !== 'string' || !/^\d+$/.test(id)) {
       throw new ValidationError('"id" is required and must be a row id.');
     }
-    return { table, op, id, reason } as FinancialMutation;
+    return { table, op, id, reason, changeKind } as FinancialMutation;
   }
 
   const values = b['values'];
@@ -80,9 +83,9 @@ function parseMutation(body: unknown): FinancialMutation {
     if (typeof id !== 'string' || !/^\d+$/.test(id)) {
       throw new ValidationError('"id" is required on an update and must be a row id.');
     }
-    return { table, op, id, values, reason } as FinancialMutation;
+    return { table, op, id, values, reason, changeKind } as FinancialMutation;
   }
-  return { table, op, values, reason } as FinancialMutation;
+  return { table, op, values, reason, changeKind } as FinancialMutation;
 }
 
 export async function POST(request: Request): Promise<Response> {

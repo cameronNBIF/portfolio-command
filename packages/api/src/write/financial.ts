@@ -25,7 +25,16 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_WRITE_FINANCIAL, type Principal, requireRole } from '../auth/principal.js';
 import { ValidationError } from './errors.js';
-import { checkRestatement, date, money, optional, setSessionContext, text } from './session.js';
+import {
+  changeKind,
+  checkRestatement,
+  date,
+  money,
+  optional,
+  setSessionContext,
+  text,
+  type ChangeKind,
+} from './session.js';
 
 /**
  * UNITS: THIS API SPEAKS DOLLARS, NOT $M.
@@ -219,7 +228,11 @@ export interface FundDistributionInput {
  * submits every field anyway, and a patch cannot distinguish "leave this alone"
  * from "clear this", which on a financial row is not a distinction to guess at.
  */
-export type FinancialMutation = { reason?: string | null } & (
+export type FinancialMutation = {
+  reason?: string | null;
+  /** ADR-038, FR-14. Why this changed, as distinct from what changed. */
+  changeKind?: ChangeKind | null;
+} & (
   | { table: 'transaction'; op: 'create'; values: TransactionInput }
   | { table: 'transaction'; op: 'update'; id: string; values: TransactionInput }
   | { table: 'valuation_mark'; op: 'create'; values: ValuationMarkInput }
@@ -364,9 +377,10 @@ export async function applyFinancialMutation(
   }
 
   const reason = mutation.reason?.trim() || null;
+  const kind = changeKind(mutation.changeKind);
 
   return db.transaction().execute(async (trx) => {
-    await setSessionContext(trx, principal, reason);
+    await setSessionContext(trx, principal, reason, kind);
 
     switch (mutation.op) {
       case 'delete':

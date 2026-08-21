@@ -61,6 +61,31 @@ export interface ImportResult {
 /** Tables cleared before a load. Children follow by cascade. */
 const ROOT_TABLES = [
   'audit_log',
+  /**
+   * F6. THE VERSION STORE GOES WITH THEM, and leaving it out was a defect
+   * rather than a scruple.
+   *
+   * These truncates are `restart identity cascade`, so `transaction`,
+   * `investment_round` and `valuation_mark` all begin numbering from 1 again.
+   * `financial_row_version` has no foreign key to any of them -- it references
+   * `app_user` and holds `record_id` as TEXT, by design (ADR-031, so one table
+   * can serve eight parents) -- so it does not cascade, and its rows survive
+   * pointing at ids that are about to be REISSUED to different rows.
+   *
+   * The symptom is the History panel showing another row's history: after an
+   * import, `readRowHistory('transaction', '1')` returns the pre-import row's
+   * creation and deletion followed by the new row's. Found because it made
+   * `financial-versioning.test.ts` fail roughly one run in four -- the history
+   * came back with six entries where the test wrote four -- and an
+   * intermittent failure in the suite that guards the ADR-031 guarantee is the
+   * worst shape a defect comes in.
+   *
+   * `audit_log` was already here for exactly this reason: a fixture import is a
+   * wholesale replacement of the portfolio, and a trail describing rows that no
+   * longer exist is not a trail. The version store is the same argument, and it
+   * was simply missed.
+   */
+  'financial_row_version',
   'fund_distribution',
   'fund_nav_snapshot',
   'memo',

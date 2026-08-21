@@ -52,14 +52,56 @@ export function FormGrid({ children }: { children: React.ReactNode }) {
  * offered, and if the server comes back asking for one, its sentence explains
  * why in terms of the actual period.
  */
-export function ReasonField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function ReasonField({
+  value,
+  onChange,
+  kind,
+  onKindChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  /** F6, ADR-038 clause 3. Omit both to render the reason alone, as before. */
+  kind?: string;
+  onKindChange?: (v: string) => void;
+}) {
   return (
-    <Field
-      label="Reason for this change"
-      hint="Recorded against your name. Required when the row falls inside a period already reported to the board."
-    >
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} />
-    </Field>
+    <>
+      <Field
+        label="Reason for this change"
+        hint="Recorded against your name. Required when the row falls inside a period already reported to the board."
+      >
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} />
+      </Field>
+      {onKindChange && (
+        /**
+         * ADR-038 clause 3, FR-14. WHY it changed, as distinct from what.
+         *
+         * THE POINT IS THE SECOND OPTION. A grant that becomes known six months
+         * after the round is added to that round, and under ADR-031 as built
+         * that edit was recorded as a restatement of a board figure — which
+         * reads as an accusation of an error nobody made. The row's history was
+         * right; the label was wrong.
+         *
+         * OFFERED ALWAYS, ENFORCED SERVER-SIDE. Whether a row falls inside a
+         * frozen period is the database's fact and a copy of that boundary here
+         * would be a copy that goes stale — the same reasoning the reason field
+         * above already carries. Pick "information arrived late" outside a
+         * published period and the server explains why there is nothing to
+         * restate, in terms of the actual period.
+         */
+        <Field
+          label="Why"
+          hint="Blank leaves it unclassified, which is honest. “Information arrived late” applies only inside a period already reported."
+        >
+          <select value={kind ?? ''} onChange={(e) => onKindChange(e.target.value)}>
+            <option value="">Not classified</option>
+            <option value="correction">Correction — the stored figure was wrong</option>
+            <option value="new-information">Information arrived late — the figure was right</option>
+            <option value="initial-load">Initial load — bulk historical import</option>
+          </select>
+        </Field>
+      )}
+    </>
   );
 }
 

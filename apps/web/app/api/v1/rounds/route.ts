@@ -87,13 +87,20 @@ function parseMutation(body: unknown): RoundMutation {
     throw new ValidationError(`"op" must be one of: ${[...OPS, LINK_OP].join(', ')}.`);
   }
   const reason = typeof b['reason'] === 'string' ? b['reason'] : null;
+  // F6, FR-08 and FR-14. Both are envelope fields like `reason`: the shape is
+  // checked here, the rules are `applyRoundMutation`'s. Two validators over one
+  // field is how the two drift apart.
+  const changeKind = typeof b['changeKind'] === 'string' ? b['changeKind'] : null;
+  const duplicateAckReason =
+    typeof b['duplicateAckReason'] === 'string' ? b['duplicateAckReason'] : null;
+  const envelope = { reason, changeKind, duplicateAckReason };
 
   if (op === 'delete' || op === 'restore') {
     const id = b['id'];
     if (typeof id !== 'string' || !/^\d+$/.test(id)) {
       throw new ValidationError('"id" is required and must be a round id.');
     }
-    return { op, id, reason } as RoundMutation;
+    return { op, id, ...envelope } as RoundMutation;
   }
 
   const values = b['values'];
@@ -114,9 +121,9 @@ function parseMutation(body: unknown): RoundMutation {
     if (typeof id !== 'string' || !/^\d+$/.test(id)) {
       throw new ValidationError('"id" is required on an update and must be a round id.');
     }
-    return { op, id, values, reason } as RoundMutation;
+    return { op, id, values, ...envelope } as RoundMutation;
   }
-  return { op, values, reason } as RoundMutation;
+  return { op, values, ...envelope } as RoundMutation;
 }
 
 export async function POST(request: Request): Promise<Response> {

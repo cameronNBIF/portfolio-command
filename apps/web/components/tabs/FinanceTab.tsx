@@ -239,7 +239,13 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
   const [companyId, setCompanyId] = useState('');
   const [txnType, setTxnType] = useState('');
   const [includeDeleted, setIncludeDeleted] = useState(false);
-  const [editing, setEditing] = useState<{ id: string | null; draft: Draft; reason: string } | null>(null);
+  /* F6, ADR-038. `kind` rides with the reason on this surface only: FR-14's
+     case is a grant that becomes known after the round, which lands here as a
+     transaction edit. Offering it on every form would train people to pick one
+     at random, which is what clause 3 warns against. */
+  const [editing, setEditing] = useState<
+    { id: string | null; draft: Draft; reason: string; kind?: string } | null
+  >(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -273,6 +279,7 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
         op: editing.id ? 'update' : 'create',
         ...(editing.id ? { id: editing.id } : {}),
         reason: editing.reason || null,
+        changeKind: editing.kind || null,
         values: {
           txnDate: d['txnDate'],
           txnType: d['txnType'],
@@ -479,6 +486,8 @@ function TransactionsSurface({ db }: { db: PortfolioExport }) {
             <ReasonField
               value={editing.reason}
               onChange={(reason) => setEditing({ ...editing, reason })}
+              kind={editing.kind ?? ''}
+              onKindChange={(kind) => setEditing({ ...editing, kind })}
             />
           </FormGrid>
 
@@ -896,7 +905,10 @@ function MarksSurface({ db }: { db: PortfolioExport }) {
                   setEditing({ ...editing, draft: { ...editing.draft, sourceDocument: e.target.value } })}
               />
             </Field>
-            <ReasonField value={editing.reason} onChange={(reason) => setEditing({ ...editing, reason })} />
+            <ReasonField
+              value={editing.reason}
+              onChange={(reason) => setEditing({ ...editing, reason })}
+            />
           </FormGrid>
           <div style={{ marginTop: 12 }}>
             <Field

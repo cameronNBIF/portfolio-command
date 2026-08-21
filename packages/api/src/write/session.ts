@@ -76,9 +76,40 @@ export async function setSessionContext(
   trx: Kysely<DB>,
   principal: Principal,
   reason: string | null,
+  changeKind: ChangeKind | null = null,
 ): Promise<void> {
   await sql`select set_config('pc.actor_id', ${principal.userId}, true)`.execute(trx);
   await sql`select set_config('pc.change_reason', ${reason ?? ''}, true)`.execute(trx);
+  await sql`select set_config('pc.change_kind', ${changeKind ?? ''}, true)`.execute(trx);
+}
+
+/**
+ * ADR-038, FR-14. WHY a financial row changed, as distinct from what changed.
+ *
+ * `correction` — the stored figure was wrong.
+ * `new-information` — the figure was right and something arrived late. Pat's
+ *   case exactly: a grant that becomes known six months after the round is
+ *   added to it, and the change log should not call that a data-correction
+ *   error. The row's history was right; the label was wrong.
+ * `initial-load` — a bulk historical import. A13's, and the fixture importer's.
+ *
+ * NULL IS A LEGITIMATE VALUE AND MEANS UNCLASSIFIED. Every version row written
+ * before migration 0013 genuinely is, and a routine typo fix that nobody
+ * classified is not a defect.
+ */
+export type ChangeKind = 'correction' | 'new-information' | 'initial-load';
+
+export const CHANGE_KINDS: readonly ChangeKind[] = ['correction', 'new-information', 'initial-load'];
+
+/** Narrows an unknown to a `ChangeKind`, or null. Rejects anything else. */
+export function changeKind(value: unknown): ChangeKind | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string' || !(CHANGE_KINDS as readonly string[]).includes(value)) {
+    throw new ValidationError(
+      `"changeKind" must be one of ${CHANGE_KINDS.join(', ')}, or omitted. Got ${JSON.stringify(value)}.`,
+    );
+  }
+  return value as ChangeKind;
 }
 
 /**
@@ -98,13 +129,39 @@ export async function checkRestatement(
   reason: string | null,
   what: string,
 ): Promise<boolean> {
-  const { rows } = await sql<{ frozen: string | null }>`
-    select pc.latest_frozen_period_end()::text as frozen
+  /* The kind comes from the SESSION rather than from a parameter, and that is
+     the whole reason five writers did not need a new argument. `setSessionContext`
+     has already put it in `pc.change_kind` for this transaction — it has to, so
+     the capture trigger can read it — which makes the GUC the transaction's one
+     authority on the answer. Threading it separately would have created a second
+     one, and the two would eventually disagree about the same write. */
+  const { rows } = await sql<{ frozen: string | null; kind: string | null }>`
+    select pc.latest_frozen_period_end()::text as frozen,
+           pc.current_change_kind()            as kind
   `.execute(trx);
   const frozen = rows[0]?.frozen ?? null;
-  if (!frozen) return false; // nothing issued to the board yet
+  const kind = (rows[0]?.kind ?? null) as ChangeKind | null;
+  const restates = frozen !== null && dates.some((d) => d !== null && d <= frozen);
 
-  const restates = dates.some((d) => d !== null && d <= frozen);
+  /* ADR-038 clause 3. `new-information` is meaningful only where there is
+     something to restate. Outside a frozen period the distinction between a
+     correction and a late arrival is noise, and a value that can be picked
+     anywhere is one people pick at random -- which would hollow out the exact
+     signal FR-14 asked for.
+
+     ENFORCED HERE because this is the one function that knows whether a change
+     restates, and putting the rule anywhere else would mean computing that
+     twice. The UI offers the option conditionally for the same reason; this is
+     what makes it true for a caller that is not the UI. */
+  if (kind === 'new-information' && !restates) {
+    throw new ValidationError(
+      `This ${what} does not fall inside a period already issued to the board, so there is ` +
+        'nothing for late-arriving information to restate. Record it as an ordinary change — ' +
+        '"new-information" exists to stop a late grant reading as a correction of a published ' +
+        'figure, and outside a published period there is no such figure.',
+    );
+  }
+
   if (!restates) return false;
 
   if (!reason || reason.trim().length < 10) {
