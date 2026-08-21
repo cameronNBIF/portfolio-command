@@ -56,3 +56,21 @@ export async function withPrincipal(
     return Response.json({ error: 'Internal error.' }, { status: 500 });
   }
 }
+
+/**
+ * Reads a JSON body, turning a malformed one into `null` rather than a throw.
+ *
+ * EVERY POST GOES THROUGH THIS, and before it existed three of them did not.
+ * `exits`, `ownership` and `policies` called `request.json()` bare, so a
+ * malformed payload raised a `SyntaxError`, fell past `statusFor` and came back
+ * as a 500 — while `financial`, `judgement` and `rounds`, which had the
+ * `.catch(() => null)`, returned a 400. Same broken request, two answers,
+ * depending on which endpoint it arrived at.
+ *
+ * `null` is what every parser is built to reject with "Body must be an object.",
+ * so unparseable JSON and a body that is not an object end up as the same 400,
+ * which is what both of them are.
+ */
+export async function jsonBody(request: Request): Promise<unknown> {
+  return request.json().catch(() => null);
+}

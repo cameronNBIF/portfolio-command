@@ -25,6 +25,7 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_WRITE_FINANCIAL, type Principal, requireRole } from '../auth/principal.js';
 import { ValidationError } from './errors.js';
+import { asObject, oneOf, optionalText, requiredObject, rowId } from './parse.js';
 import {
   changeKind,
   checkRestatement,
@@ -350,6 +351,59 @@ async function existingDate(
   `.execute(trx);
   if (rows.length === 0) throw new ValidationError(`No ${meta.label} with id ${id}.`);
   return rows[0]?.d ?? null;
+}
+
+// --- the request envelope ---------------------------------------------------
+
+const OPS = ['create', 'update', 'delete', 'restore'] as const;
+
+/**
+ * Narrows an unknown request body to a `FinancialMutation`.
+ *
+ * Shallow on purpose, and beside `applyFinancialMutation` on purpose. This
+ * checks the envelope — table, op, and that an id is present when one is needed
+ * — and leaves every field rule to the function below, which owns them and
+ * raises the same error type. Two validators over the same fields is how the
+ * two drift apart.
+ *
+ * `table` IS CHECKED HERE AND AGAIN THERE, and the second check is not
+ * redundant. This one produces the sentence a caller who sent the wrong name
+ * should read; that one is what a second caller — the importer, a script, a
+ * test — hits when it bypasses this function entirely.
+ */
+export function parseFinancialMutation(body: unknown): FinancialMutation {
+  const b = asObject(body);
+
+  const table = oneOf(
+    b['table'],
+    Object.keys(TABLES) as FinancialTable[],
+    'table',
+    'Judgement records are edited through /api/v1/judgement.',
+  );
+  const op = oneOf(b['op'], OPS, 'op');
+
+  const reason = optionalText(b, 'reason');
+  // F6, FR-14. Envelope, like `reason`: the shape is checked here and the rule
+  // — that `new-information` needs something to restate — is the write path's.
+  const changeKindValue = optionalText(b, 'changeKind');
+  const envelope = { reason, changeKind: changeKindValue };
+
+  if (op === 'delete' || op === 'restore') {
+    return { table, op, id: rowId(b['id'], 'row'), ...envelope } as FinancialMutation;
+  }
+
+  /* Typed `unknown` rather than as the row it will become. The envelope has
+     confirmed it is an object and nothing more; which of the five input shapes
+     it has to satisfy is the write path's question, asked below against the
+     table it was addressed to. Naming a type here would be this layer claiming
+     a check it has not made. */
+  const values: unknown = requiredObject(b, 'values', 'the complete row');
+  if (op === 'update') {
+    return {
+      table, op, id: rowId(b['id'], 'row', true), values, ...envelope,
+    } as FinancialMutation;
+  }
+  return { table, op, values, ...envelope } as FinancialMutation;
 }
 
 // --- the entry point --------------------------------------------------------

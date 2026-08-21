@@ -11,10 +11,15 @@
  * AMOUNTS ARE DOLLARS ON THIS ENDPOINT, as text, not the contract's `$M`. See
  * the units note at the top of `packages/api/src/write/financial.ts` — it is a
  * deliberate divergence from the export contract and the reasoning matters.
+ *
+ * THE BODY PARSER IS NOT HERE ANY MORE. `parseFinancialMutation` sits beside
+ * `applyFinancialMutation`, which owns the field rules the envelope has to stay
+ * in step with, and is tested without a server — see `write/parse.ts`.
  */
 import {
   applyFinancialMutation,
   db,
+  parseFinancialMutation,
   readFmvReview,
   readFmvReviewQueue,
   readFundCommitments,
@@ -22,75 +27,15 @@ import {
   readTransactions,
   readValuationMarks,
   ValidationError,
-  type FinancialMutation,
 } from '@portfolio-command/api';
 
-import { withPrincipal } from '../../_lib/handler';
+import { jsonBody, withPrincipal } from '../../_lib/handler';
 
 export const dynamic = 'force-dynamic';
 
-const TABLES = [
-  'transaction', 'valuation_mark', 'fund_investment_nav', 'fund_distribution',
-  // F5, ADR-037. The commitment stage, which was a column on the position until
-  // migration 0012 made it a dated event.
-  'fund_commitment',
-];
-const OPS = ['create', 'update', 'delete', 'restore'];
-
-/**
- * Narrows the body to a `FinancialMutation`.
- *
- * Shallow on purpose: this checks the envelope — table, op, and that an id is
- * present when one is needed — and leaves every field rule to
- * `applyFinancialMutation`, which owns them and raises the same error type. Two
- * validators over the same fields is how the two drift apart.
- */
-function parseMutation(body: unknown): FinancialMutation {
-  if (typeof body !== 'object' || body === null) throw new ValidationError('Body must be an object.');
-  const b = body as Record<string, unknown>;
-
-  const table = b['table'];
-  if (typeof table !== 'string' || !TABLES.includes(table)) {
-    throw new ValidationError(
-      `"table" must be one of: ${TABLES.join(', ')}. ` +
-        'Judgement records are edited through /api/v1/judgement.',
-    );
-  }
-  const op = b['op'];
-  if (typeof op !== 'string' || !OPS.includes(op)) {
-    throw new ValidationError(`"op" must be one of: ${OPS.join(', ')}.`);
-  }
-
-  const reason = typeof b['reason'] === 'string' ? b['reason'] : null;
-  // F6, FR-14. Envelope, like `reason`: the shape is checked here and the rule
-  // — that `new-information` needs something to restate — is the write path's.
-  const changeKind = typeof b['changeKind'] === 'string' ? b['changeKind'] : null;
-
-  if (op === 'delete' || op === 'restore') {
-    const id = b['id'];
-    if (typeof id !== 'string' || !/^\d+$/.test(id)) {
-      throw new ValidationError('"id" is required and must be a row id.');
-    }
-    return { table, op, id, reason, changeKind } as FinancialMutation;
-  }
-
-  const values = b['values'];
-  if (typeof values !== 'object' || values === null) {
-    throw new ValidationError('"values" must be an object holding the complete row.');
-  }
-  if (op === 'update') {
-    const id = b['id'];
-    if (typeof id !== 'string' || !/^\d+$/.test(id)) {
-      throw new ValidationError('"id" is required on an update and must be a row id.');
-    }
-    return { table, op, id, values, reason, changeKind } as FinancialMutation;
-  }
-  return { table, op, values, reason, changeKind } as FinancialMutation;
-}
-
 export async function POST(request: Request): Promise<Response> {
   return withPrincipal(request, async (principal) => {
-    const mutation = parseMutation(await request.json().catch(() => null));
+    const mutation = parseFinancialMutation(await jsonBody(request));
     // The role check lives in applyFinancialMutation so a second caller that
     // does not come through this route cannot skip it.
     const result = await applyFinancialMutation(db(), principal, mutation);

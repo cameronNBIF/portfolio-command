@@ -29,6 +29,7 @@ import type { DB } from '@portfolio-command/db/generated';
 import { CAN_WRITE_FINANCIAL, type Principal, requireRole } from '../auth/principal.js';
 import { recordAudit } from './audit.js';
 import { ValidationError } from './errors.js';
+import { asObject, oneOf, requiredObject, requiredText } from './parse.js';
 import { date, optional, text } from './session.js';
 
 export interface ExitEventInput {
@@ -55,6 +56,46 @@ export interface ExitWriteResult {
    * recording the event has not changed that.
    */
   stillOnRoster: boolean;
+}
+
+// --- the request envelope ---------------------------------------------------
+
+const OPS = ['record', 'remove'] as const;
+
+/**
+ * Narrows an unknown request body to an `ExitMutation`.
+ *
+ * Shallow, as on every other v1 shape: the envelope here, every field rule in
+ * `applyExitMutation` below — including the exit-type vocabulary, which is read
+ * from the database constraint rather than restated in TypeScript.
+ *
+ * THERE IS NO `mark-exited` OP AND THERE IS NOT GOING TO BE ONE. Membership
+ * follows Affinity's roster status (ADR-036); what this endpoint records is the
+ * economic event. The absence is by construction, not by omission — an exited
+ * flag maintained in two places would have the nightly sync silently winning the
+ * argument, which is the failure the health-rating workflow was cancelled to
+ * avoid (ADR-032).
+ */
+export function parseExitMutation(body: unknown): ExitMutation {
+  const b = asObject(body);
+
+  const op = oneOf(b['op'], OPS, 'op');
+
+  if (op === 'remove') {
+    const companyId = b['companyId'];
+    if (typeof companyId !== 'string' || companyId === '') {
+      throw new ValidationError('"companyId" is required to remove an exit event.');
+    }
+    if (typeof b['reason'] !== 'string') {
+      throw new ValidationError('"reason" is required: an exit that disappears unexplained is one nobody can account for.');
+    }
+    return { op: 'remove', companyId, reason: requiredText(b, 'reason') };
+  }
+
+  // Widened deliberately: the envelope confirms an object, and every field rule
+  // — including the exit-type vocabulary — is `applyExitMutation`'s.
+  const values: unknown = requiredObject(b, 'values', 'the exit event');
+  return { op: 'record', values: values as ExitEventInput };
 }
 
 export async function applyExitMutation(

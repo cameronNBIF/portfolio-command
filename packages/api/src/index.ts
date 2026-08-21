@@ -109,14 +109,26 @@ export {
 } from './read/finance.js';
 
 export { recordAudit, type AuditEntry } from './write/audit.js';
+
+/**
+ * The request-envelope primitives, exported for the route layer.
+ *
+ * `isIsoDate` is the only one a handler reaches for directly: two GET routes
+ * validate an `asOf` query parameter and each has its own sentence to raise, so
+ * what they share is the format rather than the failure. Every body parser is
+ * exported beside the `apply*` function that consumes it — see `write/parse.ts`
+ * for why they moved out of the route handlers.
+ */
+export { isIsoDate } from './write/parse.js';
 export { DuplicateRoundError, ValidationError } from './write/errors.js';
-export { applyJudgementEdit, type JudgementEdit } from './write/judgement.js';
+export { applyJudgementEdit, parseJudgementEdit, type JudgementEdit } from './write/judgement.js';
 
 // ADR-031. Financial rows are editable over a versioned store; ADR-018's
 // append-only interface is superseded. Version capture is a database trigger,
 // not anything exported here.
 export {
   applyFinancialMutation,
+  parseFinancialMutation,
   type FinancialMutation,
   type FinancialTable,
   type FinancialWriteResult,
@@ -134,6 +146,8 @@ export {
 // gated on CAN_CAPTURE_ROUND because it can move a foreign key and nothing else.
 export {
   applyLinkTransactions,
+  parseLinkTransactions,
+  LINK_OP,
   type LinkTransactionsMutation,
   type LinkTransactionsResult,
 } from './write/link-transactions.js';
@@ -142,6 +156,7 @@ export {
 // mutation, `CAN_CAPTURE_ROUND` because that is where the table already sits.
 export {
   applyOwnershipMutation,
+  parseOwnershipMutation,
   type OwnershipMutation,
   type OwnershipAdjustmentInput,
   type OwnershipWriteResult,
@@ -154,6 +169,7 @@ export { CHANGE_KINDS, type ChangeKind } from './write/session.js';
 // the company between views; membership follows the Affinity roster (ADR-036).
 export {
   applyExitMutation,
+  parseExitMutation,
   type ExitMutation,
   type ExitEventInput,
   type ExitWriteResult,
@@ -163,12 +179,14 @@ export {
 // what this sets is not a financial row but the rule that classifies every one.
 export {
   applyFinancePolicyEdit,
+  parseFinancePolicyEdit,
   type FinancePolicyEdit,
   type FinancePolicyResult,
 } from './write/finance-policy.js';
 
 export {
   applyRoundMutation,
+  parseRoundMutation,
   type RoundMutation,
   type RoundCaptureInput,
   type CoinvestorInput,

@@ -22,6 +22,7 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_CAPTURE_ROUND, type Principal, requireRole } from '../auth/principal.js';
 import { DuplicateRoundError, ValidationError } from './errors.js';
+import { asObject, oneOf, optionalText, requiredObject, rowId } from './parse.js';
 import {
   changeKind,
   checkRestatement,
@@ -265,6 +266,66 @@ function validateRound(v: RoundCaptureInput): void {
         'Combine them into one line with the total amount, so capital-to-direct is not double-counted.',
     );
   }
+}
+
+// --- the request envelope ---------------------------------------------------
+
+const OPS = ['create', 'update', 'delete', 'restore'] as const;
+
+/**
+ * Narrows an unknown request body to a `RoundMutation`.
+ *
+ * Shallow on purpose, matching the financial parser: this checks the envelope
+ * and leaves every field rule to `applyRoundMutation`, which owns them and
+ * raises the same error type. Two validators over the same fields is how the two
+ * drift apart.
+ *
+ * THE LINK MUTATION IS NOT PARSED HERE, though it arrives on the same endpoint.
+ * See `parseLinkTransactions` in `link-transactions.ts`: it carries a different
+ * payload entirely — no `values`, no round fields — and folding it in would mean
+ * one function with two bodies and a set of fields required in one shape and
+ * forbidden in the other. The route branches on `op` before calling either.
+ */
+export function parseRoundMutation(body: unknown): RoundMutation {
+  const b = asObject(body);
+
+  /* The hint names the fifth verb this endpoint accepts. It is deliberately a
+     sentence rather than a fifth entry in the list: `link-transactions` takes a
+     different payload and sits behind a different gate, and listing it beside
+     the four capture ops — as the route handler used to — invited a caller to
+     send it with `values`. */
+  const op = oneOf(b['op'], OPS, 'op', 'Attaching cheques to a round is "link-transactions".');
+  const reason = optionalText(b, 'reason');
+  // F6, FR-08 and FR-14. Both are envelope fields like `reason`: the shape is
+  // checked here, the rules are `applyRoundMutation`'s.
+  const envelope = {
+    reason,
+    changeKind: optionalText(b, 'changeKind'),
+    duplicateAckReason: optionalText(b, 'duplicateAckReason'),
+  };
+
+  if (op === 'delete' || op === 'restore') {
+    return { op, id: rowId(b['id'], 'round'), ...envelope } as RoundMutation;
+  }
+
+  const captured = requiredObject(b, 'values', 'the complete round');
+  // Defaulted rather than demanded: a round genuinely can have no co-investors,
+  // and a form that omits the key entirely should mean the same thing as one
+  // that sends an empty list.
+  if (captured['coinvestors'] === undefined) captured['coinvestors'] = [];
+  if (!Array.isArray(captured['coinvestors'])) {
+    throw new ValidationError('"values.coinvestors" must be a list, holding the complete set for this round.');
+  }
+  /* Widened deliberately: the envelope has confirmed an object with a list
+     where the list goes, and every field rule below is `writeRound`'s. Naming
+     `RoundCaptureInput` here would be this layer claiming a check it has not
+     made. */
+  const values: unknown = captured;
+
+  if (op === 'update') {
+    return { op, id: rowId(b['id'], 'round', true), values, ...envelope } as RoundMutation;
+  }
+  return { op, values, ...envelope } as RoundMutation;
 }
 
 // --- the entry point --------------------------------------------------------

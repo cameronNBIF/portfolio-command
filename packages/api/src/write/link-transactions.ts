@@ -32,6 +32,7 @@ import { type Kysely, sql } from 'kysely';
 import type { DB } from '@portfolio-command/db/generated';
 import { CAN_CAPTURE_ROUND, type Principal, requireRole } from '../auth/principal.js';
 import { ValidationError } from './errors.js';
+import { asObject, optionalText } from './parse.js';
 import { changeKind, checkRestatement, setSessionContext, type ChangeKind } from './session.js';
 
 export interface LinkTransactionsMutation {
@@ -80,6 +81,50 @@ interface TxnFacts {
   standalone_confirmed_at: string | null;
   deleted_at: string | null;
   voided_at: string | null;
+}
+
+/**
+ * The verb this mutation arrives under on `/api/v1/rounds`.
+ *
+ * ON THE ROUNDS ENDPOINT RATHER THAN THE FINANCIAL ONE, and that placement is
+ * the permission decision made visible. It writes a column on `transaction`,
+ * which is Finance's table, so the obvious home is the financial endpoint — and
+ * the obvious home is wrong. That endpoint is gated on `CAN_WRITE_FINANCIAL`
+ * and the deal lead who closed the round is `vc`. Routing it beside the round
+ * capture puts it behind `CAN_CAPTURE_ROUND`, where the two people who do this
+ * work both have access.
+ */
+export const LINK_OP = 'link-transactions';
+
+/**
+ * Narrows an unknown request body to a `LinkTransactionsMutation`.
+ *
+ * Shallow, like every other parser here: the id SHAPES are re-checked by
+ * `applyLinkTransactions` against the same rule, because a caller that does not
+ * come through the route must not be able to skip them.
+ */
+export function parseLinkTransactions(body: unknown): LinkTransactionsMutation {
+  const b = asObject(body);
+
+  const ids = b['transactionIds'];
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new ValidationError('"transactionIds" must be a non-empty list of transaction ids.');
+  }
+  const roundId = b['investmentRoundId'];
+  // `undefined` is rejected and `null` is accepted, deliberately: null is the
+  // form's explicit "No round -- standalone" choice and has to be expressible,
+  // while a body that simply omits the key is a caller who has not decided, and
+  // guessing which they meant is how a cheque gets silently detached.
+  if (roundId === undefined) {
+    throw new ValidationError(
+      '"investmentRoundId" is required — a round id, or null for a standalone cheque with no round.',
+    );
+  }
+  return {
+    transactionIds: ids.map(String),
+    investmentRoundId: roundId === null ? null : String(roundId),
+    reason: optionalText(b, 'reason'),
+  };
 }
 
 /**

@@ -30,6 +30,7 @@ import { CAN_EDIT_JUDGEMENT, type Principal, requireRole } from '../auth/princip
 import { toDollars } from '../units.js';
 import { recordAudit } from './audit.js';
 import { ValidationError } from './errors.js';
+import { asObject, requiredObject, requiredText } from './parse.js';
 
 /**
  * A judgement edit. The discriminated union is the allow-list: a financial
@@ -99,6 +100,150 @@ const MEMO_SECTIONS = [
 
 // Re-exported from its original home here so existing importers are unaffected.
 export { ValidationError } from './errors.js';
+
+// --- the request envelope ---------------------------------------------------
+
+/**
+ * The kinds this endpoint accepts, in the order the failure message lists them.
+ *
+ * HEALTH IS NOT HERE AND WILL NOT BE (ADR-032). Affinity is the system of record
+ * for the risk grade behind it and the sync is one-way inbound; the VC team
+ * maintains it there. The platform shows the rating, who set it and when, and
+ * offers no way to overwrite it.
+ */
+const EDIT_KINDS = [
+  'deal-gate', 'reserve-allocation', 'memo-section',
+  'risk-flag-raise', 'risk-flag-clear', 'company-threshold',
+  'alert-policy', 'alert-acknowledge', 'alert-revoke',
+] as const;
+
+/**
+ * The five threshold fields, shared by the per-company and fund-level shapes.
+ *
+ * THE THREE STATES SURVIVE PARSING, because the write path depends on telling
+ * them apart: absent leaves the stored value alone, `null` clears it so the fund
+ * policy is inherited, and `0` disables the alert outright. A parser that folded
+ * `null` into `undefined` would make it impossible to hand a company back to the
+ * policy once it had a number of its own — which is why this is one of the rules
+ * `request-parsing.test.ts` states directly rather than leaving to a comment.
+ */
+function parseThresholds(b: Record<string, unknown>) {
+  const num = (k: string): number | null | undefined => {
+    const v = b[k];
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) {
+      throw new ValidationError(`"${k}" must be a non-negative number, or null to inherit the fund policy.`);
+    }
+    return v;
+  };
+  return {
+    minRunwayMo: num('minRunwayMo'),
+    maxBurnMult: num('maxBurnMult'),
+    minCashBalance: num('minCashBalance'),
+    maxRevenueDeclinePct: num('maxRevenueDeclinePct'),
+    minNrrPct: num('minNrrPct'),
+  };
+}
+
+/**
+ * Narrows an unknown request body to a `JudgementEdit`.
+ *
+ * Hand-written rather than schema-generated: nine shapes do not justify a
+ * validation dependency, and the failure messages are better for being written
+ * for the person reading them.
+ */
+export function parseJudgementEdit(body: unknown): JudgementEdit {
+  const b = asObject(body);
+  const str = (k: string): string => requiredText(b, k);
+
+  switch (b['kind']) {
+    case 'deal-gate':
+      return { kind: 'deal-gate', dealId: str('dealId'), gateName: str('gateName'), status: str('status') };
+    case 'reserve-allocation': {
+      const allocated = b['allocated'];
+      if (typeof allocated !== 'number') throw new ValidationError('"allocated" must be a number ($M).');
+      return { kind: 'reserve-allocation', companyId: str('companyId'), allocated };
+    }
+    case 'memo-section': {
+      const bodyText = b['body'];
+      if (typeof bodyText !== 'string') throw new ValidationError('"body" must be a string.');
+      return { kind: 'memo-section', subjectId: str('subjectId'), sectionKey: str('sectionKey'), body: bodyText };
+    }
+    /* ---------------------------- A9 ---------------------------- */
+
+    case 'risk-flag-raise': {
+      const severity = b['severity'];
+      if (severity !== undefined && severity !== null && severity !== 'red' && severity !== 'yellow') {
+        throw new ValidationError('"severity" must be "red", "yellow", or null to inherit the company health colour.');
+      }
+      const note = b['note'];
+      if (note !== undefined && note !== null && typeof note !== 'string') {
+        throw new ValidationError('"note" must be a string or null.');
+      }
+      return {
+        kind: 'risk-flag-raise',
+        companyId: str('companyId'),
+        category: str('category'),
+        note: (note as string | null | undefined) ?? null,
+        severity: (severity as 'red' | 'yellow' | null | undefined) ?? null,
+      };
+    }
+    case 'risk-flag-clear': {
+      const flagId = b['flagId'];
+      if (typeof flagId !== 'number' || !Number.isInteger(flagId)) {
+        throw new ValidationError('"flagId" must be an integer.');
+      }
+      return { kind: 'risk-flag-clear', flagId, reason: str('reason') };
+    }
+    case 'company-threshold': {
+      const inner = parseThresholds(requiredObject(b, 'thresholds', 'the thresholds to set'));
+      return { kind: 'company-threshold', companyId: str('companyId'), thresholds: inner };
+    }
+    case 'alert-policy': {
+      const t = parseThresholds(b);
+      const note = b['note'];
+      if (note !== undefined && note !== null && typeof note !== 'string') {
+        throw new ValidationError('"note" must be a string or null.');
+      }
+      // Every field is stated on a policy write. A partial policy would leave
+      // the unstated metrics reading whatever the superseded row said, which
+      // is not what "this is our policy" means on the screen that sends it.
+      return {
+        kind: 'alert-policy',
+        minRunwayMo: t.minRunwayMo ?? null,
+        maxBurnMult: t.maxBurnMult ?? null,
+        minCashBalance: t.minCashBalance ?? null,
+        maxRevenueDeclinePct: t.maxRevenueDeclinePct ?? null,
+        minNrrPct: t.minNrrPct ?? null,
+        note: (note as string | null | undefined) ?? null,
+      };
+    }
+    case 'alert-acknowledge': {
+      const value = b['value'];
+      if (value !== undefined && value !== null && typeof value !== 'number') {
+        throw new ValidationError('"value" must be a number or null.');
+      }
+      return {
+        kind: 'alert-acknowledge',
+        companyId: str('companyId'),
+        alertKey: str('alertKey'),
+        reason: str('reason'),
+        untilDate: str('untilDate'),
+        value: (value as number | null | undefined) ?? null,
+      };
+    }
+    case 'alert-revoke':
+      return { kind: 'alert-revoke', companyId: str('companyId'), alertKey: str('alertKey') };
+
+    default:
+      throw new ValidationError(
+        `"kind" must be one of: ${EDIT_KINDS.join(', ')}. ` +
+          'Financial records are edited through /api/v1/financial (ADR-031), and company health is ' +
+          'maintained in Affinity (ADR-009).',
+      );
+  }
+}
 
 /**
  * Applies one judgement edit and audits it.
